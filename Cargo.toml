@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.19", features = ["cargo", "derive"] }
 color-eyre = "0.6.3"
+directories = "5.0.1"
 rand_pcg = "0.3.1"
