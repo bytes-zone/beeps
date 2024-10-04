@@ -1,6 +1,7 @@
 use clap::Parser;
 use color_eyre::Result;
 
+/// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
 struct CLI {}
 
