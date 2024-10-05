@@ -12,7 +12,7 @@ jobs:
 
       # Set up Rust
       - name: Setup Rust and Cargo
-        uses: moonrepo/setup-rust@v1.2.0
+        uses: moonrepo/setup-rust@v1.2.1
 
       # Test
       - name: Test
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust and Cargo
-        uses: moonrepo/setup-rust@v1.2.0
+        uses: moonrepo/setup-rust@v1.2.1
 
       - name: Format
         run: cargo fmt --check
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust and Cargo
-        uses: moonrepo/setup-rust@v1.2.0
+        uses: moonrepo/setup-rust@v1.2.1
 
       - name: Lint
         run: cargo clippy -- --deny warnings
