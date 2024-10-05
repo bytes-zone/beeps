@@ -58,13 +58,13 @@ impl Document {
     fn current_mut(&mut self) -> Option<&mut Ping> {
         let now = Utc::now();
 
-        self.pings.iter_mut().rev().filter(|p| p.time <= now).next()
+        self.pings.iter_mut().rev().find(|p| p.time <= now)
     }
 
     fn future(&self) -> Option<&Ping> {
         let now = Utc::now();
 
-        self.pings.iter().rev().filter(|p| p.time > now).next()
+        self.pings.iter().rev().find(|p| p.time > now)
     }
 }
 
@@ -85,9 +85,9 @@ impl Default for Ping {
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
-struct CLI {}
+struct Cli {}
 
-impl CLI {
+impl Cli {
     fn dirs(&self) -> Result<ProjectDirs> {
         match ProjectDirs::from("zone", "bytes", "beeps") {
             Some(l) => Ok(l),
@@ -163,7 +163,7 @@ impl CLI {
 fn main() {
     color_eyre::install().unwrap();
 
-    let cli = CLI::parse();
+    let cli = Cli::parse();
     if let Err(err) = cli.run() {
         eprintln!("{}", err);
         std::process::exit(1);
