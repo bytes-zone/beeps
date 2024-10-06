@@ -9,6 +9,8 @@ use rand_core::RngCore;
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
 
+mod hlc;
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Document {
     pings: Vec<Ping>,
