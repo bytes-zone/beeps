@@ -1,14 +1,15 @@
 use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Hlc {
     pub timestamp: DateTime<Utc>,
     pub counter: u64,
-    pub node: u64,
+    pub node: Uuid,
 }
 
 impl Hlc {
-    fn new(node: u64) -> Self {
+    fn new(node: Uuid) -> Self {
         Self {
             timestamp: Utc::now(),
             counter: 0,
@@ -56,10 +57,10 @@ mod test {
 
         #[test]
         fn creates_new_hlc() {
-            let hlc = Hlc::new(0);
+            let hlc = Hlc::new(Uuid::nil());
 
             assert_eq!(hlc.counter, 0);
-            assert_eq!(hlc.node, 0);
+            assert_eq!(hlc.node, Uuid::nil());
         }
     }
 
@@ -71,7 +72,7 @@ mod test {
             let hlc = Hlc {
                 timestamp: Utc::now() + chrono::Duration::seconds(1),
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
 
             let next = hlc.next();
@@ -85,7 +86,7 @@ mod test {
             let hlc = Hlc {
                 timestamp: Utc::now() - chrono::Duration::seconds(1),
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
 
             let next = hlc.next();
@@ -105,12 +106,12 @@ mod test {
             let a = Hlc {
                 timestamp,
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
             let b = Hlc {
                 timestamp,
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
 
             assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Equal));
@@ -123,12 +124,12 @@ mod test {
             let a = Hlc {
                 timestamp,
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
             let b = Hlc {
                 timestamp,
                 counter: 0,
-                node: 1,
+                node: Uuid::max(),
             };
 
             assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
@@ -141,12 +142,12 @@ mod test {
             let a = Hlc {
                 timestamp,
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
             let b = Hlc {
                 timestamp,
                 counter: 1,
-                node: 0,
+                node: Uuid::nil(),
             };
 
             assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
@@ -157,12 +158,12 @@ mod test {
             let a = Hlc {
                 timestamp: Utc::now(),
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
             let b = Hlc {
                 timestamp: Utc::now() + chrono::Duration::seconds(1),
                 counter: 0,
-                node: 0,
+                node: Uuid::nil(),
             };
 
             assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
