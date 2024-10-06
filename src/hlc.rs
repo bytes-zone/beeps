@@ -8,11 +8,11 @@ pub struct Hlc {
 }
 
 impl Hlc {
-    fn new() -> Self {
+    fn new(node: u64) -> Self {
         Self {
             timestamp: Utc::now(),
             counter: 0,
-            node: 0,
+            node,
         }
     }
 
@@ -56,7 +56,7 @@ mod test {
 
         #[test]
         fn creates_new_hlc() {
-            let hlc = Hlc::new();
+            let hlc = Hlc::new(0);
 
             assert_eq!(hlc.counter, 0);
             assert_eq!(hlc.node, 0);
