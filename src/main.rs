@@ -130,7 +130,11 @@ impl Cli {
                 );
                 let mut tag = String::new();
                 std::io::stdin().read_line(&mut tag)?;
-                ping.tag = Some(tag.trim().to_string());
+
+                let trimmed = tag.trim();
+                if !trimmed.is_empty() {
+                    ping.tag = Some(trimmed.to_string());
+                }
             }
 
             self.save(&loaded).wrap_err("could not save")?;
