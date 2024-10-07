@@ -8,6 +8,7 @@ use directories::ProjectDirs;
 
 mod document;
 mod hlc;
+mod op;
 
 use document::Document;
 
