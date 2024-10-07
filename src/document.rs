@@ -1,8 +1,5 @@
 use chrono::{DateTime, Utc};
-use color_eyre::{
-    eyre::{self, Context},
-    Result,
-};
+use color_eyre::Result;
 use rand_core::RngCore;
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};

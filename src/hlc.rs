@@ -38,7 +38,7 @@ impl Hlc {
 impl PartialOrd for Hlc {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         if self.timestamp != other.timestamp {
-            return self.timestamp.partial_cmp(&other.timestamp);
+            self.timestamp.partial_cmp(&other.timestamp)
         } else if self.counter != other.counter {
             return self.counter.partial_cmp(&other.counter);
         } else {
