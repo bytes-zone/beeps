@@ -1,6 +1,5 @@
 use crate::op::Op;
 use chrono::{DateTime, Utc};
-use color_eyre::Result;
 use rand_core::RngCore;
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
@@ -154,7 +153,7 @@ mod test {
 
             let ops = doc.fill();
 
-            assert!(ops.len() >= 1);
+            assert!(!ops.is_empty());
         }
     }
 
