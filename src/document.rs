@@ -39,13 +39,13 @@ impl Document {
             doc.apply_op(op);
         }
 
-        return doc;
+        doc
     }
 
     fn next_clock(&mut self) -> &Hlc {
         self.clock = self.clock.next();
 
-        return &self.clock;
+        &self.clock
     }
 
     pub fn fill(&mut self) {
