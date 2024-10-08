@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hlc {
     pub timestamp: DateTime<Utc>,
     pub counter: u64,
@@ -8,7 +9,7 @@ pub struct Hlc {
 }
 
 impl Hlc {
-    fn new(node: u8) -> Self {
+    pub fn new(node: u8) -> Self {
         Self {
             timestamp: Utc::now(),
             counter: 0,
@@ -16,7 +17,7 @@ impl Hlc {
         }
     }
 
-    fn next(&self) -> Self {
+    pub fn next(&self) -> Self {
         let now = Utc::now();
 
         if now > self.timestamp {

@@ -1,3 +1,4 @@
+use crate::hlc::Hlc;
 use crate::op::Op;
 use chrono::{DateTime, Utc};
 use rand_core::RngCore;
@@ -7,13 +8,23 @@ use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Document {
+    ops: Vec<TimestampedOp>,
+    clock: Hlc,
     pings: HashMap<DateTime<Utc>, Ping>,
     lambda: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TimestampedOp {
+    pub clock: Hlc,
+    pub op: Op,
 }
 
 impl Default for Document {
     fn default() -> Self {
         Self {
+            ops: Vec::new(),
+            clock: Hlc::new(0), // TODO: is this really the best default node ID?
             pings: HashMap::new(),
             lambda: 45.0 / 60.0,
         }
@@ -21,15 +32,33 @@ impl Default for Document {
 }
 
 impl Document {
-    pub fn fill(&mut self) -> Vec<Op> {
-        // TODO: benchmark typical usage and optimize
-        let mut ops = Vec::new();
+    pub fn from_ops(ops: &[TimestampedOp]) -> Self {
+        let mut doc = Self::default();
 
+        for op in ops {
+            doc.apply_op(op);
+        }
+
+        return doc;
+    }
+
+    fn next_clock(&mut self) -> &Hlc {
+        self.clock = self.clock.next();
+
+        return &self.clock;
+    }
+
+    pub fn fill(&mut self) {
         let now = Utc::now();
 
         if self.pings.is_empty() {
             self.add_ping(&now);
-            ops.push(Op::AddPing { when: now })
+
+            let next_clock = self.next_clock().clone();
+            self.ops.push(TimestampedOp {
+                clock: next_clock,
+                op: Op::AddPing { when: now },
+            });
         }
 
         let mut current = match self.current() {
@@ -37,7 +66,7 @@ impl Document {
 
             // If we have no current ping, even after backfilling, then all the
             // pings must be in the future and we don't need to do anything.
-            None => return ops,
+            None => return,
         };
 
         while current <= now {
@@ -48,12 +77,15 @@ impl Document {
             let next = current + delta;
 
             self.add_ping(&next);
-            ops.push(Op::AddPing { when: next });
+
+            let next_clock = self.next_clock().clone();
+            self.ops.push(TimestampedOp {
+                clock: next_clock,
+                op: Op::AddPing { when: now },
+            });
 
             current = next
         }
-
-        ops
     }
 
     pub fn current(&mut self) -> Option<&Ping> {
@@ -76,8 +108,8 @@ impl Document {
             .map(|(_, v)| v)
     }
 
-    pub fn apply_op(&mut self, op: &Op) {
-        match op {
+    pub fn apply_op(&mut self, op: &TimestampedOp) {
+        match &op.op {
             Op::AddPing { when } => {
                 self.add_ping(when);
             }
@@ -91,6 +123,8 @@ impl Document {
                 self.lambda = *lambda;
             }
         }
+
+        self.ops.push(op.clone())
     }
 
     fn add_ping(&mut self, when: &DateTime<Utc>) -> &mut Ping {
@@ -127,9 +161,8 @@ mod test {
         fn fills_empty_document() {
             let mut doc = Document::default();
 
-            let ops = doc.fill();
+            doc.fill();
 
-            assert_eq!(ops.len(), 2);
             assert_eq!(doc.pings.len(), 2);
         }
 
@@ -138,9 +171,8 @@ mod test {
             let mut doc = Document::default();
             doc.add_ping(&(Utc::now() + chrono::Duration::hours(1)));
 
-            let ops = doc.fill();
+            doc.fill();
 
-            assert_eq!(ops.len(), 0);
             assert_eq!(doc.pings.len(), 1);
         }
 
@@ -149,9 +181,9 @@ mod test {
             let mut doc = Document::default();
             doc.add_ping(&(Utc::now() - chrono::Duration::hours(1)));
 
-            let ops = doc.fill();
+            doc.fill();
 
-            assert!(!ops.is_empty());
+            assert!(!doc.ops.is_empty());
         }
     }
 
@@ -163,7 +195,10 @@ mod test {
             let mut doc = Document::default();
             let op = Op::AddPing { when: Utc::now() };
 
-            doc.apply_op(&op);
+            doc.apply_op(&TimestampedOp {
+                clock: Hlc::new(0),
+                op,
+            });
 
             assert_eq!(doc.pings.len(), 1);
         }
@@ -172,9 +207,16 @@ mod test {
         fn add_ping_idempotent() {
             let mut doc = Document::default();
             let op = Op::AddPing { when: Utc::now() };
+            let clock = Hlc::new(0);
 
-            doc.apply_op(&op);
-            doc.apply_op(&op);
+            doc.apply_op(&TimestampedOp {
+                clock: clock.clone(),
+                op: op.clone(),
+            });
+            doc.apply_op(&TimestampedOp {
+                clock: clock.clone(),
+                op: op.clone(),
+            });
 
             assert_eq!(doc.pings.len(), 1);
         }
@@ -188,7 +230,10 @@ mod test {
                 tag: "test".into(),
             };
 
-            doc.apply_op(&op);
+            doc.apply_op(&TimestampedOp {
+                clock: Hlc::new(0),
+                op,
+            });
 
             assert_eq!(
                 doc.pings.get(&when).and_then(|p| p.tag.clone()),
@@ -201,7 +246,10 @@ mod test {
             let mut doc = Document::default();
             let op = Op::SetLambda { lambda: 1.0 };
 
-            doc.apply_op(&op);
+            doc.apply_op(&TimestampedOp {
+                clock: Hlc::new(0),
+                op,
+            });
 
             assert_eq!(doc.lambda, 1.0);
         }
