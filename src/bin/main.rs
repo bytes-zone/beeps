@@ -6,11 +6,7 @@ use color_eyre::{
 };
 use directories::ProjectDirs;
 
-mod document;
-mod hlc;
-mod op;
-
-use document::Document;
+use beeps::document::Document;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
