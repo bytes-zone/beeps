@@ -90,8 +90,6 @@ impl Document {
             Op::SetLambda { lambda } => {
                 self.lambda = *lambda;
             }
-
-            _ => todo!(),
         }
     }
 
