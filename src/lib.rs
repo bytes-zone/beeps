@@ -1,3 +1,3 @@
 pub mod document;
 mod hlc;
-mod op;
+pub mod op;

@@ -22,48 +22,59 @@ impl Default for Document {
 }
 
 impl Document {
-    pub fn fill(&mut self) -> Result<()> {
-        // if self.pings.is_empty() {
-        //     self.pings.push(Ping::default());
-        // }
+    pub fn fill(&mut self) -> Vec<Op> {
+        // TODO: benchmark typical usage and optimize
+        let mut ops = Vec::new();
 
-        // let now = Utc::now();
-        // let mut current = self
-        //     .pings
-        //     .last()
-        //     .expect("there to be at least one ping after backfilling");
+        let now = Utc::now();
 
-        // while current.time <= now {
-        //     let mut gen = Pcg32::new(current.time.timestamp().try_into()?, 0xa02bdbf7bb3c0a7);
-        //     let adjustment = (gen.next_u32() as f64 / u32::MAX as f64).ln() / self.lambda * -1.0;
-        //     let delta = chrono::Duration::minutes((adjustment * 60.0).floor() as i64);
+        if self.pings.is_empty() {
+            self.add_ping(&now);
+            ops.push(Op::AddPing { when: now })
+        }
 
-        //     let next = Ping {
-        //         time: current.time + delta,
-        //         tag: None,
-        //     };
-        //     self.pings.push(next);
-        //     current = self
-        //         .pings
-        //         .last()
-        //         .expect("there to be a last ping after pushing");
-        // }
-        Ok(())
+        let mut current = match self.current() {
+            Some(ping) => ping.time,
+
+            // If we have no current ping, even after backfilling, then all the
+            // pings must be in the future and we don't need to do anything.
+            None => return ops,
+        };
+
+        while current <= now {
+            let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
+            let adjustment = (gen.next_u32() as f64 / u32::MAX as f64).ln() / self.lambda * -1.0;
+            let delta = chrono::Duration::minutes((adjustment * 60.0).floor() as i64);
+
+            let next = current + delta;
+
+            self.add_ping(&next);
+            ops.push(Op::AddPing { when: next });
+
+            current = next
+        }
+
+        ops
     }
 
-    pub fn current_mut(&mut self) -> Option<&mut Ping> {
-        // let now = Utc::now();
+    pub fn current(&mut self) -> Option<&Ping> {
+        let now = Utc::now();
 
-        // self.pings.iter_mut().rev().find(|p| p.time <= now)
-
-        None
+        self.pings
+            .iter()
+            .filter(|(_, v)| v.time <= now)
+            .max_by_key(|(k, _)| *k)
+            .map(|(_, v)| v)
     }
 
     pub fn future(&self) -> Option<&Ping> {
-        // let now = Utc::now();
+        let now = Utc::now();
 
-        // self.pings.iter().rev().find(|p| p.time > now)
-        None
+        self.pings
+            .iter()
+            .filter(|(_, v)| v.time > now)
+            .max_by_key(|(k, _)| *k)
+            .map(|(_, v)| v)
     }
 
     pub fn apply_op(&mut self, op: &Op) {
@@ -111,6 +122,41 @@ impl Default for Ping {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    mod fill {
+        use super::*;
+
+        #[test]
+        fn fills_empty_document() {
+            let mut doc = Document::default();
+
+            let ops = doc.fill();
+
+            assert_eq!(ops.len(), 2);
+            assert_eq!(doc.pings.len(), 2);
+        }
+
+        #[test]
+        fn fills_document_with_future_ping() {
+            let mut doc = Document::default();
+            doc.add_ping(&(Utc::now() + chrono::Duration::hours(1)));
+
+            let ops = doc.fill();
+
+            assert_eq!(ops.len(), 0);
+            assert_eq!(doc.pings.len(), 1);
+        }
+
+        #[test]
+        fn fills_document_with_past_ping() {
+            let mut doc = Document::default();
+            doc.add_ping(&(Utc::now() - chrono::Duration::hours(1)));
+
+            let ops = doc.fill();
+
+            assert!(ops.len() >= 1);
+        }
+    }
 
     mod apply_op {
         use super::*;

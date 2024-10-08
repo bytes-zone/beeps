@@ -1,3 +1,5 @@
+use beeps::document::Document;
+use beeps::op::Op;
 use chrono::{Local, Utc};
 use clap::Parser;
 use color_eyre::{
@@ -5,8 +7,6 @@ use color_eyre::{
     Result,
 };
 use directories::ProjectDirs;
-
-use beeps::document::Document;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
@@ -46,9 +46,9 @@ impl Cli {
         let mut loaded = self.read().unwrap_or_default();
 
         loop {
-            loaded.fill().wrap_err("could not fill")?;
+            loaded.fill();
 
-            if let Some(ping) = loaded.current_mut().filter(|p| p.tag.is_none()) {
+            if let Some(ping) = loaded.current().filter(|p| p.tag.is_none()) {
                 println!(
                     "What were you doing at {}?",
                     ping.time.with_timezone(&Local).format("%-I:%M %p")
@@ -58,14 +58,20 @@ impl Cli {
 
                 let trimmed = tag.trim();
                 if !trimmed.is_empty() {
-                    ping.tag = Some(trimmed.to_string());
+                    println!(
+                        "{:?}",
+                        Op::SetTag {
+                            when: ping.time,
+                            tag: trimmed.to_string()
+                        }
+                    );
                 }
             }
 
             self.save(&loaded).wrap_err("could not save")?;
 
             // fill again, just in case we waited forever to fill out the current ping
-            loaded.fill().wrap_err("could not fill")?;
+            loaded.fill();
 
             if let Some(ping) = loaded.future() {
                 let now = Utc::now();
