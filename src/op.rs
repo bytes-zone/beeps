@@ -4,31 +4,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub enum Op {
     // Pings
-    AddPing {
-        when: DateTime<Utc>,
-    },
-    SetOffset {
-        when: DateTime<Utc>,
-        offset: i32,
-    },
+    AddPing { when: DateTime<Utc> },
 
     // Tags
-    SetTag {
-        when: DateTime<Utc>,
-        tag: String,
-    },
-    SetExtra {
-        when: DateTime<Utc>,
-        key: String,
-        value: String,
-    },
-    UnsetExtra {
-        when: DateTime<Utc>,
-        key: String,
-    },
+    SetTag { when: DateTime<Utc>, tag: String },
 
     // Settings
-    SetLambda {
-        lambda: f64,
-    },
+    SetLambda { lambda: f64 },
 }
