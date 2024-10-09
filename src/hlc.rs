@@ -26,20 +26,20 @@ impl Hlc {
         }
     }
 
-    pub fn next(&self) -> Self {
+    pub fn next(&self, node: u8) -> Self {
         let now = Utc::now();
 
         if now > self.timestamp {
             Self {
                 timestamp: now,
                 counter: 0,
-                node: self.node,
+                node,
             }
         } else {
             Self {
                 timestamp: self.timestamp,
                 counter: self.counter + 1,
-                node: self.node,
+                node,
             }
         }
     }
@@ -84,7 +84,7 @@ mod test {
                 node: 0,
             };
 
-            let next = hlc.next();
+            let next = hlc.next(hlc.node);
 
             assert_eq!(next.timestamp, hlc.timestamp);
             assert_eq!(next.counter, 1);
@@ -98,7 +98,7 @@ mod test {
                 node: 0,
             };
 
-            let next = hlc.next();
+            let next = hlc.next(hlc.node);
 
             assert!(next.timestamp > hlc.timestamp);
             assert_eq!(next.counter, 0);

@@ -43,10 +43,8 @@ impl Document {
         doc
     }
 
-    fn next_clock(&mut self) -> &Hlc {
-        self.clock = self.clock.next();
-
-        &self.clock
+    fn next_clock(&mut self) -> Hlc {
+        self.clock.next(self.clock.node)
     }
 
     pub fn fill(&mut self) {
@@ -55,7 +53,7 @@ impl Document {
         if self.pings.is_empty() {
             self.add_ping(&now);
 
-            let next_clock = self.next_clock().clone();
+            let next_clock = self.next_clock();
             self.ops.push(TimestampedOp {
                 timestamp: next_clock,
                 op: Op::AddPing { when: now },
@@ -79,7 +77,7 @@ impl Document {
 
             self.add_ping(&next);
 
-            let next_clock = self.next_clock().clone();
+            let next_clock = self.next_clock();
             self.ops.push(TimestampedOp {
                 timestamp: next_clock,
                 op: Op::AddPing { when: now },
