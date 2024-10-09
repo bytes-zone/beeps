@@ -2,6 +2,7 @@ use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::op::Op;
 use chrono::{DateTime, Utc};
+use color_eyre::{eyre::OptionExt, Result};
 use rand_core::RngCore;
 use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
@@ -107,6 +108,28 @@ impl Document {
             .map(|(_, v)| v)
     }
 
+    pub fn set_tag(&mut self, when: &DateTime<Utc>, tag: String) -> Result<()> {
+        let ping = self
+            .pings
+            .get_mut(when)
+            .ok_or_eyre("provided ping does not exist")?;
+
+        let timestamp = ping
+            .tag
+            .timestamp()
+            .unwrap_or(&self.clock)
+            .next(self.clock.node);
+
+        ping.tag.update(&timestamp, Some(tag.clone()));
+
+        self.ops.push(TimestampedOp {
+            timestamp,
+            op: Op::SetTag { when: *when, tag },
+        });
+
+        Ok(())
+    }
+
     pub fn apply_op(&mut self, op: &TimestampedOp) {
         match &op.op {
             Op::AddPing { when } => {
@@ -181,6 +204,32 @@ mod test {
             doc.fill();
 
             assert!(!doc.ops.is_empty());
+        }
+    }
+
+    mod set_tag {
+        use super::*;
+
+        #[test]
+        fn sets_tag() {
+            let mut doc = Document::default();
+            let now = Utc::now();
+            doc.add_ping(&now);
+
+            doc.set_tag(&now, "test".to_string()).unwrap();
+
+            assert_eq!(*doc.pings[&now].tag, Some("test".to_string()));
+        }
+
+        #[test]
+        fn sets_tag_error() {
+            let mut doc = Document::default();
+            let now = Utc::now();
+            // no add_ping here!
+
+            let result = doc.set_tag(&now, "test".to_string());
+
+            assert!(result.is_err());
         }
     }
 
