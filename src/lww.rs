@@ -1,6 +1,5 @@
 use std::ops::Deref;
 
-
 use crate::hlc::Hlc;
 
 /// A last-write-wins register. The lifecycle goes like this:
