@@ -1,6 +1,5 @@
 use std::ops::Deref;
 
-use serde::{Deserialize, Serialize};
 
 use crate::hlc::Hlc;
 

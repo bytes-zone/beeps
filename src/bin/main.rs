@@ -66,7 +66,7 @@ impl Cli {
                 }
             }
 
-            self.save(&loaded.ops()).wrap_err("could not save")?;
+            self.save(loaded.ops()).wrap_err("could not save")?;
 
             // fill again, just in case we waited forever to fill out the current ping
             loaded.fill();
