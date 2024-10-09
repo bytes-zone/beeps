@@ -1,5 +1,4 @@
 use beeps::document::Document;
-use beeps::op::Op;
 use chrono::{Local, Utc};
 use clap::Parser;
 use color_eyre::{
