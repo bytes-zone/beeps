@@ -1,4 +1,4 @@
-use beeps::document::Document;
+use beeps::document::{Document, TimestampedOp};
 use chrono::{Local, Utc};
 use clap::Parser;
 use color_eyre::{
@@ -24,13 +24,18 @@ impl Cli {
     fn read(&self) -> Result<Document> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
-        let data = std::fs::read_to_string(path).wrap_err("could not read data")?;
-        let document = serde_json::from_str(&data).wrap_err("could not deserialize data")?;
 
-        Ok(document)
+        if !path.exists() {
+            return Ok(Document::default());
+        }
+
+        let data = std::fs::read_to_string(path).wrap_err("could not read data")?;
+        let ops = serde_json::from_str(&data).wrap_err("could not deserialize data")?;
+
+        Ok(Document::from_ops(ops))
     }
 
-    fn save(&self, document: &Document) -> Result<()> {
+    fn save(&self, document: &Vec<TimestampedOp>) -> Result<()> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
         let data = serde_json::to_string(document).wrap_err("could not serialize data")?;
@@ -42,7 +47,7 @@ impl Cli {
     }
 
     fn run(&self) -> Result<()> {
-        let mut loaded = self.read().unwrap_or_default();
+        let mut loaded = self.read().wrap_err("could not load document")?;
 
         loop {
             loaded.fill();
@@ -61,7 +66,7 @@ impl Cli {
                 }
             }
 
-            self.save(&loaded).wrap_err("could not save")?;
+            self.save(&loaded.ops()).wrap_err("could not save")?;
 
             // fill again, just in case we waited forever to fill out the current ping
             loaded.fill();
@@ -93,7 +98,7 @@ fn main() {
 
     let cli = Cli::parse();
     if let Err(err) = cli.run() {
-        eprintln!("{}", err);
+        eprintln!("{:?}", err);
         std::process::exit(1);
     }
 }

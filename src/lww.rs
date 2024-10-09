@@ -12,7 +12,7 @@ use crate::hlc::Hlc;
 /// 2. Update the register with a new value and a timestamp. If the timestamp
 ///    is "later" than the current timestamp (or the current timestamp is
 ///    blank) then the new value will be used.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Lww<T> {
     value: T,
     timestamp: Option<Hlc>,

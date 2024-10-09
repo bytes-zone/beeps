@@ -8,7 +8,7 @@ use rand_pcg::Pcg32;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Document {
     ops: Vec<TimestampedOp>,
     clock: Hlc,
@@ -34,7 +34,7 @@ impl Default for Document {
 }
 
 impl Document {
-    pub fn from_ops(ops: &[TimestampedOp]) -> Self {
+    pub fn from_ops(ops: Vec<TimestampedOp>) -> Self {
         let mut doc = Self::default();
 
         for op in ops {
@@ -130,7 +130,7 @@ impl Document {
         Ok(())
     }
 
-    pub fn apply_op(&mut self, op: &TimestampedOp) {
+    pub fn apply_op(&mut self, op: TimestampedOp) {
         match &op.op {
             Op::AddPing { when } => {
                 self.add_ping(when);
@@ -153,9 +153,13 @@ impl Document {
             tag: Lww::new(None),
         })
     }
+
+    pub fn ops(&self) -> &Vec<TimestampedOp> {
+        &self.ops
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Ping {
     pub time: DateTime<Utc>,
     pub tag: Lww<Option<String>>,
@@ -241,7 +245,7 @@ mod test {
             let mut doc = Document::default();
             let op = Op::AddPing { when: Utc::now() };
 
-            doc.apply_op(&TimestampedOp {
+            doc.apply_op(TimestampedOp {
                 timestamp: Hlc::new(0),
                 op,
             });
@@ -255,11 +259,11 @@ mod test {
             let op = Op::AddPing { when: Utc::now() };
             let clock = Hlc::new(0);
 
-            doc.apply_op(&TimestampedOp {
+            doc.apply_op(TimestampedOp {
                 timestamp: clock.clone(),
                 op: op.clone(),
             });
-            doc.apply_op(&TimestampedOp {
+            doc.apply_op(TimestampedOp {
                 timestamp: clock.clone(),
                 op: op.clone(),
             });
@@ -276,7 +280,7 @@ mod test {
                 tag: "test".into(),
             };
 
-            doc.apply_op(&TimestampedOp {
+            doc.apply_op(TimestampedOp {
                 timestamp: Hlc::new(0),
                 op,
             });
@@ -292,7 +296,7 @@ mod test {
             let mut doc = Document::default();
             let op = Op::SetLambda { lambda: 1.0 };
 
-            doc.apply_op(&TimestampedOp {
+            doc.apply_op(TimestampedOp {
                 timestamp: Hlc::new(0),
                 op,
             });
