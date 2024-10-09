@@ -72,8 +72,7 @@ impl Document {
 
         while current <= now {
             let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
-            let adjustment =
-                (gen.next_u32() as f64 / u32::MAX as f64).ln() / self.lambda.value() * -1.0;
+            let adjustment = (gen.next_u32() as f64 / u32::MAX as f64).ln() / *self.lambda * -1.0;
             let delta = chrono::Duration::minutes((adjustment * 60.0).floor() as i64);
 
             let next = current + delta;
@@ -118,7 +117,7 @@ impl Document {
 
             Op::SetTag { when, tag } => {
                 let ping = self.add_ping(when);
-                ping.tag = Some(tag.clone())
+                ping.tag.update(&op.timestamp, Some(tag.clone()));
             }
 
             Op::SetLambda { lambda } => self.lambda.update(&op.timestamp, *lambda),
@@ -130,7 +129,7 @@ impl Document {
     fn add_ping(&mut self, when: &DateTime<Utc>) -> &mut Ping {
         self.pings.entry(*when).or_insert(Ping {
             time: *when,
-            tag: None,
+            tag: Lww::new(None),
         })
     }
 }
@@ -138,14 +137,14 @@ impl Document {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Ping {
     pub time: DateTime<Utc>,
-    pub tag: Option<String>,
+    pub tag: Lww<Option<String>>,
 }
 
 impl Default for Ping {
     fn default() -> Self {
         Self {
             time: Utc::now(),
-            tag: None,
+            tag: Lww::new(None),
         }
     }
 }
@@ -251,7 +250,7 @@ mod test {
                 op,
             });
 
-            assert_eq!(doc.lambda.value(), &1.0);
+            assert_eq!(*doc.lambda, 1.0);
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use serde::{Deserialize, Serialize};
 
 use crate::hlc::Hlc;
@@ -31,12 +33,16 @@ impl<T> Lww<T> {
         }
     }
 
-    pub fn value(&self) -> &T {
-        &self.value
+    pub fn timestamp(&self) -> Option<&Hlc> {
+        self.timestamp.as_ref()
     }
+}
 
-    pub fn timestamp(&self) -> &Option<Hlc> {
-        &self.timestamp
+impl<T> Deref for Lww<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
     }
 }
 
@@ -50,11 +56,11 @@ mod test {
     fn lifecycle() {
         let mut lww = Lww::new(0);
 
-        assert_eq!(*lww.value(), 0);
+        assert_eq!(*lww, 0);
 
         lww.update(&Hlc::new(0), 1);
 
-        assert_eq!(*lww.value(), 1)
+        assert_eq!(*lww, 1)
     }
 
     #[test]
@@ -67,6 +73,6 @@ mod test {
         lww.update(&Hlc::new_at(0, now), "newer");
         lww.update(&Hlc::new_at(0, then), "older");
 
-        assert_eq!(*lww.value(), "newer")
+        assert_eq!(*lww, "newer")
     }
 }
