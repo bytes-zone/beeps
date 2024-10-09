@@ -88,7 +88,7 @@ impl Document {
         }
     }
 
-    pub fn current(&mut self) -> Option<&Ping> {
+    pub fn current(&self) -> Option<&Ping> {
         let now = Utc::now();
 
         self.pings
