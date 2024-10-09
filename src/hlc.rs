@@ -17,6 +17,15 @@ impl Hlc {
         }
     }
 
+    #[cfg(test)]
+    pub fn new_at(node: u8, timestamp: DateTime<Utc>) -> Self {
+        Self {
+            timestamp,
+            counter: 0,
+            node,
+        }
+    }
+
     pub fn next(&self) -> Self {
         let now = Utc::now();
 

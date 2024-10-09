@@ -35,3 +35,34 @@ impl<T> Lww<T> {
         &self.value
     }
 }
+
+#[cfg(test)]
+mod test {
+    use chrono::{Duration, Utc};
+
+    use super::*;
+
+    #[test]
+    fn lifecycle() {
+        let mut lww = Lww::new(0);
+
+        assert_eq!(*lww.value(), 0);
+
+        lww.update(&Hlc::new(0), 1);
+
+        assert_eq!(*lww.value(), 1)
+    }
+
+    #[test]
+    fn rejects_older_timestamp() {
+        let mut lww = Lww::new("nothing");
+
+        let now = Utc::now();
+        let then = now - Duration::seconds(1);
+
+        lww.update(&Hlc::new_at(0, now), "newer");
+        lww.update(&Hlc::new_at(0, then), "older");
+
+        assert_eq!(*lww.value(), "newer")
+    }
+}
