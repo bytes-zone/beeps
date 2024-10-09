@@ -47,23 +47,17 @@ impl Cli {
         loop {
             loaded.fill();
 
-            if let Some(ping) = loaded.current().filter(|p| p.tag.is_none()) {
+            if let Some(time) = loaded.current().filter(|p| p.tag.is_none()).map(|p| p.time) {
                 println!(
                     "What were you doing at {}?",
-                    ping.time.with_timezone(&Local).format("%-I:%M %p")
+                    time.with_timezone(&Local).format("%-I:%M %p")
                 );
                 let mut tag = String::new();
                 std::io::stdin().read_line(&mut tag)?;
 
                 let trimmed = tag.trim();
                 if !trimmed.is_empty() {
-                    println!(
-                        "{:?}",
-                        Op::SetTag {
-                            when: ping.time,
-                            tag: trimmed.to_string()
-                        }
-                    );
+                    loaded.set_tag(&time, trimmed.to_string())?;
                 }
             }
 
