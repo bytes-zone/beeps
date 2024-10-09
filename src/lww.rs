@@ -34,6 +34,10 @@ impl<T> Lww<T> {
     pub fn value(&self) -> &T {
         &self.value
     }
+
+    pub fn timestamp(&self) -> &Option<Hlc> {
+        &self.timestamp
+    }
 }
 
 #[cfg(test)]
