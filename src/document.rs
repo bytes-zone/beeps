@@ -1,4 +1,5 @@
 use crate::hlc::Hlc;
+use crate::lww::Lww;
 use crate::op::Op;
 use chrono::{DateTime, Utc};
 use rand_core::RngCore;
@@ -11,12 +12,12 @@ pub struct Document {
     ops: Vec<TimestampedOp>,
     clock: Hlc,
     pings: HashMap<DateTime<Utc>, Ping>,
-    lambda: f64,
+    lambda: Lww<f64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TimestampedOp {
-    pub clock: Hlc,
+    pub timestamp: Hlc,
     pub op: Op,
 }
 
@@ -26,7 +27,7 @@ impl Default for Document {
             ops: Vec::new(),
             clock: Hlc::new(0), // TODO: is this really the best default node ID?
             pings: HashMap::new(),
-            lambda: 45.0 / 60.0,
+            lambda: Lww::new(45.0 / 60.0),
         }
     }
 }
@@ -56,7 +57,7 @@ impl Document {
 
             let next_clock = self.next_clock().clone();
             self.ops.push(TimestampedOp {
-                clock: next_clock,
+                timestamp: next_clock,
                 op: Op::AddPing { when: now },
             });
         }
@@ -71,7 +72,8 @@ impl Document {
 
         while current <= now {
             let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
-            let adjustment = (gen.next_u32() as f64 / u32::MAX as f64).ln() / self.lambda * -1.0;
+            let adjustment =
+                (gen.next_u32() as f64 / u32::MAX as f64).ln() / self.lambda.value() * -1.0;
             let delta = chrono::Duration::minutes((adjustment * 60.0).floor() as i64);
 
             let next = current + delta;
@@ -80,7 +82,7 @@ impl Document {
 
             let next_clock = self.next_clock().clone();
             self.ops.push(TimestampedOp {
-                clock: next_clock,
+                timestamp: next_clock,
                 op: Op::AddPing { when: now },
             });
 
@@ -119,9 +121,7 @@ impl Document {
                 ping.tag = Some(tag.clone())
             }
 
-            Op::SetLambda { lambda } => {
-                self.lambda = *lambda;
-            }
+            Op::SetLambda { lambda } => self.lambda.update(&op.timestamp, *lambda),
         }
 
         self.ops.push(op.clone())
@@ -196,7 +196,7 @@ mod test {
             let op = Op::AddPing { when: Utc::now() };
 
             doc.apply_op(&TimestampedOp {
-                clock: Hlc::new(0),
+                timestamp: Hlc::new(0),
                 op,
             });
 
@@ -210,11 +210,11 @@ mod test {
             let clock = Hlc::new(0);
 
             doc.apply_op(&TimestampedOp {
-                clock: clock.clone(),
+                timestamp: clock.clone(),
                 op: op.clone(),
             });
             doc.apply_op(&TimestampedOp {
-                clock: clock.clone(),
+                timestamp: clock.clone(),
                 op: op.clone(),
             });
 
@@ -231,7 +231,7 @@ mod test {
             };
 
             doc.apply_op(&TimestampedOp {
-                clock: Hlc::new(0),
+                timestamp: Hlc::new(0),
                 op,
             });
 
@@ -247,11 +247,11 @@ mod test {
             let op = Op::SetLambda { lambda: 1.0 };
 
             doc.apply_op(&TimestampedOp {
-                clock: Hlc::new(0),
+                timestamp: Hlc::new(0),
                 op,
             });
 
-            assert_eq!(doc.lambda, 1.0);
+            assert_eq!(doc.lambda.value(), &1.0);
         }
     }
 }
