@@ -69,12 +69,9 @@ impl Document {
             None => return,
         };
 
-        while current <= now {
-            let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
-            let adjustment = (gen.next_u32() as f64 / u32::MAX as f64).ln() / *self.lambda * -1.0;
-            let delta = chrono::Duration::minutes((adjustment * 60.0).floor() as i64);
 
-            let next = current + delta;
+        while current <= now {
+            let next = self.next_time(current);
 
             self.add_ping(&next);
 
@@ -86,6 +83,14 @@ impl Document {
 
             current = next
         }
+    }
+
+    fn next_time(&self, current: DateTime<Utc>) -> DateTime<Utc> {
+        let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
+        let adjustment = (gen.next_u32() as f64 / u32::MAX as f64).ln() / *self.lambda * -1.0;
+        let delta = chrono::Duration::minutes((adjustment * 60.0).floor() as i64);
+
+        current + delta
     }
 
     pub fn current(&self) -> Option<&Ping> {
