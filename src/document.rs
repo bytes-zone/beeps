@@ -223,13 +223,13 @@ mod test {
 
         proptest! {
             #[test]
-            fn always_advances(minutes in 0i64..1_000_000) {
+            fn always_advances_by_at_least_a_minute(minutes in 0i64..1_000_000) {
                 let start = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap() + Duration::minutes(minutes);
 
                 let doc = Document::default();
                 let next = doc.next_time(start);
 
-                assert!(next > start, "{next:#?} was not GE than {start:#?}")
+                assert!(next >= start + Duration::minutes(1), "{next:#?} was not GE than {start:#?}")
             }
         }
     }
