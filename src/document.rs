@@ -69,7 +69,6 @@ impl Document {
             None => return,
         };
 
-
         while current <= now {
             let next = self.next_time(current);
 
@@ -87,8 +86,9 @@ impl Document {
 
     fn next_time(&self, current: DateTime<Utc>) -> DateTime<Utc> {
         let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
-        let adjustment = (gen.next_u32() as f64 / u32::MAX as f64).ln() / *self.lambda * -1.0;
-        let delta = chrono::Duration::minutes((adjustment * 60.0).floor() as i64);
+        let base = gen.next_u32() as f64 / u32::MAX as f64;
+        let adjustment = base.ln() / *self.lambda * -1.0;
+        let delta = chrono::Duration::minutes((adjustment * 60.0).floor().max(1.0) as i64);
 
         current + delta
     }
@@ -213,6 +213,24 @@ mod test {
             doc.fill();
 
             assert!(!doc.ops.is_empty());
+        }
+    }
+
+    mod next_time {
+        use super::*;
+        use chrono::{Duration, TimeZone};
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn always_advances(minutes in 0i64..1_000_000) {
+                let start = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap() + Duration::minutes(minutes);
+
+                let doc = Document::default();
+                let next = doc.next_time(start);
+
+                assert!(next > start, "{next:#?} was not GE than {start:#?}")
+            }
         }
     }
 
