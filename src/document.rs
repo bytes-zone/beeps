@@ -88,7 +88,7 @@ impl Document {
         let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
         let base = gen.next_u32() as f64 / u32::MAX as f64;
         let adjustment = base.ln() / *self.lambda * -1.0;
-        let delta = chrono::Duration::minutes((adjustment * 60.0).floor().max(1.0) as i64);
+        let delta = chrono::Duration::minutes((adjustment * 60.0).ceil() as i64);
 
         current + delta
     }
