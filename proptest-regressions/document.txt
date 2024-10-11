@@ -5,3 +5,5 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc a0f4cbb6f1b64b3152fea64c8427ca5dcc01245af70166e42bd007beb0263808 # shrinks to minutes = 438816
+cc ab45a6a83b11e10a637f3b3e75dd045a17d5c0abfa61230928e553f9b3291454 # shrinks to lambda_minutes = 39
+cc f4ee22bd9ec158d3c139221564649b2200090e501303b4a25ede96b7c6238768 # shrinks to lambda_minutes = 11

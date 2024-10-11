@@ -244,7 +244,7 @@ mod test {
                 let mut current = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
                 let mut deltas = Vec::new();
 
-                for _ in 0..1000 {
+                for _ in 0..2500 {
                     let next = doc.next_time(current);
                     deltas.push(next - current);
                     current = next
