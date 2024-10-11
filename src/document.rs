@@ -28,7 +28,7 @@ impl Default for Document {
             ops: Vec::new(),
             clock: Hlc::new(0), // TODO: is this really the best default node ID?
             pings: HashMap::new(),
-            lambda: Lww::new(45.0 / 60.0),
+            lambda: Lww::new(1.0 / 45.0),
         }
     }
 }
@@ -87,8 +87,12 @@ impl Document {
     fn next_time(&self, current: DateTime<Utc>) -> DateTime<Utc> {
         let mut gen = Pcg32::new(current.timestamp() as u64, 0xa02bdbf7bb3c0a7);
         let base = gen.next_u32() as f64 / u32::MAX as f64;
-        let adjustment = base.ln() / *self.lambda * -1.0;
-        let delta = chrono::Duration::minutes((adjustment * 60.0).ceil() as i64);
+
+        // We expect the delta to be `1 / minutes`, but we get fractional
+        // minutes from this calculation. We multiply by 60 to change to
+        // seconds, then round up to the next second to calculate the delta.
+        let adjustment = base.ln() / *self.lambda * -60.0;
+        let delta = chrono::Duration::seconds(adjustment.ceil() as i64);
 
         current + delta
     }
@@ -230,6 +234,27 @@ mod test {
                 let next = doc.next_time(start);
 
                 assert!(next >= start + Duration::minutes(1), "{next:#?} was not GE than {start:#?}")
+            }
+
+            #[test]
+            fn averages_to_lambda(lambda_minutes in 1u32..120) {
+                let mut doc = Document::default();
+                doc.lambda.update(&doc.clock, 1.0 / lambda_minutes as f64);
+
+                let mut current = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+                let mut deltas = Vec::new();
+
+                for _ in 0..1000 {
+                    let next = doc.next_time(current);
+                    deltas.push(next - current);
+                    current = next
+                }
+
+                let average = deltas.iter().sum::<chrono::Duration>().num_minutes() as f64 / deltas.len() as f64;
+
+                // let diff = (average - lambda_minutes).abs();
+                let diff = (average / lambda_minutes as f64).abs() - 1.0;
+                assert!(diff < 0.05, "{:0.2} was not close to {:0.2} ({:0.4})", average, lambda_minutes, diff);
             }
         }
     }
