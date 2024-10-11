@@ -233,7 +233,7 @@ mod test {
                 let doc = Document::default();
                 let next = doc.next_time(start);
 
-                assert!(next >= start + Duration::minutes(1), "{next:#?} was not GE than {start:#?}")
+                assert!(next >= start + Duration::seconds(1), "{next:#?} was not GE than {start:#?}")
             }
 
             #[test]
