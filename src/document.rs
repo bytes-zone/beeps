@@ -141,10 +141,12 @@ impl Document {
             .clock
             .next_tiebreak(ping.tag.timestamp(), self.clock.node);
 
-        ping.tag.update(&timestamp, Some(tag.clone()));
+        self.clock = timestamp;
+
+        ping.tag.update(&self.clock, Some(tag.clone()));
 
         self.ops.push(TimestampedOp {
-            timestamp,
+            timestamp: self.clock.clone(),
             op: Op::SetTag { when: *when, tag },
         });
 
