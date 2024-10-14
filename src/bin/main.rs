@@ -1,5 +1,5 @@
 use beeps::document::Document;
-use beeps::log::TimestampedOp;
+use beeps::log::Log;
 use chrono::{Local, Utc};
 use clap::Parser;
 use color_eyre::{
@@ -43,7 +43,7 @@ impl Cli {
     }
 
     #[tracing::instrument(skip(self, document))]
-    fn save(&self, document: &Vec<TimestampedOp>) -> Result<()> {
+    fn save(&self, document: &Log) -> Result<()> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
         let data = serde_json::to_string(document).wrap_err("could not serialize data")?;
@@ -77,7 +77,7 @@ impl Cli {
                 }
             }
 
-            self.save(loaded.ops()).wrap_err("could not save")?;
+            self.save(loaded.log()).wrap_err("could not save")?;
 
             // fill again, just in case we waited forever to fill out the current ping
             loaded.fill(Utc);

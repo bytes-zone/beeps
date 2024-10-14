@@ -1,5 +1,5 @@
 use crate::hlc::Hlc;
-use crate::log::TimestampedOp;
+use crate::log::{Log, TimestampedOp};
 use crate::lww::Lww;
 use crate::op::Op;
 use chrono::{DateTime, Utc};
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Document {
-    ops: Vec<TimestampedOp>,
+    log: Log,
     clock: Hlc,
     pings: HashMap<DateTime<Utc>, Ping>,
     lambda: Lww<f64>,
@@ -19,7 +19,7 @@ pub struct Document {
 impl Default for Document {
     fn default() -> Self {
         Self {
-            ops: Vec::new(),
+            log: Log::new(),
             clock: Hlc::new(0), // TODO: is this really the best default node ID?
             pings: HashMap::new(),
             lambda: Lww::new(1.0 / 45.0),
@@ -34,7 +34,7 @@ impl Document {
 
         for op in ops {
             doc.apply_op(&op);
-            doc.ops.push(op);
+            doc.log.push_unchecked(op)
         }
 
         doc
@@ -128,7 +128,7 @@ impl Document {
 
         ping.tag.update(&self.clock, Some(tag.clone()));
 
-        self.ops.push(TimestampedOp {
+        self.log.push_unchecked(TimestampedOp {
             timestamp: self.clock.clone(),
             op: Op::SetTag { when: *when, tag },
         });
@@ -159,7 +159,7 @@ impl Document {
 
         self.clock = self.next_clock();
 
-        self.ops.push(TimestampedOp {
+        self.log.push_unchecked(TimestampedOp {
             timestamp: self.clock.clone(),
             op: Op::AddPing { when: *when },
         });
@@ -170,8 +170,8 @@ impl Document {
         })
     }
 
-    pub fn ops(&self) -> &Vec<TimestampedOp> {
-        &self.ops
+    pub fn log(&self) -> &Log {
+        &self.log
     }
 }
 
@@ -256,7 +256,7 @@ mod test {
 
             doc.fill(clock);
 
-            assert!(!doc.ops.is_empty());
+            assert!(!doc.log.is_empty());
         }
 
         #[test]
@@ -268,10 +268,10 @@ mod test {
             assert!(doc.future().is_some());
 
             // A subsequent call to fill should not add any more operations
-            let num_ops = doc.ops.len();
+            let num_ops = doc.log.len();
             doc.fill(Utc);
 
-            assert_eq!(num_ops, doc.ops.len());
+            assert_eq!(num_ops, doc.log.len());
         }
     }
 
