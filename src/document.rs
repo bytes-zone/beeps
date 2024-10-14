@@ -39,7 +39,8 @@ impl Document {
         let mut doc = Self::default();
 
         for op in ops {
-            doc.apply_op(op);
+            doc.apply_op(&op);
+            doc.ops.push(op);
         }
 
         doc
@@ -142,7 +143,7 @@ impl Document {
     }
 
     #[tracing::instrument(skip(self), level = "trace")]
-    pub fn apply_op(&mut self, op: TimestampedOp) {
+    pub fn apply_op(&mut self, op: &TimestampedOp) {
         match &op.op {
             Op::AddPing { when } => {
                 self.pings.entry(*when).or_insert_with(|| Ping {
@@ -367,7 +368,7 @@ mod test {
             let mut doc = Document::default();
             let op = Op::AddPing { when: Utc::now() };
 
-            doc.apply_op(TimestampedOp {
+            doc.apply_op(&TimestampedOp {
                 timestamp: Hlc::new(0),
                 op,
             });
@@ -381,11 +382,11 @@ mod test {
             let op = Op::AddPing { when: Utc::now() };
             let clock = Hlc::new(0);
 
-            doc.apply_op(TimestampedOp {
+            doc.apply_op(&TimestampedOp {
                 timestamp: clock.clone(),
                 op: op.clone(),
             });
-            doc.apply_op(TimestampedOp {
+            doc.apply_op(&TimestampedOp {
                 timestamp: clock.clone(),
                 op: op.clone(),
             });
@@ -402,7 +403,7 @@ mod test {
                 tag: "test".into(),
             };
 
-            doc.apply_op(TimestampedOp {
+            doc.apply_op(&TimestampedOp {
                 timestamp: Hlc::new(0),
                 op,
             });
