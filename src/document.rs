@@ -137,11 +137,9 @@ impl Document {
             .get_mut(when)
             .ok_or_eyre("provided ping does not exist")?;
 
-        let timestamp = ping
-            .tag
-            .timestamp()
-            .unwrap_or(&self.clock)
-            .next(self.clock.node);
+        let timestamp = self
+            .clock
+            .next_tiebreak(ping.tag.timestamp(), self.clock.node);
 
         ping.tag.update(&timestamp, Some(tag.clone()));
 

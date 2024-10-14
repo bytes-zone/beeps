@@ -43,6 +43,15 @@ impl Hlc {
             }
         }
     }
+
+    pub fn next_tiebreak(&self, other: Option<&Self>, node: u8) -> Self {
+        let current = match other {
+            Some(other_) => self.max(other_),
+            None => self,
+        };
+
+        current.next(node)
+    }
 }
 
 impl PartialOrd for Hlc {
@@ -108,6 +117,34 @@ mod test {
 
             assert!(next.timestamp > hlc.timestamp);
             assert_eq!(next.counter, 0);
+        }
+    }
+
+    mod next_tiebreak {
+        use super::*;
+        use chrono::TimeZone;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn clock_monotonically_increases(node_a in 0u8..=255, counter_a in 0u64.., ts_a in 0i64..=2000000000, node_b in 0u8..=255, counter_b in 0u64.., ts_b in 0i64..=2000000000) {
+                let hlc_a = Hlc {
+                    timestamp: Utc.timestamp_opt(ts_a, 0).unwrap(),
+                    counter: counter_a,
+                    node: node_a,
+                };
+
+                let hlc_b = Hlc {
+                    timestamp: Utc.timestamp_opt(ts_b, 0).unwrap(),
+                    counter: counter_b,
+                    node: node_b,
+                };
+
+                let next_hlc = hlc_a.next_tiebreak(Some(&hlc_b), node_a);
+
+                assert!(next_hlc >= hlc_a, "{next_hlc:?} < {hlc_a:?}");
+                assert!(next_hlc >= hlc_b, "{next_hlc:?} < {hlc_b:?}");
+            }
         }
     }
 
