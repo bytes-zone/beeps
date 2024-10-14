@@ -349,6 +349,20 @@ mod test {
 
             assert!(result.is_err());
         }
+
+        #[test]
+        fn sets_clock() {
+            let mut doc = Document::default();
+
+            let ping_time = Utc::now();
+            doc.add_ping(&ping_time);
+
+            let orig_clock = doc.clock.clone();
+
+            doc.set_tag(&ping_time, "test".to_string()).unwrap();
+
+            assert!(doc.clock > orig_clock, "{:?} <= {orig_clock:?}", doc.clock);
+        }
     }
 
     mod apply_op {
