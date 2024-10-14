@@ -12,43 +12,36 @@ use std::collections::HashMap;
 pub struct Document {
     log: Log,
     clock: Hlc,
-    pings: HashMap<DateTime<Utc>, Ping>,
     lambda: Lww<f64>,
-}
-
-impl Default for Document {
-    fn default() -> Self {
-        Self {
-            log: Log::new(),
-            clock: Hlc::new(0), // TODO: is this really the best default node ID?
-            pings: HashMap::new(),
-            lambda: Lww::new(1.0 / 45.0),
-        }
-    }
+    state: State,
 }
 
 impl Document {
-    #[tracing::instrument(skip(ops), level = "trace")]
-    pub fn from_ops(ops: Vec<TimestampedOp>) -> Self {
-        let mut doc = Self::default();
+    #[tracing::instrument(skip(log), level = "trace")]
+    pub fn from_ops(log: Log) -> Self {
+        let mut state = State::default();
 
-        for op in ops {
-            doc.apply_op(&op);
-            doc.log.push_unchecked(op)
+        for op in log.ops() {
+            state.apply_op(&op);
         }
 
-        doc
+        Self {
+            log,
+            clock: Hlc::new(0), // TODO: allow setting a node ID, maybe from log?
+            lambda: Lww::new(1.0 / 45.0),
+            state,
+        }
     }
 
-    fn next_clock(&mut self) -> Hlc {
-        self.clock.next(self.clock.node)
+    pub fn empty() -> Self {
+        Self::from_ops(Log::default())
     }
 
     #[tracing::instrument(skip(self, wall_clock))]
     pub fn fill(&mut self, wall_clock: impl WallClock) {
         let now = wall_clock.now();
 
-        if self.pings.is_empty() {
+        if self.state.pings.is_empty() {
             tracing::debug!(when = ?now, "pings is empty, adding initial ping");
             self.add_ping(&now);
         }
@@ -88,6 +81,92 @@ impl Document {
     }
 
     fn latest(&self) -> Option<&Ping> {
+        self.state.latest()
+    }
+
+    pub fn current(&self) -> Option<&Ping> {
+        self.state.current()
+    }
+
+    pub fn future(&self) -> Option<&Ping> {
+        self.state.future()
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn add_ping(&mut self, when: &DateTime<Utc>) {
+        tracing::debug!("adding ping with no tag");
+
+        self.clock = self.clock.next(self.clock.node);
+
+        let op = TimestampedOp {
+            timestamp: self.clock.clone(),
+            op: Op::AddPing { when: *when },
+        };
+
+        self.state.apply_op(&op);
+        self.log.push_unchecked(op);
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn set_tag(&mut self, when: &DateTime<Utc>, tag: String) -> Result<()> {
+        tracing::debug!("setting tag"); // arguments are added by tracing::instrument
+
+        let ping = self
+            .state
+            .get_ping(when)
+            .ok_or_eyre("provided ping does not exist")?;
+
+        self.clock = self
+            .clock
+            .next_tiebreak(ping.tag.timestamp(), self.clock.node);
+
+        let op = TimestampedOp {
+            timestamp: self.clock.clone(),
+            op: Op::SetTag { when: *when, tag },
+        };
+
+        self.state.apply_op(&op);
+        self.log.push_unchecked(op);
+
+        Ok(())
+    }
+
+    pub fn log(&self) -> &Log {
+        &self.log
+    }
+}
+
+#[derive(Debug, Default)]
+struct State {
+    pings: HashMap<DateTime<Utc>, Ping>,
+}
+
+impl State {
+    #[tracing::instrument(skip(self), level = "trace")]
+    pub fn apply_op(&mut self, op: &TimestampedOp) {
+        match &op.op {
+            Op::AddPing { when } => {
+                self.add_ping(when);
+            }
+
+            Op::SetTag { when, tag } => {
+                let ping = self.add_ping(when);
+                ping.tag.update(&op.timestamp, Some(tag.clone()));
+            }
+        }
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn add_ping(&mut self, when: &DateTime<Utc>) -> &mut Ping {
+        tracing::debug!("adding ping with no tag");
+
+        self.pings.entry(*when).or_insert(Ping {
+            time: *when,
+            tag: Lww::new(None),
+        })
+    }
+
+    fn latest(&self) -> Option<&Ping> {
         self.pings.iter().max_by_key(|(k, _)| *k).map(|(_, v)| v)
     }
 
@@ -111,67 +190,8 @@ impl Document {
             .map(|(_, v)| v)
     }
 
-    #[tracing::instrument(skip(self))]
-    pub fn set_tag(&mut self, when: &DateTime<Utc>, tag: String) -> Result<()> {
-        tracing::debug!("setting tag"); // arguments are added by tracing::instrument
-
-        let ping = self
-            .pings
-            .get_mut(when)
-            .ok_or_eyre("provided ping does not exist")?;
-
-        let timestamp = self
-            .clock
-            .next_tiebreak(ping.tag.timestamp(), self.clock.node);
-
-        self.clock = timestamp;
-
-        ping.tag.update(&self.clock, Some(tag.clone()));
-
-        self.log.push_unchecked(TimestampedOp {
-            timestamp: self.clock.clone(),
-            op: Op::SetTag { when: *when, tag },
-        });
-
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(self), level = "trace")]
-    pub fn apply_op(&mut self, op: &TimestampedOp) {
-        match &op.op {
-            Op::AddPing { when } => {
-                self.pings.entry(*when).or_insert_with(|| Ping {
-                    time: *when,
-                    tag: Lww::new(None),
-                });
-            }
-
-            Op::SetTag { when, tag } => {
-                let ping = self.add_ping(when);
-                ping.tag.update(&op.timestamp, Some(tag.clone()));
-            }
-        }
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn add_ping(&mut self, when: &DateTime<Utc>) -> &mut Ping {
-        tracing::debug!("adding ping with no tag");
-
-        self.clock = self.next_clock();
-
-        self.log.push_unchecked(TimestampedOp {
-            timestamp: self.clock.clone(),
-            op: Op::AddPing { when: *when },
-        });
-
-        self.pings.entry(*when).or_insert(Ping {
-            time: *when,
-            tag: Lww::new(None),
-        })
-    }
-
-    pub fn log(&self) -> &Log {
-        &self.log
+    pub fn get_ping(&self, when: &DateTime<Utc>) -> Option<&Ping> {
+        self.pings.get(when)
     }
 }
 
@@ -228,16 +248,16 @@ mod test {
 
         #[test]
         fn fills_empty_document() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
 
             doc.fill(Utc);
 
-            assert_eq!(doc.pings.len(), 2);
+            assert_eq!(doc.state.pings.len(), 2);
         }
 
         #[test]
         fn fills_document_with_future_ping() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
 
             let clock = FixedClock::freeze();
 
@@ -245,12 +265,12 @@ mod test {
 
             doc.fill(clock);
 
-            assert_eq!(doc.pings.len(), 1);
+            assert_eq!(doc.state.pings.len(), 1);
         }
 
         #[test]
         fn fills_document_with_past_ping() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
             let clock = FixedClock::freeze();
             doc.add_ping(&(clock.now() - chrono::Duration::hours(1)));
 
@@ -261,7 +281,7 @@ mod test {
 
         #[test]
         fn does_not_add_pings_if_we_have_a_future_ping() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
             doc.fill(Utc);
 
             // Now that we've filled pings, we should have a future ping. Just to check...
@@ -285,7 +305,7 @@ mod test {
             fn always_advances_by_at_least_a_minute(minutes in 0i64..1_000_000) {
                 let start = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap() + Duration::minutes(minutes);
 
-                let doc = Document::default();
+                let doc = Document::empty();
                 let next = doc.next_time(start);
 
                 assert!(next >= start + Duration::seconds(1), "{next:#?} was not GE than {start:#?}")
@@ -293,7 +313,7 @@ mod test {
 
             #[test]
             fn averages_to_lambda(lambda_minutes in 1u32..120) {
-                let mut doc = Document::default();
+                let mut doc = Document::empty();
                 doc.lambda.update(&doc.clock, 1.0 / lambda_minutes as f64);
 
                 let mut current = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
@@ -319,18 +339,18 @@ mod test {
 
         #[test]
         fn sets_tag() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
             let now = Utc::now();
             doc.add_ping(&now);
 
             doc.set_tag(&now, "test".to_string()).unwrap();
 
-            assert_eq!(*doc.pings[&now].tag, Some("test".to_string()));
+            assert_eq!(*doc.state.pings[&now].tag, Some("test".to_string()));
         }
 
         #[test]
         fn sets_tag_error() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
             let now = Utc::now();
             // no add_ping here!
 
@@ -341,7 +361,7 @@ mod test {
 
         #[test]
         fn sets_clock() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
 
             let ping_time = Utc::now();
             doc.add_ping(&ping_time);
@@ -359,51 +379,51 @@ mod test {
 
         #[test]
         fn add_ping() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
             let op = Op::AddPing { when: Utc::now() };
 
-            doc.apply_op(&TimestampedOp {
+            doc.state.apply_op(&TimestampedOp {
                 timestamp: Hlc::new(0),
                 op,
             });
 
-            assert_eq!(doc.pings.len(), 1);
+            assert_eq!(doc.state.pings.len(), 1);
         }
 
         #[test]
         fn add_ping_idempotent() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
             let op = Op::AddPing { when: Utc::now() };
             let clock = Hlc::new(0);
 
-            doc.apply_op(&TimestampedOp {
+            doc.state.apply_op(&TimestampedOp {
                 timestamp: clock.clone(),
                 op: op.clone(),
             });
-            doc.apply_op(&TimestampedOp {
+            doc.state.apply_op(&TimestampedOp {
                 timestamp: clock.clone(),
                 op: op.clone(),
             });
 
-            assert_eq!(doc.pings.len(), 1);
+            assert_eq!(doc.state.pings.len(), 1);
         }
 
         #[test]
         fn set_tag() {
-            let mut doc = Document::default();
+            let mut doc = Document::empty();
             let when = Utc::now();
             let op = Op::SetTag {
                 when,
                 tag: "test".into(),
             };
 
-            doc.apply_op(&TimestampedOp {
+            doc.state.apply_op(&TimestampedOp {
                 timestamp: Hlc::new(0),
                 op,
             });
 
             assert_eq!(
-                doc.pings.get(&when).and_then(|p| p.tag.clone()),
+                doc.state.pings.get(&when).and_then(|p| p.tag.clone()),
                 Some("test".into())
             )
         }

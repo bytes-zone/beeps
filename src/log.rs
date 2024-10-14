@@ -8,14 +8,14 @@ pub struct TimestampedOp {
     pub op: Op,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Log {
     ops: Vec<TimestampedOp>,
 }
 
 impl Log {
-    pub fn new() -> Self {
-        Self { ops: Vec::new() }
+    pub fn from_ops(ops: Vec<TimestampedOp>) -> Self {
+        Self { ops }
     }
 
     pub fn push_unchecked(&mut self, op: TimestampedOp) {

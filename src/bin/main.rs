@@ -33,7 +33,7 @@ impl Cli {
 
         if !path.exists() {
             tracing::info!(?path, "no data file found; creating");
-            return Ok(Document::default());
+            return Ok(Document::empty());
         }
 
         let data = std::fs::read_to_string(path).wrap_err("could not read data")?;
