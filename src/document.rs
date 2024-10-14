@@ -57,7 +57,7 @@ impl Document {
 
         let mut current = match self.latest() {
             Some(ping) => {
-                tracing::debug!(?ping.time, future = ping.time > now, "had a latest ping");
+                tracing::trace!(?ping.time, future = ping.time > now, "had a latest ping");
                 ping.time
             }
 
