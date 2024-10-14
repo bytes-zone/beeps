@@ -1,5 +1,5 @@
 use crate::hlc::Hlc;
-use crate::log::{Log, TimestampedOp};
+use crate::log::{self, Log, TimestampedOp};
 use crate::lww::Lww;
 use crate::op::Op;
 use crate::state::{Ping, State};
@@ -17,6 +17,12 @@ pub struct Document {
     clock: Hlc,
     lambda: Lww<f64>,
     state: State,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum FillError {
+    #[error("could not add to log: {0}")]
+    LogError(#[from] log::Error),
 }
 
 impl Document {
@@ -41,12 +47,12 @@ impl Document {
     }
 
     #[tracing::instrument(skip(self, wall_clock))]
-    pub fn fill(&mut self, wall_clock: impl WallClock) -> Result<()> {
+    pub fn fill(&mut self, wall_clock: impl WallClock) -> Result<(), FillError> {
         let now = wall_clock.now();
 
         if self.state.pings.is_empty() {
             tracing::debug!(when = ?now, "pings is empty, adding initial ping");
-            self.add_ping(&now).wrap_err("could not add ping")?;
+            self.add_ping(&now).map_err(FillError::LogError)?;
         }
 
         let mut current = match self.latest() {
@@ -64,7 +70,7 @@ impl Document {
             let next = self.next_time(current);
             tracing::debug!(?next, "got next time");
 
-            self.add_ping(&next).wrap_err("could not add ping")?;
+            self.add_ping(&next).map_err(FillError::LogError)?;
 
             current = next
         }
@@ -98,7 +104,7 @@ impl Document {
     }
 
     #[tracing::instrument(skip(self))]
-    fn add_ping(&mut self, when: &DateTime<Utc>) -> Result<()> {
+    fn add_ping(&mut self, when: &DateTime<Utc>) -> Result<(), log::Error> {
         tracing::debug!("adding ping with no tag");
 
         self.clock = self.clock.next(self.clock.node);
@@ -109,7 +115,7 @@ impl Document {
         };
 
         self.state.apply_op(&op);
-        self.log.push(op).wrap_err("could not push operation")?;
+        self.log.push(op)?;
 
         Ok(())
     }
