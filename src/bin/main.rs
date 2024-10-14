@@ -25,12 +25,13 @@ impl Cli {
         }
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self))]
     fn read(&self) -> Result<Document> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
 
         if !path.exists() {
+            tracing::info!(?path, "no data file found; creating");
             return Ok(Document::default());
         }
 
@@ -40,7 +41,7 @@ impl Cli {
         Ok(Document::from_ops(ops))
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, document))]
     fn save(&self, document: &Vec<TimestampedOp>) -> Result<()> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
@@ -48,6 +49,8 @@ impl Cli {
 
         std::fs::create_dir_all(dirs.data_dir()).wrap_err("could not create directory")?;
         std::fs::write(path, data).wrap_err("could not write data")?;
+
+        tracing::info!("saved");
 
         Ok(())
     }
@@ -59,6 +62,7 @@ impl Cli {
             loaded.fill();
 
             if let Some(time) = loaded.current().filter(|p| p.tag.is_none()).map(|p| p.time) {
+                tracing::trace!("awaiting user input");
                 println!(
                     "What were you doing at {}?",
                     time.with_timezone(&Local).format("%-I:%M %p")
@@ -84,6 +88,7 @@ impl Cli {
                     .to_std()
                     .wrap_err("could not convert duration to std")?;
                 println!("waiting for next ping");
+                tracing::debug!(?ping.time, ?duration, "sleeping until next ping");
                 std::thread::sleep(duration);
 
                 std::process::Command::new("say")

@@ -34,6 +34,7 @@ impl Default for Document {
 }
 
 impl Document {
+    #[tracing::instrument(skip(ops), level = "trace")]
     pub fn from_ops(ops: Vec<TimestampedOp>) -> Self {
         let mut doc = Self::default();
 
@@ -48,10 +49,12 @@ impl Document {
         self.clock.next(self.clock.node)
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn fill(&mut self) {
         let now = Utc::now();
 
         if self.pings.is_empty() {
+            tracing::debug!(when = ?now, "pings is empty, adding initial ping");
             self.add_ping(&now);
 
             let next_clock = self.next_clock();
@@ -62,7 +65,10 @@ impl Document {
         }
 
         let mut current = match self.current() {
-            Some(ping) => ping.time,
+            Some(ping) => {
+                tracing::debug!(?ping.time, "had a current ping");
+                ping.time
+            }
 
             // If we have no current ping, even after backfilling, then all the
             // pings must be in the future and we don't need to do anything.
@@ -71,14 +77,16 @@ impl Document {
 
         while current <= now {
             let next = self.next_time(current);
+            tracing::debug!(?next, "got next time");
 
             self.add_ping(&next);
 
             let next_clock = self.next_clock();
             self.ops.push(TimestampedOp {
                 timestamp: next_clock,
-                op: Op::AddPing { when: now },
+                op: Op::AddPing { when: next },
             });
+            tracing::debug!(op = ?self.ops.last(), "added ping");
 
             current = next
         }
@@ -117,7 +125,10 @@ impl Document {
             .map(|(_, v)| v)
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn set_tag(&mut self, when: &DateTime<Utc>, tag: String) -> Result<()> {
+        tracing::debug!("setting tag"); // arguments are added by tracing::instrument
+
         let ping = self
             .pings
             .get_mut(when)
@@ -139,6 +150,7 @@ impl Document {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self), level = "trace")]
     pub fn apply_op(&mut self, op: TimestampedOp) {
         match &op.op {
             Op::AddPing { when } => {
@@ -156,7 +168,10 @@ impl Document {
         self.ops.push(op.clone())
     }
 
+    #[tracing::instrument(skip(self))]
     fn add_ping(&mut self, when: &DateTime<Utc>) -> &mut Ping {
+        tracing::debug!("adding ping with no tag");
+
         self.pings.entry(*when).or_insert(Ping {
             time: *when,
             tag: Lww::new(None),
