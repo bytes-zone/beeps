@@ -56,12 +56,6 @@ impl Document {
         if self.pings.is_empty() {
             tracing::debug!(when = ?now, "pings is empty, adding initial ping");
             self.add_ping(&now);
-
-            let next_clock = self.next_clock();
-            self.ops.push(TimestampedOp {
-                timestamp: next_clock,
-                op: Op::AddPing { when: now },
-            });
         }
 
         let mut current = match self.latest() {
@@ -80,12 +74,6 @@ impl Document {
             tracing::debug!(?next, "got next time");
 
             self.add_ping(&next);
-
-            let next_clock = self.next_clock();
-            self.ops.push(TimestampedOp {
-                timestamp: next_clock,
-                op: Op::AddPing { when: next },
-            });
 
             current = next
         }
@@ -157,23 +145,29 @@ impl Document {
     pub fn apply_op(&mut self, op: TimestampedOp) {
         match &op.op {
             Op::AddPing { when } => {
-                self.add_ping(when);
+                self.pings.entry(*when).or_insert_with(|| Ping {
+                    time: *when,
+                    tag: Lww::new(None),
+                });
             }
 
             Op::SetTag { when, tag } => {
                 let ping = self.add_ping(when);
                 ping.tag.update(&op.timestamp, Some(tag.clone()));
             }
-
-            Op::SetLambda { lambda } => self.lambda.update(&op.timestamp, *lambda),
         }
-
-        self.ops.push(op.clone())
     }
 
     #[tracing::instrument(skip(self))]
     fn add_ping(&mut self, when: &DateTime<Utc>) -> &mut Ping {
         tracing::debug!("adding ping with no tag");
+
+        self.clock = self.next_clock();
+
+        self.ops.push(TimestampedOp {
+            timestamp: self.clock.clone(),
+            op: Op::AddPing { when: *when },
+        });
 
         self.pings.entry(*when).or_insert(Ping {
             time: *when,
@@ -417,19 +411,6 @@ mod test {
                 doc.pings.get(&when).and_then(|p| p.tag.clone()),
                 Some("test".into())
             )
-        }
-
-        #[test]
-        fn set_lambda() {
-            let mut doc = Document::default();
-            let op = Op::SetLambda { lambda: 1.0 };
-
-            doc.apply_op(TimestampedOp {
-                timestamp: Hlc::new(0),
-                op,
-            });
-
-            assert_eq!(*doc.lambda, 1.0);
         }
     }
 }

@@ -8,7 +8,4 @@ pub enum Op {
 
     // Tags
     SetTag { when: DateTime<Utc>, tag: String },
-
-    // Settings
-    SetLambda { lambda: f64 },
 }
