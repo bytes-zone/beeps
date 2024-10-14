@@ -47,12 +47,18 @@ impl Hlc {
 
 impl PartialOrd for Hlc {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Hlc {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self.timestamp != other.timestamp {
-            self.timestamp.partial_cmp(&other.timestamp)
+            self.timestamp.cmp(&other.timestamp)
         } else if self.counter != other.counter {
-            return self.counter.partial_cmp(&other.counter);
+            return self.counter.cmp(&other.counter);
         } else {
-            return self.node.partial_cmp(&other.node);
+            return self.node.cmp(&other.node);
         }
     }
 }
@@ -105,7 +111,7 @@ mod test {
         }
     }
 
-    mod partial_ord {
+    mod ord {
         use super::*;
 
         #[test]
@@ -123,7 +129,7 @@ mod test {
                 node: 0,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Equal));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Equal);
         }
 
         #[test]
@@ -141,7 +147,7 @@ mod test {
                 node: 1,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
         }
 
         #[test]
@@ -159,7 +165,7 @@ mod test {
                 node: 0,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
         }
 
         #[test]
@@ -175,7 +181,7 @@ mod test {
                 node: 0,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
         }
     }
 }
