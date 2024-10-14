@@ -64,9 +64,9 @@ impl Document {
             });
         }
 
-        let mut current = match self.current() {
+        let mut current = match self.latest() {
             Some(ping) => {
-                tracing::debug!(?ping.time, "had a current ping");
+                tracing::debug!(?ping.time, future = ping.time > now, "had a latest ping");
                 ping.time
             }
 
@@ -86,7 +86,6 @@ impl Document {
                 timestamp: next_clock,
                 op: Op::AddPing { when: next },
             });
-            tracing::debug!(op = ?self.ops.last(), "added ping");
 
             current = next
         }
@@ -103,6 +102,10 @@ impl Document {
         let delta = chrono::Duration::seconds(adjustment.ceil() as i64);
 
         current + delta
+    }
+
+    fn latest(&self) -> Option<&Ping> {
+        self.pings.iter().max_by_key(|(k, _)| *k).map(|(_, v)| v)
     }
 
     pub fn current(&self) -> Option<&Ping> {
@@ -232,6 +235,21 @@ mod test {
             doc.fill();
 
             assert!(!doc.ops.is_empty());
+        }
+
+        #[test]
+        fn does_not_add_pings_if_we_have_a_future_ping() {
+            let mut doc = Document::default();
+            doc.fill();
+
+            // Now that we've filled pings, we should have a future ping. Just to check...
+            assert!(doc.future().is_some());
+
+            // A subsequentn call to fill should not add any more operations
+            let num_ops = doc.ops.len();
+            doc.fill();
+
+            assert_eq!(num_ops, doc.ops.len());
         }
     }
 
