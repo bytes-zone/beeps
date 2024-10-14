@@ -4,7 +4,10 @@ use crate::lww::Lww;
 use crate::op::Op;
 use crate::state::{Ping, State};
 use chrono::{DateTime, Utc};
-use color_eyre::{eyre::OptionExt, Result};
+use color_eyre::{
+    eyre::{OptionExt, WrapErr},
+    Result,
+};
 use rand_core::RngCore;
 use rand_pcg::Pcg32;
 
@@ -38,12 +41,12 @@ impl Document {
     }
 
     #[tracing::instrument(skip(self, wall_clock))]
-    pub fn fill(&mut self, wall_clock: impl WallClock) {
+    pub fn fill(&mut self, wall_clock: impl WallClock) -> Result<()> {
         let now = wall_clock.now();
 
         if self.state.pings.is_empty() {
             tracing::debug!(when = ?now, "pings is empty, adding initial ping");
-            self.add_ping(&now);
+            self.add_ping(&now).wrap_err("could not add ping")?;
         }
 
         let mut current = match self.latest() {
@@ -54,17 +57,19 @@ impl Document {
 
             // If we have no current ping, even after backfilling, then all the
             // pings must be in the future and we don't need to do anything.
-            None => return,
+            None => return Ok(()),
         };
 
         while current <= now {
             let next = self.next_time(current);
             tracing::debug!(?next, "got next time");
 
-            self.add_ping(&next);
+            self.add_ping(&next).wrap_err("could not add ping")?;
 
             current = next
         }
+
+        Ok(())
     }
 
     fn next_time(&self, current: DateTime<Utc>) -> DateTime<Utc> {
@@ -93,7 +98,7 @@ impl Document {
     }
 
     #[tracing::instrument(skip(self))]
-    fn add_ping(&mut self, when: &DateTime<Utc>) {
+    fn add_ping(&mut self, when: &DateTime<Utc>) -> Result<()> {
         tracing::debug!("adding ping with no tag");
 
         self.clock = self.clock.next(self.clock.node);
@@ -104,7 +109,9 @@ impl Document {
         };
 
         self.state.apply_op(&op);
-        self.log.push_unchecked(op);
+        self.log.push(op).wrap_err("could not push operation")?;
+
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]
@@ -126,7 +133,7 @@ impl Document {
         };
 
         self.state.apply_op(&op);
-        self.log.push_unchecked(op);
+        self.log.push(op).wrap_err("could not push operation")?;
 
         Ok(())
     }
@@ -176,7 +183,7 @@ mod test {
         fn fills_empty_document() {
             let mut doc = Document::empty();
 
-            doc.fill(Utc);
+            doc.fill(Utc).unwrap();
 
             assert_eq!(doc.state.pings.len(), 2);
         }
@@ -187,9 +194,10 @@ mod test {
 
             let clock = FixedClock::freeze();
 
-            doc.add_ping(&(clock.now() + chrono::Duration::hours(1)));
+            doc.add_ping(&(clock.now() + chrono::Duration::hours(1)))
+                .unwrap();
 
-            doc.fill(clock);
+            doc.fill(clock).unwrap();
 
             assert_eq!(doc.state.pings.len(), 1);
         }
@@ -198,9 +206,10 @@ mod test {
         fn fills_document_with_past_ping() {
             let mut doc = Document::empty();
             let clock = FixedClock::freeze();
-            doc.add_ping(&(clock.now() - chrono::Duration::hours(1)));
+            doc.add_ping(&(clock.now() - chrono::Duration::hours(1)))
+                .unwrap();
 
-            doc.fill(clock);
+            doc.fill(clock).unwrap();
 
             assert!(!doc.log.is_empty());
         }
@@ -208,14 +217,14 @@ mod test {
         #[test]
         fn does_not_add_pings_if_we_have_a_future_ping() {
             let mut doc = Document::empty();
-            doc.fill(Utc);
+            doc.fill(Utc).unwrap();
 
             // Now that we've filled pings, we should have a future ping. Just to check...
             assert!(doc.future().is_some());
 
             // A subsequent call to fill should not add any more operations
             let num_ops = doc.log.len();
-            doc.fill(Utc);
+            doc.fill(Utc).unwrap();
 
             assert_eq!(num_ops, doc.log.len());
         }
@@ -266,7 +275,7 @@ mod test {
         fn adds_ping() {
             let mut doc = Document::empty();
             let now = Utc::now();
-            doc.add_ping(&now);
+            doc.add_ping(&now).unwrap();
 
             assert_eq!(doc.state.pings.len(), 1);
             assert_eq!(*doc.state.pings[&now].tag, None);
@@ -279,7 +288,7 @@ mod test {
             let orig_clock = doc.clock.clone();
 
             let ping_time = Utc::now();
-            doc.add_ping(&ping_time);
+            doc.add_ping(&ping_time).unwrap();
 
             assert!(doc.clock > orig_clock, "{:?} <= {orig_clock:?}", doc.clock);
         }
@@ -292,7 +301,7 @@ mod test {
         fn sets_tag() {
             let mut doc = Document::empty();
             let now = Utc::now();
-            doc.add_ping(&now);
+            doc.add_ping(&now).unwrap();
 
             doc.set_tag(&now, "test".to_string()).unwrap();
 
@@ -315,7 +324,7 @@ mod test {
             let mut doc = Document::empty();
 
             let ping_time = Utc::now();
-            doc.add_ping(&ping_time);
+            doc.add_ping(&ping_time).unwrap();
 
             let orig_clock = doc.clock.clone();
 

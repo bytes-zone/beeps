@@ -60,7 +60,7 @@ impl Cli {
         let mut loaded = self.read().wrap_err("could not load document")?;
 
         loop {
-            loaded.fill(Utc);
+            loaded.fill(Utc).wrap_err("could not fill")?;
 
             if let Some(time) = loaded.current().filter(|p| p.tag.is_none()).map(|p| p.time) {
                 tracing::trace!("awaiting user input");
@@ -80,7 +80,7 @@ impl Cli {
             self.save(loaded.log()).wrap_err("could not save")?;
 
             // fill again, just in case we waited forever to fill out the current ping
-            loaded.fill(Utc);
+            loaded.fill(Utc).wrap_err("could not fill")?;
 
             if let Some(ping) = loaded.future() {
                 let now = Utc::now();
