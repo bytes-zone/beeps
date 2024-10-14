@@ -34,10 +34,12 @@ impl State {
         })
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn latest(&self) -> Option<&Ping> {
         self.pings.iter().max_by_key(|(k, _)| *k).map(|(_, v)| v)
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn current(&self) -> Option<&Ping> {
         let now = Utc::now();
 
@@ -48,6 +50,7 @@ impl State {
             .map(|(_, v)| v)
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn future(&self) -> Option<&Ping> {
         let now = Utc::now();
 
@@ -58,6 +61,7 @@ impl State {
             .map(|(_, v)| v)
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn get_ping(&self, when: &DateTime<Utc>) -> Option<&Ping> {
         self.pings.get(when)
     }
