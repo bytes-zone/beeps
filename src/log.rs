@@ -19,11 +19,14 @@ pub enum Error {
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Log {
     ops: Vec<TimestampedOp>,
+
+    #[serde(default)]
+    node: u8,
 }
 
 impl Log {
-    pub fn from_ops(ops: Vec<TimestampedOp>) -> Self {
-        Self { ops }
+    pub fn from_ops(ops: Vec<TimestampedOp>, node: u8) -> Self {
+        Self { ops, node }
     }
 
     #[deprecated(note = "use from_ops and then checked pushes")]
@@ -75,6 +78,10 @@ impl Log {
         }
 
         latest_ops
+    }
+
+    pub fn node(&self) -> u8 {
+        self.node
     }
 }
 
