@@ -77,3 +77,64 @@ impl Default for Ping {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod apply_op {
+        use super::*;
+        use crate::hlc::Hlc;
+
+        #[test]
+        fn add_ping() {
+            let mut state = State::default();
+            let op = Op::AddPing { when: Utc::now() };
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op,
+            });
+
+            assert_eq!(state.pings.len(), 1);
+        }
+
+        #[test]
+        fn add_ping_idempotent() {
+            let mut state = State::default();
+            let op = Op::AddPing { when: Utc::now() };
+            let clock = Hlc::new(0);
+
+            state.apply_op(&TimestampedOp {
+                timestamp: clock.clone(),
+                op: op.clone(),
+            });
+            state.apply_op(&TimestampedOp {
+                timestamp: clock.clone(),
+                op: op.clone(),
+            });
+
+            assert_eq!(state.pings.len(), 1);
+        }
+
+        #[test]
+        fn set_tag() {
+            let mut state = State::default();
+            let when = Utc::now();
+            let op = Op::SetTag {
+                when,
+                tag: "test".into(),
+            };
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op,
+            });
+
+            assert_eq!(
+                state.pings.get(&when).and_then(|p| p.tag.clone()),
+                Some("test".into())
+            )
+        }
+    }
+}
