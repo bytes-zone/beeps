@@ -259,6 +259,32 @@ mod test {
         }
     }
 
+    mod add_ping {
+        use super::*;
+
+        #[test]
+        fn adds_ping() {
+            let mut doc = Document::empty();
+            let now = Utc::now();
+            doc.add_ping(&now);
+
+            assert_eq!(doc.state.pings.len(), 1);
+            assert_eq!(*doc.state.pings[&now].tag, None);
+        }
+
+        #[test]
+        fn advances_clock() {
+            let mut doc = Document::empty();
+
+            let orig_clock = doc.clock.clone();
+
+            let ping_time = Utc::now();
+            doc.add_ping(&ping_time);
+
+            assert!(doc.clock > orig_clock, "{:?} <= {orig_clock:?}", doc.clock);
+        }
+    }
+
     mod set_tag {
         use super::*;
 
@@ -285,7 +311,7 @@ mod test {
         }
 
         #[test]
-        fn sets_clock() {
+        fn advances_clock() {
             let mut doc = Document::empty();
 
             let ping_time = Utc::now();
