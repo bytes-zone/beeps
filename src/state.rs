@@ -63,7 +63,7 @@ impl State {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Ping {
     pub time: DateTime<Utc>,
     pub tag: Lww<Option<String>>,
@@ -81,10 +81,10 @@ impl Default for Ping {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::hlc::Hlc;
 
     mod apply_op {
         use super::*;
-        use crate::hlc::Hlc;
 
         #[test]
         fn add_ping() {
@@ -135,6 +135,101 @@ mod test {
                 state.pings.get(&when).and_then(|p| p.tag.clone()),
                 Some("test".into())
             )
+        }
+    }
+
+    mod latest {
+        use super::*;
+
+        #[test]
+        fn returns_latest_ping() {
+            let mut state = State::default();
+            let now = Utc::now();
+            let later = now + chrono::Duration::seconds(1);
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: now },
+            });
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: later },
+            });
+
+            assert_eq!(state.latest().map(|p| p.time), Some(later));
+        }
+    }
+
+    mod current {
+        use super::*;
+
+        #[test]
+        fn returns_current_ping() {
+            let mut state = State::default();
+            let now = Utc::now();
+            let later = now + chrono::Duration::seconds(1);
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: now },
+            });
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: later },
+            });
+
+            assert_eq!(state.current().map(|p| p.time), Some(now));
+        }
+
+        #[test]
+        fn returns_nothing_if_all_pings_are_in_future() {
+            let mut state = State::default();
+            let later = Utc::now() + chrono::Duration::seconds(1);
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: later },
+            });
+
+            assert_eq!(state.current(), None);
+        }
+    }
+
+    mod future {
+        use super::*;
+
+        #[test]
+        fn returns_future_ping() {
+            let mut state = State::default();
+            let now = Utc::now();
+            let later = now + chrono::Duration::seconds(1);
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: now },
+            });
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: later },
+            });
+
+            assert_eq!(state.future().map(|p| p.time), Some(later));
+        }
+
+        #[test]
+        fn returns_nothing_if_all_pings_are_in_past() {
+            let mut state = State::default();
+            let now = Utc::now();
+
+            state.apply_op(&TimestampedOp {
+                timestamp: Hlc::new(0),
+                op: Op::AddPing { when: now },
+            });
+
+            assert_eq!(state.future(), None);
         }
     }
 }
