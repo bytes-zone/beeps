@@ -6,10 +6,14 @@ use color_eyre::{
     Result,
 };
 use directories::ProjectDirs;
+use tracing::level_filters::LevelFilter;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
-struct Cli {}
+struct Cli {
+    #[clap(long = "log-level", default_value = "error")]
+    log_level: LevelFilter,
+}
 
 impl Cli {
     fn dirs(&self) -> Result<ProjectDirs> {
@@ -94,9 +98,14 @@ impl Cli {
 }
 
 fn main() {
+    let cli = Cli::parse();
+
     color_eyre::install().unwrap();
 
-    let cli = Cli::parse();
+    tracing_subscriber::fmt()
+        .with_max_level(cli.log_level)
+        .init();
+
     if let Err(err) = cli.run() {
         eprintln!("{:?}", err);
         std::process::exit(1);
