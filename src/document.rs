@@ -1,11 +1,11 @@
 use crate::hlc::Hlc;
+use crate::log::TimestampedOp;
 use crate::lww::Lww;
 use crate::op::Op;
 use chrono::{DateTime, Utc};
 use color_eyre::{eyre::OptionExt, Result};
 use rand_core::RngCore;
 use rand_pcg::Pcg32;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -14,12 +14,6 @@ pub struct Document {
     clock: Hlc,
     pings: HashMap<DateTime<Utc>, Ping>,
     lambda: Lww<f64>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TimestampedOp {
-    pub timestamp: Hlc,
-    pub op: Op,
 }
 
 impl Default for Document {
