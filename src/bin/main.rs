@@ -1,4 +1,5 @@
-use beeps::document::{Document, TimestampedOp};
+use beeps::document::Document;
+use beeps::log::Log;
 use chrono::{Local, Utc};
 use clap::Parser;
 use color_eyre::{
@@ -32,7 +33,7 @@ impl Cli {
 
         if !path.exists() {
             tracing::info!(?path, "no data file found; creating");
-            return Ok(Document::default());
+            return Ok(Document::empty());
         }
 
         let data = std::fs::read_to_string(path).wrap_err("could not read data")?;
@@ -42,7 +43,7 @@ impl Cli {
     }
 
     #[tracing::instrument(skip(self, document))]
-    fn save(&self, document: &Vec<TimestampedOp>) -> Result<()> {
+    fn save(&self, document: &Log) -> Result<()> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
         let data = serde_json::to_string(document).wrap_err("could not serialize data")?;
@@ -59,7 +60,7 @@ impl Cli {
         let mut loaded = self.read().wrap_err("could not load document")?;
 
         loop {
-            loaded.fill();
+            loaded.fill(Utc).wrap_err("could not fill")?;
 
             if let Some(time) = loaded.current().filter(|p| p.tag.is_none()).map(|p| p.time) {
                 tracing::trace!("awaiting user input");
@@ -76,10 +77,10 @@ impl Cli {
                 }
             }
 
-            self.save(loaded.ops()).wrap_err("could not save")?;
+            self.save(loaded.log()).wrap_err("could not save")?;
 
             // fill again, just in case we waited forever to fill out the current ping
-            loaded.fill();
+            loaded.fill(Utc).wrap_err("could not fill")?;
 
             if let Some(ping) = loaded.future() {
                 let now = Utc::now();

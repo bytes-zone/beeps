@@ -19,6 +19,7 @@
             pkgs.clippy
             pkgs.rustfmt
             pkgs.libiconv
+            pkgs.typos
           ];
         };
       }

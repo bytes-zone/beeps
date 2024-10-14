@@ -43,16 +43,31 @@ impl Hlc {
             }
         }
     }
+
+    pub fn next_tiebreak(&self, other: Option<&Self>, node: u8) -> Self {
+        let current = match other {
+            Some(other_) => self.max(other_),
+            None => self,
+        };
+
+        current.next(node)
+    }
 }
 
 impl PartialOrd for Hlc {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Hlc {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self.timestamp != other.timestamp {
-            self.timestamp.partial_cmp(&other.timestamp)
+            self.timestamp.cmp(&other.timestamp)
         } else if self.counter != other.counter {
-            return self.counter.partial_cmp(&other.counter);
+            return self.counter.cmp(&other.counter);
         } else {
-            return self.node.partial_cmp(&other.node);
+            return self.node.cmp(&other.node);
         }
     }
 }
@@ -105,7 +120,35 @@ mod test {
         }
     }
 
-    mod partial_ord {
+    mod next_tiebreak {
+        use super::*;
+        use chrono::TimeZone;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn clock_monotonically_increases(node_a in 0u8..=255, counter_a in 0u64.., ts_a in 0i64..=2000000000, node_b in 0u8..=255, counter_b in 0u64.., ts_b in 0i64..=2000000000) {
+                let hlc_a = Hlc {
+                    timestamp: Utc.timestamp_opt(ts_a, 0).unwrap(),
+                    counter: counter_a,
+                    node: node_a,
+                };
+
+                let hlc_b = Hlc {
+                    timestamp: Utc.timestamp_opt(ts_b, 0).unwrap(),
+                    counter: counter_b,
+                    node: node_b,
+                };
+
+                let next_hlc = hlc_a.next_tiebreak(Some(&hlc_b), node_a);
+
+                assert!(next_hlc >= hlc_a, "{next_hlc:?} < {hlc_a:?}");
+                assert!(next_hlc >= hlc_b, "{next_hlc:?} < {hlc_b:?}");
+            }
+        }
+    }
+
+    mod ord {
         use super::*;
 
         #[test]
@@ -123,7 +166,7 @@ mod test {
                 node: 0,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Equal));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Equal);
         }
 
         #[test]
@@ -141,7 +184,7 @@ mod test {
                 node: 1,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
         }
 
         #[test]
@@ -159,7 +202,7 @@ mod test {
                 node: 0,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
         }
 
         #[test]
@@ -175,7 +218,7 @@ mod test {
                 node: 0,
             };
 
-            assert_eq!(a.partial_cmp(&b), Some(std::cmp::Ordering::Less));
+            assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
         }
     }
 }

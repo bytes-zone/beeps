@@ -115,6 +115,7 @@ dependencies = [
  "rand_pcg",
  "serde",
  "serde_json",
+ "thiserror",
  "tracing",
  "tracing-subscriber",
 ]
