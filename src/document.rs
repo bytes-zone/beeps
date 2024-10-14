@@ -49,9 +49,9 @@ impl Document {
         self.clock.next(self.clock.node)
     }
 
-    #[tracing::instrument(skip(self))]
-    pub fn fill(&mut self) {
-        let now = Utc::now();
+    #[tracing::instrument(skip(self, wall_clock))]
+    pub fn fill(&mut self, wall_clock: impl WallClock) {
+        let now = wall_clock.now();
 
         if self.pings.is_empty() {
             tracing::debug!(when = ?now, "pings is empty, adding initial ping");
@@ -201,6 +201,16 @@ impl Default for Ping {
     }
 }
 
+trait WallClock {
+    fn now(&self) -> DateTime<Utc>;
+}
+
+impl WallClock for Utc {
+    fn now(&self) -> DateTime<Utc> {
+        Utc::now()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -212,7 +222,7 @@ mod test {
         fn fills_empty_document() {
             let mut doc = Document::default();
 
-            doc.fill();
+            doc.fill(Utc);
 
             assert_eq!(doc.pings.len(), 2);
         }
@@ -222,7 +232,7 @@ mod test {
             let mut doc = Document::default();
             doc.add_ping(&(Utc::now() + chrono::Duration::hours(1)));
 
-            doc.fill();
+            doc.fill(Utc);
 
             assert_eq!(doc.pings.len(), 1);
         }
@@ -232,7 +242,7 @@ mod test {
             let mut doc = Document::default();
             doc.add_ping(&(Utc::now() - chrono::Duration::hours(1)));
 
-            doc.fill();
+            doc.fill(Utc);
 
             assert!(!doc.ops.is_empty());
         }
@@ -240,14 +250,14 @@ mod test {
         #[test]
         fn does_not_add_pings_if_we_have_a_future_ping() {
             let mut doc = Document::default();
-            doc.fill();
+            doc.fill(Utc);
 
             // Now that we've filled pings, we should have a future ping. Just to check...
             assert!(doc.future().is_some());
 
             // A subsequentn call to fill should not add any more operations
             let num_ops = doc.ops.len();
-            doc.fill();
+            doc.fill(Utc);
 
             assert_eq!(num_ops, doc.ops.len());
         }
