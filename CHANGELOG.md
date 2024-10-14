@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+This release improves testing and refactors some internals. It's a pre-1.0 breaking change because the storage format changes slightly. Run `scripts/0.2.3-to-0.3.0.sh` on your state file to see the new format, and save that output as your new state file to apply the upgrade.
+
 ## 0.2.2
 
 Turns out that the implementation that fills pings was only looking at pings in the past, so it would always add a new ping when called. This messes up the distribution of pings. I've also added a bunch of tracing to help debug this kind of thing in the future. If you want to see a bunch of internal logic in this release, add `--log-level trace`.
