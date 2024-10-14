@@ -22,7 +22,7 @@ impl Document {
         let mut state = State::default();
 
         for op in log.ops() {
-            state.apply_op(&op);
+            state.apply_op(op);
         }
 
         Self {
