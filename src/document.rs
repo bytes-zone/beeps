@@ -253,7 +253,6 @@ mod test {
 
                 let average = deltas.iter().sum::<chrono::Duration>().num_minutes() as f64 / deltas.len() as f64;
 
-                // let diff = (average - lambda_minutes).abs();
                 let diff = (average / lambda_minutes as f64).abs() - 1.0;
                 assert!(diff < 0.05, "{:0.2} was not close to {:0.2} ({:0.4})", average, lambda_minutes, diff);
             }
