@@ -5,7 +5,6 @@ edition = "2021"
 
 [[bin]]
 name = "beeps"
-path = "src/bin/main.rs"
 
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
