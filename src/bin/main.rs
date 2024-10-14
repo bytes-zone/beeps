@@ -25,6 +25,7 @@ impl Cli {
         }
     }
 
+    #[tracing::instrument]
     fn read(&self) -> Result<Document> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
@@ -39,6 +40,7 @@ impl Cli {
         Ok(Document::from_ops(ops))
     }
 
+    #[tracing::instrument]
     fn save(&self, document: &Vec<TimestampedOp>) -> Result<()> {
         let dirs = self.dirs()?;
         let path = dirs.data_dir().join("data.json");
