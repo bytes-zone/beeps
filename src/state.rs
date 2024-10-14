@@ -12,6 +12,8 @@ pub struct State {
 impl State {
     #[tracing::instrument(skip(self), level = "trace")]
     pub fn apply_op(&mut self, op: &TimestampedOp) {
+        tracing::trace!("applying op");
+
         match &op.op {
             Op::AddPing { when } => {
                 self.add_ping(when);
@@ -26,8 +28,6 @@ impl State {
 
     #[tracing::instrument(skip(self))]
     fn add_ping(&mut self, when: &DateTime<Utc>) -> &mut Ping {
-        tracing::debug!("adding ping with no tag");
-
         self.pings.entry(*when).or_insert(Ping {
             time: *when,
             tag: Lww::new(None),
