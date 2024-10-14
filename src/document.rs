@@ -212,6 +212,25 @@ impl WallClock for Utc {
 }
 
 #[cfg(test)]
+struct FixedClock {
+    time: DateTime<Utc>,
+}
+
+#[cfg(test)]
+impl FixedClock {
+    fn freeze() -> Self {
+        Self { time: Utc::now() }
+    }
+}
+
+#[cfg(test)]
+impl WallClock for FixedClock {
+    fn now(&self) -> DateTime<Utc> {
+        self.time
+    }
+}
+
+#[cfg(test)]
 mod test {
     use super::*;
 
@@ -230,9 +249,12 @@ mod test {
         #[test]
         fn fills_document_with_future_ping() {
             let mut doc = Document::default();
-            doc.add_ping(&(Utc::now() + chrono::Duration::hours(1)));
 
-            doc.fill(Utc);
+            let clock = FixedClock::freeze();
+
+            doc.add_ping(&(clock.now() + chrono::Duration::hours(1)));
+
+            doc.fill(clock);
 
             assert_eq!(doc.pings.len(), 1);
         }
@@ -240,9 +262,10 @@ mod test {
         #[test]
         fn fills_document_with_past_ping() {
             let mut doc = Document::default();
-            doc.add_ping(&(Utc::now() - chrono::Duration::hours(1)));
+            let clock = FixedClock::freeze();
+            doc.add_ping(&(clock.now() - chrono::Duration::hours(1)));
 
-            doc.fill(Utc);
+            doc.fill(clock);
 
             assert!(!doc.ops.is_empty());
         }
@@ -255,7 +278,7 @@ mod test {
             // Now that we've filled pings, we should have a future ping. Just to check...
             assert!(doc.future().is_some());
 
-            // A subsequentn call to fill should not add any more operations
+            // A subsequent call to fill should not add any more operations
             let num_ops = doc.ops.len();
             doc.fill(Utc);
 
