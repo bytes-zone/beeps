@@ -1,5 +1,6 @@
 use axum::{routing::get, Router};
 use clap::Parser;
+use tower_http::{compression, limit, trace};
 use tracing::level_filters::LevelFilter;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
@@ -22,11 +23,9 @@ async fn main() {
         .init();
 
     let app = Router::new()
-        .layer(tower_http::trace::TraceLayer::new_for_http())
-        .layer(tower_http::compression::CompressionLayer::new())
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(
-            1024 * 1024 * 5,
-        ))
+        .layer(trace::TraceLayer::new_for_http())
+        .layer(compression::CompressionLayer::new())
+        .layer(limit::RequestBodyLimitLayer::new(1024 * 1024 * 5))
         .route("/", get(|| async { "Hello, World!" }));
 
     tracing::info!(address = &options.address, "listening");
