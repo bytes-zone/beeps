@@ -39,7 +39,7 @@ impl Cli {
         let data = std::fs::read_to_string(path).wrap_err("could not read data")?;
         let ops = serde_json::from_str(&data).wrap_err("could not deserialize data")?;
 
-        Ok(Document::from_ops(ops))
+        Ok(Document::from_log(ops))
     }
 
     #[tracing::instrument(skip(self, document))]
