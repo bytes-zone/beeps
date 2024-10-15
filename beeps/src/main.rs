@@ -1,11 +1,11 @@
-use beeps::document::Document;
-use beeps::log::Log;
 use chrono::{Local, Utc};
 use clap::Parser;
 use color_eyre::{
     eyre::{self, Context},
     Result,
 };
+use common::document::Document;
+use common::log::Log;
 use directories::ProjectDirs;
 use tracing::level_filters::LevelFilter;
 
