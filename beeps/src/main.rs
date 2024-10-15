@@ -11,6 +11,7 @@ use tracing::level_filters::LevelFilter;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
+#[clap(version)]
 struct Cli {
     #[clap(long = "log-level", default_value = "error")]
     log_level: LevelFilter,
