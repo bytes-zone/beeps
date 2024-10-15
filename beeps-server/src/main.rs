@@ -1,8 +1,8 @@
-use std::iter::once;
+use std::{iter::once, time::Duration};
 
 use axum::{http::header::AUTHORIZATION, routing::get, Router};
 use clap::Parser;
-use tower_http::{compression, limit, sensitive_headers, trace};
+use tower_http::{compression, limit, sensitive_headers, timeout, trace};
 use tracing::level_filters::LevelFilter;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
@@ -31,6 +31,7 @@ async fn main() {
         .layer(sensitive_headers::SetSensitiveHeadersLayer::new(once(
             AUTHORIZATION,
         )))
+        .layer(timeout::TimeoutLayer::new(Duration::from_secs(5)))
         .route("/", get(|| async { "Hello, World!" }));
 
     tracing::info!(address = &options.address, "listening");
