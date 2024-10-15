@@ -4,6 +4,7 @@ use axum::{http::header::AUTHORIZATION, routing::get, Router};
 use clap::Parser;
 use tower_http::{compression, limit, sensitive_headers, timeout, trace};
 use tracing::level_filters::LevelFilter;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
@@ -33,8 +34,13 @@ async fn main() {
     let options = Options::parse();
 
     // TODO: opentelemetry
-    tracing_subscriber::fmt()
-        .with_max_level(options.log_level)
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(options.log_level.into())
+                .from_env_lossy(),
+        )
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     let app = Router::new()
