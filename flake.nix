@@ -15,6 +15,7 @@
             pkgs.rustc
             pkgs.cargo
             pkgs.cargo-edit
+            pkgs.cargo-machete
             pkgs.rust-analyzer
             pkgs.clippy
             pkgs.rustfmt
