@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.7.7", features = ["http2", "macros"] }
 clap = { version = "4.5.19", features = ["cargo", "derive"] }
-color-eyre = "0.6.3"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }

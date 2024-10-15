@@ -195,7 +195,6 @@ dependencies = [
  "color-eyre",
  "common",
  "directories",
- "serde",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -207,7 +206,6 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "clap",
- "color-eyre",
  "serde",
  "serde_json",
  "tokio",
@@ -364,15 +362,12 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "color-eyre",
- "directories",
  "proptest",
  "rand_core",
  "rand_pcg",
  "serde",
- "serde_json",
  "thiserror",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
