@@ -21,7 +21,9 @@ async fn main() {
         .with_max_level(options.log_level)
         .init();
 
-    let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+    let app = Router::new()
+        .layer(tower_http::trace::TraceLayer::new_for_http())
+        .route("/", get(|| async { "Hello, World!" }));
 
     tracing::info!(address = &options.address, "listening");
     let listener = tokio::net::TcpListener::bind(options.address)
