@@ -7,6 +7,7 @@ use tracing::level_filters::LevelFilter;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
+#[clap(version)]
 struct Options {
     #[clap(long = "log-level", default_value = "info")]
     log_level: LevelFilter,
