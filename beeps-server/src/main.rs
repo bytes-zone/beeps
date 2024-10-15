@@ -24,6 +24,9 @@ async fn main() {
     let app = Router::new()
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .layer(tower_http::compression::CompressionLayer::new())
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(
+            1024 * 1024 * 5,
+        ))
         .route("/", get(|| async { "Hello, World!" }));
 
     tracing::info!(address = &options.address, "listening");
