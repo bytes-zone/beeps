@@ -25,7 +25,10 @@ jobs:
     needs: create-release
     strategy:
       matrix:
-        include:
+        bin:
+          - beeps
+          - beeps-server
+        target:
           # - target: x86_64-unknown-linux-gnu
           #   os: ubuntu-latest
           # - target: x86_64-apple-darwin
@@ -35,18 +38,18 @@ jobs:
           # - target: x86_64-pc-windows-msvc
           #   os: windows-latest
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          bin: beeps
+          bin: ${{ matrix.bin }}
           # (optional) Target triple, default is host triple.
           # This is optional but it is recommended that this always be set to
           # clarify which target you are building for if macOS is included in
           # the matrix because GitHub Actions changed the default architecture
           # of macos-latest since macos-14.
-          target: ${{ matrix.target }}
+          target: ${{ matrix.target.target }}
           # (optional) On which platform to distribute the `.tar.gz` file.
           # [default value: unix]
           # [possible values: all, unix, windows, none]
