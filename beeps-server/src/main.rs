@@ -9,10 +9,10 @@ use tracing::level_filters::LevelFilter;
 #[derive(Parser, Debug)]
 #[clap(version)]
 struct Options {
-    #[clap(long = "log-level", default_value = "info")]
+    #[clap(long = "log-level", default_value = "info", env = "LOG_LEVEL")]
     log_level: LevelFilter,
 
-    #[clap(long = "address", default_value = "0.0.0.0:3000")]
+    #[clap(long = "address", default_value = "0.0.0.0:3000", env = "ADDRESS")]
     address: String,
 }
 
