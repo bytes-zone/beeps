@@ -9,18 +9,18 @@ use tracing::level_filters::LevelFilter;
 #[derive(Parser, Debug)]
 #[clap(version)]
 struct Options {
-    #[clap(long = "log-level", default_value = "info", env = "LOG_LEVEL")]
+    #[clap(long, env, default_value = "info")]
     log_level: LevelFilter,
 
-    #[clap(long = "address", default_value = "0.0.0.0:3000", env = "ADDRESS")]
+    #[clap(long, env, default_value = "0.0.0.0:3000")]
     address: String,
 
     /// Request body size limit, in bytes
-    #[clap(long = "body-limit", default_value = "5242880", env = "BODY_LIMIT")]
+    #[clap(long, env, default_value = "5242880")]
     body_limit: usize,
 
     /// Request timeout, in seconds
-    #[clap(long = "request-timeout", value_parser = duration_parser, default_value = "5", env = "REQUEST_TIMEOUT")]
+    #[clap(long, env, value_parser = duration_parser, default_value = "5")]
     request_timeout: Duration,
 }
 
