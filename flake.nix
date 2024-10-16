@@ -21,6 +21,7 @@
             pkgs.rustfmt
             pkgs.libiconv
             pkgs.typos
+            pkgs.postgresql_16
           ];
         };
       }

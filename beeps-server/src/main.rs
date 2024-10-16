@@ -23,6 +23,9 @@ struct Options {
     /// Request timeout, in seconds
     #[clap(long, env, value_parser = duration_parser, default_value = "5")]
     request_timeout: Duration,
+
+    #[clap(long, env, default_value = "postgres://postgres@localhost:5432/beeps")]
+    db_url: String,
 }
 
 fn duration_parser(s: &str) -> Result<Duration, std::num::ParseIntError> {
