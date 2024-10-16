@@ -1,7 +1,13 @@
-use std::{iter::once, time::Duration};
+mod conn;
+mod response;
 
-use axum::{http::header::AUTHORIZATION, routing::get, Router};
+use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
 use clap::Parser;
+use conn::Conn;
+use response::internal_error;
+use sqlx::{postgres::PgPoolOptions, Postgres};
+use std::{iter::once, time::Duration};
+use tokio::net::TcpListener;
 use tower_http::{compression, limit, sensitive_headers, timeout, trace};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -21,11 +27,17 @@ struct Options {
     body_limit: usize,
 
     /// Request timeout, in seconds
-    #[clap(long, env, value_parser = duration_parser, default_value = "5")]
+    #[clap(long, env, default_value = "5", value_parser = duration_parser)]
     request_timeout: Duration,
 
-    #[clap(long, env, default_value = "postgres://postgres@localhost:5432/beeps")]
+    #[clap(long, env, default_value = "postgres://beeps@localhost:5432/beeps")]
     db_url: String,
+
+    #[clap(long, env, default_value = "3", value_parser = duration_parser)]
+    db_acquire_timeout: Duration,
+
+    #[clap(long, env, default_value = "5")]
+    db_max_connections: u32,
 }
 
 fn duration_parser(s: &str) -> Result<Duration, std::num::ParseIntError> {
@@ -46,6 +58,13 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let pool = PgPoolOptions::new()
+        .max_connections(options.db_max_connections)
+        .acquire_timeout(options.db_acquire_timeout)
+        .connect(&options.db_url)
+        .await
+        .expect("can't connect to database");
+
     let app = Router::new()
         .layer(trace::TraceLayer::new_for_http())
         .layer(compression::CompressionLayer::new())
@@ -54,12 +73,20 @@ async fn main() {
             AUTHORIZATION,
         )))
         .layer(timeout::TimeoutLayer::new(options.request_timeout))
-        .route("/", get(|| async { "Hello, World!" }));
+        // ROUTES
+        .route("/", get(hello_world))
+        // STATE
+        .with_state(pool);
 
-    tracing::info!(address = &options.address, "listening");
-    let listener = tokio::net::TcpListener::bind(options.address)
-        .await
-        .unwrap();
+    let listener = TcpListener::bind(options.address).await.unwrap();
+    tracing::info!(address = ?listener.local_addr(), "listening");
 
     axum::serve(listener, app).await.unwrap();
+}
+
+async fn hello_world(Conn(mut conn): Conn) -> impl IntoResponse {
+    sqlx::query_scalar::<Postgres, String>("select 'hello world from pg'")
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(internal_error)
 }
