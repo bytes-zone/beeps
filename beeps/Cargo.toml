@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.19", features = ["cargo", "derive"] }
+clap = { version = "4.5.20", features = ["cargo", "derive"] }
 color-eyre = "0.6.3"
 common = { path = "../common" }
 directories = "5.0.1"
