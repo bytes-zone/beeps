@@ -22,6 +22,8 @@
             pkgs.libiconv
             pkgs.typos
             pkgs.postgresql_16
+
+            pkgs.darwin.Security
           ];
         };
       }
