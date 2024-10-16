@@ -23,7 +23,8 @@
             pkgs.typos
             pkgs.postgresql_16
 
-            pkgs.darwin.Security
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
         };
       }
