@@ -94,7 +94,7 @@ impl Cli {
                 std::thread::sleep(duration);
 
                 std::process::Command::new("say")
-                    .arg("you have a new ping")
+                    .arg("you have a new beep")
                     .spawn()
                     .wrap_err("could not invoke say")?;
             } else {
