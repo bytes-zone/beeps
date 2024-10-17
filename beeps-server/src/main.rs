@@ -5,7 +5,7 @@ use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Ro
 use clap::Parser;
 use conn::Conn;
 use response::internal_error;
-use sqlx::{postgres::PgPoolOptions, Postgres};
+use sqlx::{migrate, postgres::PgPoolOptions, Postgres};
 use std::{iter::once, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, limit, sensitive_headers, timeout, trace};
@@ -64,6 +64,11 @@ async fn main() {
         .connect(&options.database_url)
         .await
         .expect("can't connect to database");
+
+    migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("could not run migrations");
 
     let app = Router::new()
         .layer(trace::TraceLayer::new_for_http())
