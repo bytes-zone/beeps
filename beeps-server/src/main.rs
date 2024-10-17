@@ -31,13 +31,13 @@ struct Options {
     request_timeout: Duration,
 
     #[clap(long, env, default_value = "postgres://beeps@localhost:5432/beeps")]
-    db_url: String,
+    database_url: String,
 
     #[clap(long, env, default_value = "3", value_parser = duration_parser)]
-    db_acquire_timeout: Duration,
+    database_acquire_timeout: Duration,
 
     #[clap(long, env, default_value = "5")]
-    db_max_connections: u32,
+    database_max_connections: u32,
 }
 
 fn duration_parser(s: &str) -> Result<Duration, std::num::ParseIntError> {
@@ -59,9 +59,9 @@ async fn main() {
         .init();
 
     let pool = PgPoolOptions::new()
-        .max_connections(options.db_max_connections)
-        .acquire_timeout(options.db_acquire_timeout)
-        .connect(&options.db_url)
+        .max_connections(options.database_max_connections)
+        .acquire_timeout(options.database_acquire_timeout)
+        .connect(&options.database_url)
         .await
         .expect("can't connect to database");
 
