@@ -22,6 +22,7 @@
             pkgs.libiconv
             pkgs.typos
             pkgs.postgresql_16
+            pkgs.sqlx-cli
 
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
