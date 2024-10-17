@@ -5,7 +5,7 @@ use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Ro
 use clap::Parser;
 use conn::Conn;
 use response::internal_error;
-use sqlx::{migrate, postgres::PgPoolOptions, Postgres};
+use sqlx::{migrate, postgres::PgPoolOptions, query, Postgres};
 use std::{iter::once, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, limit, sensitive_headers, timeout, trace};
@@ -90,6 +90,13 @@ async fn main() {
 }
 
 async fn hello_world(Conn(mut conn): Conn) -> impl IntoResponse {
+    let q = query!("select * from accounts")
+        .fetch_one(&mut *conn)
+        .await
+        .map_err(internal_error)?;
+
+    tracing::warn!(?q, "sample query");
+
     sqlx::query_scalar::<Postgres, String>("select 'hello world from pg'")
         .fetch_one(&mut *conn)
         .await
