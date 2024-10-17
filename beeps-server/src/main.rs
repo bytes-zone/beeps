@@ -30,7 +30,7 @@ struct Options {
     #[clap(long, env, default_value = "5", value_parser = duration_parser)]
     request_timeout: Duration,
 
-    #[clap(long, env, default_value = "postgres://beeps@localhost:5432/beeps")]
+    #[clap(long, env)]
     database_url: String,
 
     #[clap(long, env, default_value = "3", value_parser = duration_parser)]
