@@ -15,11 +15,17 @@
             pkgs.rustc
             pkgs.cargo
             pkgs.cargo-edit
+            pkgs.cargo-machete
             pkgs.rust-analyzer
             pkgs.clippy
             pkgs.rustfmt
             pkgs.libiconv
             pkgs.typos
+            pkgs.postgresql_16
+            pkgs.sqlx-cli
+
+            pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
         };
       }
