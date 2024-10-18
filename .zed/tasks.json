@@ -1,0 +1,26 @@
+[
+  {
+    "label": "test",
+    "command": "cargo test"
+  },
+  {
+    "label": "clippy",
+    "command": "cargo clippy"
+  },
+  {
+    "label": "typos",
+    "command": "typos"
+  },
+  {
+    "label": "machete",
+    "command": "cargo machete"
+  },
+  {
+    "label": "server",
+    "command": "cargo run --bin beeps-server -- --log-level debug"
+  },
+  {
+    "label": "start db",
+    "command": "./scripts/start-pg.sh"
+  }
+]
