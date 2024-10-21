@@ -2,7 +2,11 @@ mod conn;
 mod endpoints;
 mod response;
 
-use axum::{http::header::AUTHORIZATION, routing::get, Router};
+use axum::{
+    http::header::AUTHORIZATION,
+    routing::{get, post},
+    Router,
+};
 use clap::Parser;
 use sqlx::{migrate, postgres::PgPoolOptions};
 use std::{iter::once, time::Duration};
@@ -79,6 +83,7 @@ async fn main() {
         .layer(timeout::TimeoutLayer::new(options.request_timeout))
         // ROUTES
         .route("/", get(endpoints::hello_world::handler))
+        .route("/api/v1/enroll", post(endpoints::enroll::handler))
         // STATE
         .with_state(pool);
 
