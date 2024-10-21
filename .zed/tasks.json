@@ -1,5 +1,9 @@
 [
   {
+    "label": "build",
+    "command": "cargo build"
+  },
+  {
     "label": "test",
     "command": "cargo test"
   },
