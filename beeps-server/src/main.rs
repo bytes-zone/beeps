@@ -1,11 +1,10 @@
 mod conn;
+mod endpoints;
 mod response;
 
-use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
+use axum::{http::header::AUTHORIZATION, routing::get, Router};
 use clap::Parser;
-use conn::Conn;
-use response::internal_error;
-use sqlx::{migrate, postgres::PgPoolOptions, query, Postgres};
+use sqlx::{migrate, postgres::PgPoolOptions};
 use std::{iter::once, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, limit, sensitive_headers, timeout, trace};
@@ -79,7 +78,7 @@ async fn main() {
         )))
         .layer(timeout::TimeoutLayer::new(options.request_timeout))
         // ROUTES
-        .route("/", get(hello_world))
+        .route("/", get(endpoints::hello_world::handler))
         // STATE
         .with_state(pool);
 
@@ -87,18 +86,4 @@ async fn main() {
     tracing::info!(address = ?listener.local_addr(), "listening");
 
     axum::serve(listener, app).await.unwrap();
-}
-
-async fn hello_world(Conn(mut conn): Conn) -> impl IntoResponse {
-    let q = query!("select * from accounts")
-        .fetch_one(&mut *conn)
-        .await
-        .map_err(internal_error)?;
-
-    tracing::warn!(?q, "sample query");
-
-    sqlx::query_scalar::<Postgres, String>("select 'hello world from pg'")
-        .fetch_one(&mut *conn)
-        .await
-        .map_err(internal_error)
 }
