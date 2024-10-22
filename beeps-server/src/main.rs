@@ -41,6 +41,9 @@ struct Options {
 
     #[clap(long, env, default_value = "5")]
     database_max_connections: u32,
+
+    #[clap(long, env)]
+    jwt_secret: String,
 }
 
 fn duration_parser(s: &str) -> Result<Duration, std::num::ParseIntError> {
