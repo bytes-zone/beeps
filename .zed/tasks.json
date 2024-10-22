@@ -26,5 +26,9 @@
   {
     "label": "start db",
     "command": "./scripts/start-pg.sh"
+  },
+  {
+    "label": "docs",
+    "command": "cargo doc --open"
   }
 ]
