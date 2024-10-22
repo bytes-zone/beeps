@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.7.7", features = ["http2", "macros"] }
+axum-extra = { version = "0.9.4", features = ["typed-header"] }
 clap = { version = "4.5.20", features = ["cargo", "derive", "env"] }
 jsonwebtoken = "9.3.0"
 sqlx = { version = "0.8.2", features = ["chrono", "derive", "macros", "migrate", "postgres", "runtime-tokio", "tls-native-tls"] }
