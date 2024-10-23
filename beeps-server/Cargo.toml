@@ -1,0 +1,22 @@
+[package]
+name = "beeps-server"
+version = "0.3.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7.7", features = ["http2", "macros"] }
+clap = { version = "4.5.20", features = ["cargo", "derive", "env"] }
+sqlx = { version = "0.8.2", features = ["chrono", "derive", "macros", "migrate", "postgres", "runtime-tokio", "tls-native-tls"] }
+tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
+tower-http = { version = "0.6.1", features = [
+    "compression-br",
+    "compression-deflate",
+    "compression-gzip",
+    "compression-zstd",
+    "limit",
+    "sensitive-headers",
+    "timeout",
+    "trace",
+] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

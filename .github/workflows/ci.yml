@@ -46,3 +46,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: crate-ci/typos@master
+
+  machete:
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Set up Rust
+      - name: Setup Rust and Cargo
+        uses: moonrepo/setup-rust@v1.2.1
+
+      # Check for unused dependencies
+      - uses: bnjbvr/cargo-machete@v0.7.0

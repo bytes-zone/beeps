@@ -27,7 +27,7 @@ pub enum FillError {
 
 impl Document {
     #[tracing::instrument(skip(log), level = "trace")]
-    pub fn from_ops(log: Log) -> Self {
+    pub fn from_log(log: Log) -> Self {
         let mut state = State::default();
 
         for op in log.ops() {
@@ -35,15 +35,15 @@ impl Document {
         }
 
         Self {
+            clock: Hlc::new(log.node()),
             log,
-            clock: Hlc::new(0), // TODO: allow setting a node ID, maybe from log?
             lambda: Lww::new(1.0 / 45.0),
             state,
         }
     }
 
     pub fn empty() -> Self {
-        Self::from_ops(Log::default())
+        Self::from_log(Log::default())
     }
 
     #[tracing::instrument(skip(self, wall_clock))]

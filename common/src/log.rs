@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::hlc::Hlc;
 use crate::op::Op;
 use serde::{Deserialize, Serialize};
@@ -17,11 +19,14 @@ pub enum Error {
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Log {
     ops: Vec<TimestampedOp>,
+
+    #[serde(default)]
+    node: u8,
 }
 
 impl Log {
-    pub fn from_ops(ops: Vec<TimestampedOp>) -> Self {
-        Self { ops }
+    pub fn from_ops(ops: Vec<TimestampedOp>, node: u8) -> Self {
+        Self { ops, node }
     }
 
     #[deprecated(note = "use from_ops and then checked pushes")]
@@ -55,6 +60,28 @@ impl Log {
 
     pub fn is_empty(&self) -> bool {
         self.ops.is_empty()
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn latest_for_each_node(&self) -> HashMap<u8, Hlc> {
+        let mut latest_ops: HashMap<u8, Hlc> = HashMap::with_capacity(8);
+
+        for op in &self.ops {
+            let node = op.timestamp.node;
+
+            let latest = latest_ops
+                .entry(node)
+                .or_insert_with(|| op.timestamp.clone());
+            if *latest < op.timestamp {
+                *latest = op.timestamp.clone();
+            }
+        }
+
+        latest_ops
+    }
+
+    pub fn node(&self) -> u8 {
+        self.node
     }
 }
 
@@ -131,6 +158,83 @@ mod test {
 
             assert!(log.push(op1).is_ok());
             assert!(log.push(op2).is_ok());
+        }
+    }
+
+    mod latest_for_each_node {
+        use super::*;
+
+        #[test]
+        fn returns_latest_op_for_single_node() {
+            let mut log = Log::default();
+
+            let ts1 = Utc::now();
+            let ts2 = ts1 + Duration::seconds(1);
+
+            let op1 = TimestampedOp {
+                timestamp: Hlc::new_at(1, ts1),
+                op: Op::SetTag {
+                    when: Utc::now(),
+                    tag: "tag".to_string(),
+                },
+            };
+
+            let op2 = TimestampedOp {
+                timestamp: Hlc::new_at(1, ts2),
+                op: Op::SetTag {
+                    when: Utc::now(),
+                    tag: "tag".to_string(),
+                },
+            };
+
+            log.push(op1).unwrap();
+            log.push(op2).unwrap();
+
+            let latest = log.latest_for_each_node();
+
+            assert_eq!(latest.get(&1).unwrap(), &Hlc::new_at(1, ts2));
+        }
+
+        #[test]
+        fn returns_latest_op_for_multiple_nodes() {
+            let mut log = Log::default();
+
+            let ts1 = Utc::now();
+            let ts2 = ts1 + Duration::seconds(1);
+            let ts3 = ts1 + Duration::seconds(1);
+
+            let op1 = TimestampedOp {
+                timestamp: Hlc::new_at(1, ts1),
+                op: Op::SetTag {
+                    when: Utc::now(),
+                    tag: "tag".to_string(),
+                },
+            };
+
+            let op2 = TimestampedOp {
+                timestamp: Hlc::new_at(2, ts2),
+                op: Op::SetTag {
+                    when: Utc::now(),
+                    tag: "tag".to_string(),
+                },
+            };
+
+            let op3 = TimestampedOp {
+                timestamp: Hlc::new_at(1, ts3),
+                op: Op::SetTag {
+                    when: Utc::now(),
+                    tag: "tag".to_string(),
+                },
+            };
+
+            log.push(op1).unwrap();
+            log.push(op2).unwrap();
+            log.push(op3).unwrap();
+
+            let latest = log.latest_for_each_node();
+
+            assert_eq!(latest.get(&1).unwrap(), &Hlc::new_at(1, ts3));
+            assert_eq!(latest.get(&2).unwrap(), &Hlc::new_at(2, ts2));
         }
     }
 }
