@@ -77,6 +77,8 @@ async fn main() {
         .await
         .expect("could not run migrations");
 
+    let state = state::State::new(pool, &options.jwt_secret).expect("could not initialize state");
+
     let app = Router::new()
         .layer(trace::TraceLayer::new_for_http())
         .layer(compression::CompressionLayer::new())
@@ -89,7 +91,7 @@ async fn main() {
         .route("/", get(endpoints::hello_world::handler))
         .route("/api/v1/enroll", post(endpoints::enroll::handler))
         // STATE
-        .with_state(state::State::new(pool));
+        .with_state(state);
 
     let listener = TcpListener::bind(options.address).await.unwrap();
     tracing::info!(address = ?listener.local_addr(), "listening");
