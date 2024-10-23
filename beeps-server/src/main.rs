@@ -1,6 +1,7 @@
 mod conn;
 mod endpoints;
 mod response;
+mod state;
 
 use axum::{
     http::header::AUTHORIZATION,
@@ -88,7 +89,7 @@ async fn main() {
         .route("/", get(endpoints::hello_world::handler))
         .route("/api/v1/enroll", post(endpoints::enroll::handler))
         // STATE
-        .with_state(pool);
+        .with_state(state::State::new(pool));
 
     let listener = TcpListener::bind(options.address).await.unwrap();
     tracing::info!(address = ?listener.local_addr(), "listening");
