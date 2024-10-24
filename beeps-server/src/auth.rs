@@ -12,9 +12,12 @@ use serde_json::json;
 
 #[derive(Debug, Deserialize)]
 pub struct Claims {
-    sub: usize,
-    iat: usize,
-    exp: usize,
+    pub sub: usize,
+    pub iat: usize,
+    pub exp: usize,
+
+    // special claims for beeps
+    pub document_id: i64,
 }
 
 #[async_trait]
