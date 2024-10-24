@@ -1,3 +1,4 @@
+mod auth;
 mod conn;
 mod endpoints;
 mod response;
