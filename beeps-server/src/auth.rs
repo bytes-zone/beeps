@@ -7,14 +7,14 @@ use axum::{Json, RequestPartsExt};
 use axum_extra::headers::{authorization::Bearer, Authorization};
 use axum_extra::TypedHeader;
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: usize,
-    pub iat: usize,
-    pub exp: usize,
+    pub iat: i64,
+    pub exp: i64,
 
     // special claims for beeps
     pub document_id: i64,

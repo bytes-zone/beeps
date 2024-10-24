@@ -90,6 +90,7 @@ async fn main() {
         .layer(timeout::TimeoutLayer::new(options.request_timeout))
         // ROUTES
         .route("/", get(endpoints::hello_world::handler))
+        .route("/api/v1/login", post(endpoints::login::handler))
         .route("/api/v1/enroll", post(endpoints::enroll::handler))
         // STATE
         .with_state(state);
