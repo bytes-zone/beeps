@@ -25,6 +25,15 @@ jobs:
       - name: Setup Rust and Cargo
         uses: moonrepo/setup-rust@v1.2.1
 
+      # Migrate
+      - name: Setup sqlx
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name: Migrate
+        run: sqlx migrate run
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/beeps
+
       # Test
       - name: Test
         run: cargo test
