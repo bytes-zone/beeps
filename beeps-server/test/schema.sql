@@ -82,7 +82,7 @@ CREATE TABLE public.devices (
     id integer NOT NULL,
     document_id bigint NOT NULL,
     name text NOT NULL,
-    node_id bigint NOT NULL
+    node_id integer NOT NULL
 );
 
 
