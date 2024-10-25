@@ -153,8 +153,8 @@ CREATE TABLE public.operations (
     document_id bigint NOT NULL,
     "timestamp" timestamp with time zone NOT NULL,
     counter bigint NOT NULL,
-    node smallint NOT NULL,
-    op jsonb NOT NULL
+    op jsonb NOT NULL,
+    device_id bigint
 );
 
 
@@ -259,17 +259,17 @@ ALTER TABLE ONLY public.operations
 
 
 --
+-- Name: idx_document_id_device_id_timestamp_desc_counter_desc; Type: INDEX; Schema: public; Owner: beeps
+--
+
+CREATE INDEX idx_document_id_device_id_timestamp_desc_counter_desc ON public.operations USING btree (document_id, device_id, "timestamp" DESC, counter DESC);
+
+
+--
 -- Name: idx_document_id_node_id; Type: INDEX; Schema: public; Owner: beeps
 --
 
 CREATE INDEX idx_document_id_node_id ON public.devices USING btree (document_id, node_id);
-
-
---
--- Name: idx_document_node_timestamp_counter_desc; Type: INDEX; Schema: public; Owner: beeps
---
-
-CREATE INDEX idx_document_node_timestamp_counter_desc ON public.operations USING btree (document_id, node, "timestamp" DESC, counter DESC);
 
 
 --
@@ -286,6 +286,14 @@ ALTER TABLE ONLY public.devices
 
 ALTER TABLE ONLY public.documents
     ADD CONSTRAINT documents_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: operations fk_device; Type: FK CONSTRAINT; Schema: public; Owner: beeps
+--
+
+ALTER TABLE ONLY public.operations
+    ADD CONSTRAINT fk_device FOREIGN KEY (device_id) REFERENCES public.devices(id);
 
 
 --
