@@ -16,45 +16,9 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: _sqlx_test; Type: SCHEMA; Schema: -; Owner: beeps
---
-
-CREATE SCHEMA _sqlx_test;
-
-
-ALTER SCHEMA _sqlx_test OWNER TO beeps;
-
---
--- Name: database_ids; Type: SEQUENCE; Schema: _sqlx_test; Owner: beeps
---
-
-CREATE SEQUENCE _sqlx_test.database_ids
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE _sqlx_test.database_ids OWNER TO beeps;
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: databases; Type: TABLE; Schema: _sqlx_test; Owner: beeps
---
-
-CREATE TABLE _sqlx_test.databases (
-    db_name text NOT NULL,
-    test_path text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
-ALTER TABLE _sqlx_test.databases OWNER TO beeps;
 
 --
 -- Name: _sqlx_migrations; Type: TABLE; Schema: public; Owner: beeps
@@ -242,14 +206,6 @@ ALTER TABLE ONLY public.operations ALTER COLUMN id SET DEFAULT nextval('public.o
 
 
 --
--- Name: databases databases_pkey; Type: CONSTRAINT; Schema: _sqlx_test; Owner: beeps
---
-
-ALTER TABLE ONLY _sqlx_test.databases
-    ADD CONSTRAINT databases_pkey PRIMARY KEY (db_name);
-
-
---
 -- Name: _sqlx_migrations _sqlx_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: beeps
 --
 
@@ -295,13 +251,6 @@ ALTER TABLE ONLY public.documents
 
 ALTER TABLE ONLY public.operations
     ADD CONSTRAINT operations_pkey PRIMARY KEY (id);
-
-
---
--- Name: databases_created_at; Type: INDEX; Schema: _sqlx_test; Owner: beeps
---
-
-CREATE INDEX databases_created_at ON _sqlx_test.databases USING btree (created_at);
 
 
 --
