@@ -106,6 +106,42 @@ ALTER SEQUENCE public.accounts_id_seq OWNED BY public.accounts.id;
 
 
 --
+-- Name: devices; Type: TABLE; Schema: public; Owner: beeps
+--
+
+CREATE TABLE public.devices (
+    id integer NOT NULL,
+    document_id bigint NOT NULL,
+    name text NOT NULL,
+    node_id bigint NOT NULL
+);
+
+
+ALTER TABLE public.devices OWNER TO beeps;
+
+--
+-- Name: devices_id_seq; Type: SEQUENCE; Schema: public; Owner: beeps
+--
+
+CREATE SEQUENCE public.devices_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.devices_id_seq OWNER TO beeps;
+
+--
+-- Name: devices_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: beeps
+--
+
+ALTER SEQUENCE public.devices_id_seq OWNED BY public.devices.id;
+
+
+--
 -- Name: documents; Type: TABLE; Schema: public; Owner: beeps
 --
 
@@ -185,6 +221,13 @@ ALTER TABLE ONLY public.accounts ALTER COLUMN id SET DEFAULT nextval('public.acc
 
 
 --
+-- Name: devices id; Type: DEFAULT; Schema: public; Owner: beeps
+--
+
+ALTER TABLE ONLY public.devices ALTER COLUMN id SET DEFAULT nextval('public.devices_id_seq'::regclass);
+
+
+--
 -- Name: documents id; Type: DEFAULT; Schema: public; Owner: beeps
 --
 
@@ -223,6 +266,22 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: devices devices_document_id_node_id_key; Type: CONSTRAINT; Schema: public; Owner: beeps
+--
+
+ALTER TABLE ONLY public.devices
+    ADD CONSTRAINT devices_document_id_node_id_key UNIQUE (document_id, node_id);
+
+
+--
+-- Name: devices devices_pkey; Type: CONSTRAINT; Schema: public; Owner: beeps
+--
+
+ALTER TABLE ONLY public.devices
+    ADD CONSTRAINT devices_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: documents documents_pkey; Type: CONSTRAINT; Schema: public; Owner: beeps
 --
 
@@ -250,6 +309,14 @@ CREATE INDEX databases_created_at ON _sqlx_test.databases USING btree (created_a
 --
 
 CREATE INDEX idx_document_node_timestamp_counter_desc ON public.operations USING btree (document_id, node, "timestamp" DESC, counter DESC);
+
+
+--
+-- Name: devices devices_document_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: beeps
+--
+
+ALTER TABLE ONLY public.devices
+    ADD CONSTRAINT devices_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id);
 
 
 --
