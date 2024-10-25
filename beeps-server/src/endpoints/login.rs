@@ -3,10 +3,11 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::Claims, error::Error};
+use crate::{auth::Claims, error::Error, state::Password};
 
 #[derive(Debug, Deserialize)]
 pub struct AuthReq {
+    password: String,
     sub: usize,
     document_id: i64,
 }
@@ -27,11 +28,16 @@ impl From<String> for AuthResp {
     }
 }
 
-#[tracing::instrument(skip(encoding_key))]
+#[tracing::instrument(skip(encoding_key, password))]
 pub async fn handler(
     State(encoding_key): State<EncodingKey>,
+    State(password): State<Password>,
     Json(req): Json<AuthReq>,
 ) -> Result<Json<AuthResp>, Error> {
+    if req.password != password.0 {
+        return Err(Error::unauthorized("invalid password"));
+    }
+
     if req.document_id < 0 {
         return Err(Error::bad_request("invalid document_id"));
     }
@@ -67,7 +73,9 @@ mod tests {
     async fn success() {
         let res = handler(
             State(encoding_key()),
+            State(Password("password".to_string())),
             Json(AuthReq {
+                password: "password".to_string(),
                 sub: 1,
                 document_id: 1,
             }),
@@ -80,10 +88,30 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn invalid_password() {
+        let res = handler(
+            State(encoding_key()),
+            State(Password("password".to_string())),
+            Json(AuthReq {
+                password: "HONK".to_string(),
+                sub: 1,
+                document_id: 1,
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(res.message, "invalid password".to_string());
+        assert_eq!(res.status_code, StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
     async fn invalid_document_id() {
         let res = handler(
             State(encoding_key()),
+            State(Password("password".to_string())),
             Json(AuthReq {
+                password: "password".to_string(),
                 sub: 1,
                 document_id: -1,
             }),

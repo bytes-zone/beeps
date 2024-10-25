@@ -25,6 +25,10 @@ impl Error {
     pub(crate) fn internal_server_error(message: &str) -> Self {
         Self::new(message, StatusCode::INTERNAL_SERVER_ERROR)
     }
+
+    pub(crate) fn unauthorized(message: &str) -> Self {
+        Self::new(message, StatusCode::UNAUTHORIZED)
+    }
 }
 
 impl IntoResponse for Error {

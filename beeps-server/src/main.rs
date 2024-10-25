@@ -43,6 +43,9 @@ struct Options {
 
     #[clap(long, env)]
     jwt_secret: String,
+
+    #[clap(long, env)]
+    login_password: String,
 }
 
 fn duration_parser(s: &str) -> Result<Duration, std::num::ParseIntError> {
@@ -75,7 +78,8 @@ async fn main() {
         .await
         .expect("could not run migrations");
 
-    let state = state::State::new(pool, &options.jwt_secret).expect("could not initialize state");
+    let state = state::State::new(pool, &options.jwt_secret, &options.login_password)
+        .expect("could not initialize state");
 
     let app = Router::new()
         .layer(trace::TraceLayer::new_for_http())
