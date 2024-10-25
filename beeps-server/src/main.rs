@@ -1,6 +1,7 @@
 mod auth;
 mod conn;
 mod endpoints;
+mod error;
 mod response;
 mod state;
 

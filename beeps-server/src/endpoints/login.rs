@@ -1,9 +1,9 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
-use crate::auth::Claims;
+use crate::{auth::Claims, error::Error};
 
 #[derive(Debug, Deserialize)]
 pub struct AuthReq {
@@ -22,9 +22,9 @@ pub struct AuthResp {
 pub async fn handler(
     State(encoding_key): State<EncodingKey>,
     Json(req): Json<AuthReq>,
-) -> Result<Json<AuthResp>, (StatusCode, &'static str)> {
+) -> Result<Json<AuthResp>, Error> {
     if req.document_id < 0 {
-        return Err((StatusCode::BAD_REQUEST, "Invalid document_id"));
+        return Err(Error::bad_request("invalid document_id"));
     }
 
     let now = Utc::now();
@@ -38,7 +38,7 @@ pub async fn handler(
 
     let token = encode(&Header::default(), &claims, &encoding_key).map_err(|e| {
         tracing::error!(?e, "error encoding token");
-        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to encode token")
+        Error::internal_server_error("failed to encode token")
     })?;
 
     Ok(Json(AuthResp {
