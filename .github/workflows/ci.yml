@@ -29,9 +29,9 @@ jobs:
       - name: Migrate
         run: psql -h localhost -f beeps-server/test/schema.sql
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: beeps
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: beeps
 
       # Test
       - name: Test
