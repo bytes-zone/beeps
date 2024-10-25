@@ -26,14 +26,12 @@ jobs:
         uses: moonrepo/setup-rust@v1.2.1
 
       # Migrate
-      - name: Setup sqlx
-        run: cargo install sqlx-cli --no-default-features --features postgres
-
       - name: Migrate
-        run: sqlx migrate run
-        working-directory: beeps-server
+        run: psql -h localhost -f beeps-server/test/schema.sql
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/beeps
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: beeps
 
       # Test
       - name: Test
