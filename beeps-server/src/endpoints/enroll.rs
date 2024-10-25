@@ -18,3 +18,18 @@ pub async fn handler(claims: Claims, Conn(mut conn): Conn) -> Result<String, Err
 
     Ok(aggregate.max.unwrap_or(0).to_string())
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::auth::Claims;
+    use crate::conn::Conn;
+    use sqlx::{pool::PoolConnection, Postgres};
+
+    #[sqlx::test]
+    async fn test_handler(pool: PoolConnection<Postgres>) {
+        let res = handler(Claims::test(1, 1), Conn(pool)).await.unwrap();
+
+        assert_eq!(res, "0");
+    }
+}

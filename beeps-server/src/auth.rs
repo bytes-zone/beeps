@@ -20,6 +20,18 @@ pub struct Claims {
     pub document_id: i64,
 }
 
+impl Claims {
+    #[cfg(test)]
+    pub fn test(sub: usize, document_id: i64) -> Self {
+        Self {
+            sub,
+            iat: 0,
+            exp: (chrono::Utc::now() + chrono::Duration::days(30)).timestamp(),
+            document_id,
+        }
+    }
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
