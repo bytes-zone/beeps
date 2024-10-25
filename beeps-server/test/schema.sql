@@ -305,6 +305,13 @@ CREATE INDEX databases_created_at ON _sqlx_test.databases USING btree (created_a
 
 
 --
+-- Name: idx_document_id_node_id; Type: INDEX; Schema: public; Owner: beeps
+--
+
+CREATE INDEX idx_document_id_node_id ON public.devices USING btree (document_id, node_id);
+
+
+--
 -- Name: idx_document_node_timestamp_counter_desc; Type: INDEX; Schema: public; Owner: beeps
 --
 

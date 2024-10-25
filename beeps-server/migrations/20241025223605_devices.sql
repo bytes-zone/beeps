@@ -6,3 +6,5 @@ CREATE TABLE devices (
     FOREIGN KEY (document_id) REFERENCES documents(id),
     UNIQUE (document_id, node_id)
 );
+
+CREATE INDEX idx_document_id_node_id ON devices (document_id, node_id);
