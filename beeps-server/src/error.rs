@@ -5,9 +5,10 @@ use axum::{
     Json,
 };
 
+#[derive(Debug)]
 pub struct Error {
-    message: String,
-    status_code: StatusCode,
+    pub message: String,
+    pub status_code: StatusCode,
 }
 
 impl Error {

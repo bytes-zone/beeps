@@ -11,7 +11,7 @@ pub struct AuthReq {
     document_id: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct AuthResp {
     token: String,
     #[serde(rename = "type")]
@@ -51,4 +51,47 @@ pub async fn handler(
     })?;
 
     Ok(Json(AuthResp::from(token)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::StatusCode;
+    use jsonwebtoken::EncodingKey;
+
+    fn encoding_key() -> EncodingKey {
+        EncodingKey::from_secret(b"secret".as_ref())
+    }
+
+    #[tokio::test]
+    async fn success() {
+        let res = handler(
+            State(encoding_key()),
+            Json(AuthReq {
+                sub: 1,
+                document_id: 1,
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(res.0.token.split(".").collect::<Vec<&str>>().len(), 3);
+        assert_eq!(res.0.type_, "Bearer");
+    }
+
+    #[tokio::test]
+    async fn invalid_document_id() {
+        let res = handler(
+            State(encoding_key()),
+            Json(AuthReq {
+                sub: 1,
+                document_id: -1,
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(res.message, "invalid document_id".to_string());
+        assert_eq!(res.status_code, StatusCode::BAD_REQUEST);
+    }
 }
