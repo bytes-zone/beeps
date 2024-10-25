@@ -1,16 +1,17 @@
-use beeps::document::Document;
-use beeps::log::Log;
 use chrono::{Local, Utc};
 use clap::Parser;
 use color_eyre::{
     eyre::{self, Context},
     Result,
 };
+use common::document::Document;
+use common::log::Log;
 use directories::ProjectDirs;
 use tracing::level_filters::LevelFilter;
 
 /// Keep track of what you're doing throughout the day by being annoyed by a robot.
 #[derive(Parser, Debug)]
+#[clap(version)]
 struct Cli {
     #[clap(long = "log-level", default_value = "error")]
     log_level: LevelFilter,
@@ -39,7 +40,7 @@ impl Cli {
         let data = std::fs::read_to_string(path).wrap_err("could not read data")?;
         let ops = serde_json::from_str(&data).wrap_err("could not deserialize data")?;
 
-        Ok(Document::from_ops(ops))
+        Ok(Document::from_log(ops))
     }
 
     #[tracing::instrument(skip(self, document))]
@@ -93,7 +94,7 @@ impl Cli {
                 std::thread::sleep(duration);
 
                 std::process::Command::new("say")
-                    .arg("you have a new ping")
+                    .arg("you have a new beep")
                     .spawn()
                     .wrap_err("could not invoke say")?;
             } else {
