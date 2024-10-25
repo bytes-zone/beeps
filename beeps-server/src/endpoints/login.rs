@@ -18,6 +18,15 @@ pub struct AuthResp {
     type_: &'static str,
 }
 
+impl From<String> for AuthResp {
+    fn from(token: String) -> Self {
+        Self {
+            token,
+            type_: "Bearer",
+        }
+    }
+}
+
 #[tracing::instrument(skip(encoding_key))]
 pub async fn handler(
     State(encoding_key): State<EncodingKey>,
@@ -41,8 +50,5 @@ pub async fn handler(
         Error::internal_server_error("failed to encode token")
     })?;
 
-    Ok(Json(AuthResp {
-        token,
-        type_: "Bearer",
-    }))
+    Ok(Json(AuthResp::from(token)))
 }
