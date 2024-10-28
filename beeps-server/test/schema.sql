@@ -81,8 +81,7 @@ ALTER SEQUENCE public.accounts_id_seq OWNED BY public.accounts.id;
 CREATE TABLE public.devices (
     id integer NOT NULL,
     document_id bigint NOT NULL,
-    name text NOT NULL,
-    node_id integer NOT NULL
+    name text NOT NULL
 );
 
 
@@ -227,11 +226,11 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- Name: devices devices_document_id_node_id_key; Type: CONSTRAINT; Schema: public; Owner: beeps
+-- Name: devices devices_document_id_name_key; Type: CONSTRAINT; Schema: public; Owner: beeps
 --
 
 ALTER TABLE ONLY public.devices
-    ADD CONSTRAINT devices_document_id_node_id_key UNIQUE (document_id, node_id);
+    ADD CONSTRAINT devices_document_id_name_key UNIQUE (document_id, name);
 
 
 --
@@ -263,13 +262,6 @@ ALTER TABLE ONLY public.operations
 --
 
 CREATE INDEX idx_document_id_device_id_timestamp_desc_counter_desc ON public.operations USING btree (document_id, device_id, "timestamp" DESC, counter DESC);
-
-
---
--- Name: idx_document_id_node_id; Type: INDEX; Schema: public; Owner: beeps
---
-
-CREATE INDEX idx_document_id_node_id ON public.devices USING btree (document_id, node_id);
 
 
 --
