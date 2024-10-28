@@ -8,7 +8,7 @@ use crate::{auth::Claims, error::Error, state::Password};
 #[derive(Debug, Deserialize)]
 pub struct AuthReq {
     password: String,
-    sub: usize,
+    sub: i64,
     document_id: i64,
 }
 

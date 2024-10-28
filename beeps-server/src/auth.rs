@@ -10,9 +10,9 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
-    pub sub: usize,
+    pub sub: i64,
     pub iat: i64,
     pub exp: i64,
 
@@ -22,7 +22,7 @@ pub struct Claims {
 
 impl Claims {
     #[cfg(test)]
-    pub fn test(sub: usize, document_id: i64) -> Self {
+    pub fn test(sub: i64, document_id: i64) -> Self {
         Self {
             sub,
             iat: 0,
