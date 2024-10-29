@@ -21,11 +21,11 @@ pub struct Log {
     ops: Vec<TimestampedOp>,
 
     #[serde(default)]
-    node: u8,
+    node: i64,
 }
 
 impl Log {
-    pub fn from_ops(ops: Vec<TimestampedOp>, node: u8) -> Self {
+    pub fn from_ops(ops: Vec<TimestampedOp>, node: i64) -> Self {
         Self { ops, node }
     }
 
@@ -46,7 +46,7 @@ impl Log {
         Ok(())
     }
 
-    fn latest_for_node(&self, node: u8) -> Option<&TimestampedOp> {
+    fn latest_for_node(&self, node: i64) -> Option<&TimestampedOp> {
         self.ops.iter().rev().find(|op| op.timestamp.node == node)
     }
 
@@ -63,8 +63,8 @@ impl Log {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn latest_for_each_node(&self) -> HashMap<u8, Hlc> {
-        let mut latest_ops: HashMap<u8, Hlc> = HashMap::with_capacity(8);
+    pub fn latest_for_each_node(&self) -> HashMap<i64, Hlc> {
+        let mut latest_ops: HashMap<i64, Hlc> = HashMap::with_capacity(8);
 
         for op in &self.ops {
             let node = op.timestamp.node;
@@ -80,7 +80,7 @@ impl Log {
         latest_ops
     }
 
-    pub fn node(&self) -> u8 {
+    pub fn node(&self) -> i64 {
         self.node
     }
 }
