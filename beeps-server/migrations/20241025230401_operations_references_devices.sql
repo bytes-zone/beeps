@@ -1,6 +1,6 @@
 ALTER TABLE operations
     DROP COLUMN node,
-    ADD COLUMN device_id BIGINT,
+    ADD COLUMN device_id BIGINT NOT NULL,
     ADD CONSTRAINT fk_device
         FOREIGN KEY (device_id)
         REFERENCES devices(id);

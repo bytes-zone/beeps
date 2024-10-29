@@ -153,7 +153,7 @@ CREATE TABLE public.operations (
     "timestamp" timestamp with time zone NOT NULL,
     counter bigint NOT NULL,
     op jsonb NOT NULL,
-    device_id bigint
+    device_id bigint NOT NULL
 );
 
 
