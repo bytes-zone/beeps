@@ -32,6 +32,19 @@ impl Doc {
         }
     }
 
+    pub async fn add_device(&self, conn: &mut PoolConnection<Postgres>, name: &str) -> i64 {
+        query!(
+            "INSERT INTO devices (document_id, name) VALUES ($1, $2) RETURNING id::BIGINT",
+            self.document_id,
+            name
+        )
+        .fetch_one(&mut **conn)
+        .await
+        .unwrap()
+        .id
+        .unwrap()
+    }
+
     pub fn claims(&self) -> Claims {
         Claims::test(self.account_id, self.document_id)
     }
