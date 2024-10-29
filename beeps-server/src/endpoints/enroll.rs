@@ -78,7 +78,6 @@ pub async fn handler(
 mod test {
     use super::super::test::Doc;
     use super::*;
-    use crate::auth::Claims;
     use crate::conn::Conn;
     use sqlx::{pool::PoolConnection, Pool, Postgres};
 
