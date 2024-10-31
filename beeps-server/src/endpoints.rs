@@ -1,6 +1,6 @@
 pub mod enroll;
 pub mod login;
-pub mod sync_state;
+pub mod presync;
 
 #[cfg(test)]
 mod test;
