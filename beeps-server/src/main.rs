@@ -97,6 +97,7 @@ async fn main() {
         .route("/api/v1/login", post(endpoints::login::handler))
         .route("/api/v1/enroll", post(endpoints::enroll::handler))
         .route("/api/v1/sync_state", get(endpoints::presync::handler))
+        .route("/api/v1/sync", post(endpoints::sync::handler))
         // STATE
         .with_state(state);
 

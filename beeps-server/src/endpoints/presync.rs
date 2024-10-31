@@ -7,7 +7,7 @@ use axum::Json;
 use common::hlc::Hlc;
 use sqlx::query;
 
-type LatestEvents = HashMap<i64, Hlc>;
+pub type LatestEvents = HashMap<i64, Hlc>;
 
 #[tracing::instrument]
 pub async fn handler(claims: Claims, Conn(mut conn): Conn) -> Result<Json<LatestEvents>, Error> {
