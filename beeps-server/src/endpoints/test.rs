@@ -1,3 +1,5 @@
+use common::hlc::Hlc;
+use common::op::Op;
 use sqlx::{pool::PoolConnection, query, Acquire, Postgres};
 
 use crate::auth::Claims;
@@ -43,6 +45,26 @@ impl Doc {
         .unwrap()
         .id
         .unwrap()
+    }
+
+    pub async fn add_op(&self, conn: &mut PoolConnection<Postgres>, clock: &Hlc, op: &Op) -> i64 {
+        let result = query!(
+            r#"
+                INSERT INTO operations (document_id, timestamp, counter, op, device_id)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id::BIGINT
+            "#,
+            self.document_id,
+            clock.timestamp,
+            clock.counter,
+            serde_json::to_value(op).unwrap(),
+            clock.node
+        )
+        .fetch_one(&mut **conn)
+        .await
+        .unwrap();
+
+        result.id.unwrap()
     }
 
     pub fn claims(&self) -> Claims {

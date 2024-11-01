@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hlc {
     pub timestamp: DateTime<Utc>,
-    pub counter: u64,
+    pub counter: i64,
     pub node: i64,
 }
 
@@ -126,7 +126,7 @@ mod test {
 
         proptest! {
             #[test]
-            fn clock_monotonically_increases(node_a in 0i64..=255, counter_a in 0u64.., ts_a in 0i64..=2000000000, node_b in 0i64..=255, counter_b in 0u64.., ts_b in 0i64..=2000000000) {
+            fn clock_monotonically_increases(node_a in 0i64..=255, counter_a in 0i64.., ts_a in 0i64..=2000000000, node_b in 0i64..=255, counter_b in 0i64.., ts_b in 0i64..=2000000000) {
                 let hlc_a = Hlc {
                     timestamp: Utc.timestamp_opt(ts_a, 0).unwrap(),
                     counter: counter_a,

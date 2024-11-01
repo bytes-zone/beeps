@@ -39,7 +39,7 @@ pub async fn handler(claims: Claims, Conn(mut conn): Conn) -> Result<Json<Latest
             row.device_id,
             Hlc {
                 timestamp: row.timestamp,
-                counter: row.counter as u64,
+                counter: row.counter,
                 node: row.device_id,
             },
         );
