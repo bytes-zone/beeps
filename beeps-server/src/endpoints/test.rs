@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Timelike};
+use chrono::{DateTime, TimeZone};
 use common::hlc::Hlc;
 use common::op::Op;
 use sqlx::{pool::PoolConnection, query, Acquire, Postgres};
