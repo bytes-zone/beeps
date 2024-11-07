@@ -1,3 +1,4 @@
+use chrono::{DateTime, TimeZone, Timelike};
 use common::hlc::Hlc;
 use common::op::Op;
 use sqlx::{pool::PoolConnection, query, Acquire, Postgres};
@@ -70,4 +71,10 @@ impl Doc {
     pub fn claims(&self) -> Claims {
         Claims::test(self.account_id, self.document_id)
     }
+}
+
+pub fn trunc_ms<Z: TimeZone>(input: DateTime<Z>) -> DateTime<Z> {
+    DateTime::from_timestamp_micros(input.timestamp_micros())
+        .unwrap()
+        .with_timezone(&input.timezone())
 }

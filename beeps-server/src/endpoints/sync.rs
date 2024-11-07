@@ -140,6 +140,7 @@ mod test {
 
     use super::*;
     use crate::conn::Conn;
+    use crate::endpoints::test::trunc_ms;
     use crate::endpoints::test::Doc;
     use common::{hlc::Hlc, op::Op};
     use sqlx::{pool::PoolConnection, query, Pool, Postgres};
@@ -270,7 +271,7 @@ mod test {
             .await
             .unwrap();
 
-        assert_eq!(new_row.timestamp, timestamp.timestamp);
+        assert_eq!(new_row.timestamp, trunc_ms(timestamp.timestamp));
         assert_eq!(new_row.counter, timestamp.counter);
         assert_eq!(new_row.device_id, timestamp.node);
         assert_eq!(new_row.op, serde_json::to_value(op).unwrap());
