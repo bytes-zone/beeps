@@ -76,67 +76,42 @@ pub async fn handler(
 
 #[cfg(test)]
 mod test {
+    use super::super::test::Doc;
     use super::*;
-    use crate::auth::Claims;
     use crate::conn::Conn;
     use sqlx::{pool::PoolConnection, Pool, Postgres};
 
-    async fn create_document(pool: &mut PoolConnection<Postgres>) -> (i64, i64) {
-        let mut tx = pool.begin().await.unwrap();
-
-        let account = query!("INSERT INTO accounts DEFAULT VALUES RETURNING id::BIGINT")
-            .fetch_one(&mut *tx)
-            .await
-            .unwrap();
-
-        let document = query!(
-            "INSERT INTO documents (account_id) VALUES ($1) RETURNING id::BIGINT",
-            account.id.unwrap()
-        )
-        .fetch_one(&mut *tx)
-        .await
-        .unwrap();
-
-        tx.commit().await.unwrap();
-
-        return (account.id.unwrap(), document.id.unwrap());
-    }
-
     #[test_log::test(sqlx::test)]
     async fn enrolls_in_empty_document(mut conn: PoolConnection<Postgres>) {
-        let (account_id, document_id) = create_document(&mut conn).await;
-
-        let claims = Claims::test(account_id, document_id);
+        let doc = Doc::create(&mut conn).await;
 
         let req = Json(Req {
             name: "test".to_string(),
         });
 
-        let res = handler(claims, Conn(conn), req).await.unwrap();
+        let res = handler(doc.claims(), Conn(conn), req).await.unwrap();
 
         assert_eq!(res.0, Resp { id: 1 });
     }
 
     #[test_log::test(sqlx::test)]
     fn enrolls_with_same_name_fails(mut conn: PoolConnection<Postgres>) {
-        let (account_id, document_id) = create_document(&mut conn).await;
+        let doc = Doc::create(&mut conn).await;
 
         query!(
             "INSERT INTO devices (document_id, name) VALUES ($1, $2)",
-            document_id,
+            doc.document_id,
             "test"
         )
         .execute(&mut *conn)
         .await
         .unwrap();
 
-        let claims = Claims::test(account_id, document_id);
-
         let req = Json(Req {
             name: "test".to_string(),
         });
 
-        let res = handler(claims, Conn(conn), req).await.unwrap_err();
+        let res = handler(doc.claims(), Conn(conn), req).await.unwrap_err();
 
         assert_eq!(res.status_code, 400);
         assert_eq!(res.message, "a device named test already exists")
@@ -144,15 +119,13 @@ mod test {
 
     #[test_log::test(sqlx::test)]
     fn returns_unique_device_ids(pool: Pool<Postgres>) {
-        let (account_id, document_id) = create_document(&mut pool.acquire().await.unwrap()).await;
-
-        let claims = Claims::test(account_id, document_id);
+        let doc = Doc::create(&mut pool.acquire().await.unwrap()).await;
 
         let req = Json(Req {
             name: "test".to_string(),
         });
 
-        let res = handler(claims.clone(), Conn(pool.acquire().await.unwrap()), req)
+        let res = handler(doc.claims(), Conn(pool.acquire().await.unwrap()), req)
             .await
             .unwrap();
 
@@ -162,7 +135,7 @@ mod test {
             name: "test2".to_string(),
         });
 
-        let res = handler(claims, Conn(pool.acquire().await.unwrap()), req)
+        let res = handler(doc.claims(), Conn(pool.acquire().await.unwrap()), req)
             .await
             .unwrap();
 

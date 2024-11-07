@@ -40,3 +40,10 @@ impl IntoResponse for Error {
         (self.status_code, body).into_response()
     }
 }
+
+impl From<sqlx::Error> for Error {
+    fn from(err: sqlx::Error) -> Self {
+        tracing::error!(?err, "sqlx error");
+        Self::internal_server_error("sqlx error")
+    }
+}

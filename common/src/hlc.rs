@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hlc {
     pub timestamp: DateTime<Utc>,
-    pub counter: u64,
-    pub node: u8,
+    pub counter: i64,
+    pub node: i64,
 }
 
 impl Hlc {
-    pub fn new(node: u8) -> Self {
+    pub fn new(node: i64) -> Self {
         Self {
             timestamp: Utc::now(),
             counter: 0,
@@ -17,8 +17,7 @@ impl Hlc {
         }
     }
 
-    #[cfg(test)]
-    pub fn new_at(node: u8, timestamp: DateTime<Utc>) -> Self {
+    pub fn new_at(node: i64, timestamp: DateTime<Utc>) -> Self {
         Self {
             timestamp,
             counter: 0,
@@ -26,7 +25,7 @@ impl Hlc {
         }
     }
 
-    pub fn next(&self, node: u8) -> Self {
+    pub fn next(&self, node: i64) -> Self {
         let now = Utc::now();
 
         if now > self.timestamp {
@@ -44,7 +43,7 @@ impl Hlc {
         }
     }
 
-    pub fn next_tiebreak(&self, other: Option<&Self>, node: u8) -> Self {
+    pub fn next_tiebreak(&self, other: Option<&Self>, node: i64) -> Self {
         let current = match other {
             Some(other_) => self.max(other_),
             None => self,
@@ -127,7 +126,7 @@ mod test {
 
         proptest! {
             #[test]
-            fn clock_monotonically_increases(node_a in 0u8..=255, counter_a in 0u64.., ts_a in 0i64..=2000000000, node_b in 0u8..=255, counter_b in 0u64.., ts_b in 0i64..=2000000000) {
+            fn clock_monotonically_increases(node_a in 0i64..=255, counter_a in 0i64.., ts_a in 0i64..=2000000000, node_b in 0i64..=255, counter_b in 0i64.., ts_b in 0i64..=2000000000) {
                 let hlc_a = Hlc {
                     timestamp: Utc.timestamp_opt(ts_a, 0).unwrap(),
                     counter: counter_a,

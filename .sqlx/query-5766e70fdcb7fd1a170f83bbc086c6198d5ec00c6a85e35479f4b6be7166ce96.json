@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT ON (device_id)\n          device_id,\n          \"timestamp\",\n          counter\n        FROM operations\n        WHERE document_id = $1\n        ORDER BY\n            device_id,\n            \"timestamp\" DESC,\n            counter DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "device_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "timestamp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "counter",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5766e70fdcb7fd1a170f83bbc086c6198d5ec00c6a85e35479f4b6be7166ce96"
+}
