@@ -51,8 +51,8 @@ pub async fn handler(claims: Claims, Conn(mut conn): Conn) -> Result<Json<Latest
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::conn::Conn;
     use crate::endpoints::test::Doc;
+    use crate::{conn::Conn, endpoints::test::trunc_ms};
     use serde_json::json;
     use sqlx::{pool::PoolConnection, Postgres};
 
@@ -119,7 +119,7 @@ mod test {
                 (
                     device_id,
                     Hlc {
-                        timestamp: now,
+                        timestamp: trunc_ms(now),
                         counter: 1,
                         node: device_id
                     }
@@ -127,7 +127,7 @@ mod test {
                 (
                     device_id_2,
                     Hlc {
-                        timestamp: now,
+                        timestamp: trunc_ms(now),
                         counter: 0,
                         node: device_id_2
                     }

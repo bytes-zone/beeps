@@ -168,7 +168,7 @@ mod test {
         let doc = Doc::create(&mut conn).await;
 
         let device_id = doc.add_device(&mut conn, "test").await;
-        let timestamp = Hlc::new(device_id);
+        let timestamp = Hlc::new_at(device_id, trunc_ms(Utc::now()));
 
         let op = Op::AddPing {
             when: chrono::Utc::now(),
@@ -196,7 +196,7 @@ mod test {
 
         let device_id = doc.add_device(&mut conn, "test").await;
 
-        let when = chrono::Utc::now() - chrono::Duration::minutes(1);
+        let when = trunc_ms(chrono::Utc::now() - chrono::Duration::minutes(1));
 
         // event the client will already have seen
         let seen = TimestampedOp {
