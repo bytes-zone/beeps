@@ -21,6 +21,7 @@ import (
 
 type Beeps struct{}
 
+// Start a postgres server
 func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
 	return dag.Postgres(
 		dag.SetSecret("postgres-user", "beeps"),
@@ -47,6 +48,7 @@ func (m *Beeps) buildContainer(source *dagger.Directory, release bool) *dagger.C
 		WithWorkdir("/src")
 }
 
+// Build beeps and beeps-server
 func (m *Beeps) Build(
 	ctx context.Context,
 	source *dagger.Directory,
