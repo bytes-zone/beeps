@@ -51,10 +51,7 @@ pub async fn handler(
         document_id: req.document_id,
     };
 
-    let token = encode(&Header::default(), &claims, &encoding_key).map_err(|e| {
-        tracing::error!(?e, "error encoding token");
-        Error::internal_server_error("failed to encode token")
-    })?;
+    let token = encode(&Header::default(), &claims, &encoding_key)?;
 
     Ok(Json(AuthResp::from(token)))
 }

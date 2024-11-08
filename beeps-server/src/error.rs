@@ -47,3 +47,10 @@ impl From<sqlx::Error> for Error {
         Self::internal_server_error("sqlx error")
     }
 }
+
+impl From<jsonwebtoken::errors::Error> for Error {
+    fn from(err: jsonwebtoken::errors::Error) -> Self {
+        tracing::error!(?err, "jsonwebtoken error");
+        Self::internal_server_error("jsonwebtoken error")
+    }
+}

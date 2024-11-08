@@ -27,11 +27,7 @@ pub async fn handler(claims: Claims, Conn(mut conn): Conn) -> Result<Json<Latest
         claims.document_id
     )
     .fetch_all(&mut *conn)
-    .await
-    .map_err(|err| {
-        tracing::error!(?err, "failed to query latest clocks");
-        Error::internal_server_error("query failed")
-    })?;
+    .await?;
 
     let mut out = HashMap::with_capacity(rows.len());
     for row in rows {
