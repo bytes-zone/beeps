@@ -26,10 +26,7 @@ pub async fn handler(
     Conn(mut conn): Conn,
     req: Json<Req>,
 ) -> Result<Json<Resp>, Error> {
-    let mut tx = conn.begin().await.map_err(|err| {
-        tracing::error!(?err, "failed to acquire connection");
-        Error::internal_server_error("failed to acquire connection")
-    })?;
+    let mut tx = conn.begin().await?;
 
     // 1. get newer items that the client doesn't have
     let mut new_rows = QueryBuilder::new(
@@ -70,10 +67,7 @@ pub async fn handler(
     }
 
     let mut new_timestamped_ops = Vec::with_capacity(32);
-    for row in new_rows.build().fetch_all(&mut *tx).await.map_err(|err| {
-        tracing::error!(?err, "failed to query latest ops");
-        Error::internal_server_error("failed to query latest ops")
-    })? {
+    for row in new_rows.build().fetch_all(&mut *tx).await? {
         new_timestamped_ops.push(TimestampedOp {
             timestamp: Hlc {
                 timestamp: row.try_get::<DateTime<Utc>, &str>("timestamp")?,
@@ -108,14 +102,7 @@ pub async fn handler(
             );
         });
 
-        insert_query
-            .build()
-            .execute(&mut *tx)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to insert ops");
-                Error::internal_server_error("failed to insert ops")
-            })?;
+        insert_query.build().execute(&mut *tx).await?;
     }
 
     // 1. look up the latest messages in the database again and make sure they match the ones we were sent in the request
@@ -124,10 +111,7 @@ pub async fn handler(
     // 3. send back messages newer than the ones in req.starting
 
     // all done! Commit and return.
-    tx.commit().await.map_err(|err| {
-        tracing::error!(?err, "could not commit transaction");
-        Error::internal_server_error("error querying")
-    })?;
+    tx.commit().await?;
 
     Ok(Json(Resp {
         timestamped_ops: new_timestamped_ops,

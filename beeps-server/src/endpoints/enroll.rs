@@ -21,10 +21,7 @@ pub async fn handler(
     Conn(mut conn): Conn,
     req: Json<Req>,
 ) -> Result<Json<Resp>, Error> {
-    let mut tx = conn.begin().await.map_err(|err| {
-        tracing::error!(?err, "could not start transaction");
-        Error::internal_server_error("error querying")
-    })?;
+    let mut tx = conn.begin().await?;
 
     // 1. look up the devices already in the document
     let devices = query!(
@@ -32,11 +29,7 @@ pub async fn handler(
         claims.document_id
     )
     .fetch_all(&mut *tx)
-    .await
-    .map_err(|err| {
-        tracing::error!(?err, "error querying");
-        Error::internal_server_error("error querying")
-    })?;
+    .await?;
 
     tracing::debug!(?devices, "devices in account");
 
@@ -57,19 +50,12 @@ pub async fn handler(
         req.name,
     )
     .fetch_one(&mut *tx)
-    .await
-    .map_err(|err| {
-        tracing::error!(?err, "error creating new row");
-        Error::internal_server_error("error querying")
-    })?;
+    .await?;
 
     tracing::debug!(?new_row, "new row created");
 
     // all done! Commit and return.
-    tx.commit().await.map_err(|err| {
-        tracing::error!(?err, "could not commit transaction");
-        Error::internal_server_error("error querying")
-    })?;
+    tx.commit().await?;
 
     Ok(Json(Resp { id: new_row.id }))
 }
