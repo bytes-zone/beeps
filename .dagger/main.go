@@ -21,6 +21,19 @@ import (
 
 type Beeps struct{}
 
+func (m *Beeps) buildContainer(source *dagger.Directory, release bool) *dagger.Container {
+	command := []string{"cargo", "build"}
+	if release {
+		command = append(command, "--release")
+	}
+
+	return dag.Container().
+		From("rust:1.82.0").
+		WithMountedDirectory("/src", source).
+		WithMountedCache("/src/target", dag.CacheVolume("rust-compilation")).
+		WithWorkdir("/src")
+}
+
 func (m *Beeps) Build(
 	ctx context.Context,
 	source *dagger.Directory,
@@ -32,11 +45,7 @@ func (m *Beeps) Build(
 		command = append(command, "--release")
 	}
 
-	return dag.Container().
-		From("rust:1.82.0").
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src").
-		WithExec(command)
+	return m.buildContainer(source, release).WithExec(command)
 }
 
 // Returns a container that echoes whatever string argument is provided
