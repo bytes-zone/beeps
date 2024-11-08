@@ -21,6 +21,19 @@ import (
 
 type Beeps struct{}
 
+func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
+	return dag.Postgres(
+		dag.SetSecret("postgres-user", "beeps"),
+		dag.SetSecret("postgres-password", "beeps"),
+		dagger.PostgresOpts{
+			DbPort:     5432,
+			DbName:     "beeps",
+			Cache:      true,
+			InitScript: dag.Directory().WithFile("init.sql", init),
+		},
+	).Database()
+}
+
 func (m *Beeps) buildContainer(source *dagger.Directory, release bool) *dagger.Container {
 	command := []string{"cargo", "build"}
 	if release {
