@@ -44,6 +44,7 @@ func (m *Beeps) buildContainer(source *dagger.Directory, release bool) *dagger.C
 	return dag.Container().
 		From("rust:1.82.0").
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
+		WithExec([]string{"cargo", "install", "typos-cli"}).
 		WithMountedDirectory("/src", source).
 		WithMountedCache("/src/target", dag.CacheVolume("rust-compilation")).
 		WithWorkdir("/src")
@@ -70,6 +71,12 @@ func (m *Beeps) Build(
 func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) *dagger.Container {
 	return m.buildContainer(source, false).
 		WithExec([]string{"cargo", "clippy"})
+}
+
+// Find typos with Typos
+func (m *Beeps) Typos(ctx context.Context, source *dagger.Directory) *dagger.Container {
+	return m.buildContainer(source, false).
+		WithExec([]string{"typos"})
 }
 
 // Returns a container that echoes whatever string argument is provided
