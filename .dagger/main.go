@@ -35,12 +35,7 @@ func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
 	).Database()
 }
 
-func (m *Beeps) buildContainer(source *dagger.Directory, release bool) *dagger.Container {
-	command := []string{"cargo", "build"}
-	if release {
-		command = append(command, "--release")
-	}
-
+func (m *Beeps) buildContainer(source *dagger.Directory) *dagger.Container {
 	return dag.Container().
 		From("rust:1.82.0").
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
@@ -64,18 +59,18 @@ func (m *Beeps) Build(
 		command = append(command, "--release")
 	}
 
-	return m.buildContainer(source, release).WithExec(command)
+	return m.buildContainer(source).WithExec(command)
 }
 
 // Lint source code with Clippy
 func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source, false).
+	return m.buildContainer(source).
 		WithExec([]string{"cargo", "clippy"})
 }
 
 // Find typos with Typos
 func (m *Beeps) Typos(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source, false).
+	return m.buildContainer(source).
 		WithExec([]string{"typos"})
 }
 
