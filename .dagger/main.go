@@ -51,6 +51,8 @@ func (m *Beeps) buildContainer(source *dagger.Directory, release bool) *dagger.C
 // Build beeps and beeps-server
 func (m *Beeps) Build(
 	ctx context.Context,
+	// +optional
+	// +defaultPath=.
 	source *dagger.Directory,
 	// +optional
 	release bool,
