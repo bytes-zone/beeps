@@ -46,6 +46,7 @@ func (m *Beeps) buildContainer(source *dagger.Directory, cachePrefix string) *da
 		WithExec([]string{"rustup", "component", "add", "clippy", "rustfmt"}).
 		WithExec([]string{"cargo", "install", "typos-cli"}).
 		WithExec([]string{"cargo", "install", "cargo-machete"}).
+		WithExec([]string{"cargo", "install", "sqlx-cli", "--features", "postgres"}).
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src")
 }
@@ -119,28 +120,24 @@ func (m *Beeps) Test(
 			"postgres",
 			m.Db(
 				ctx,
-				source,
 				dag.SetSecret("pguser", "beeps"),
 				dag.SetSecret("pgpassword", "beeps"),
 			).AsService(),
 		).
 		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
+		WithExec([]string{"cargo", "sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
 		WithExec([]string{"cargo", "test"})
 }
 
 func (m *Beeps) Db(
 	ctx context.Context,
-	source *dagger.Directory,
 	user *dagger.Secret,
 	password *dagger.Secret,
 ) *dagger.Container {
 	return dag.Postgres(
 		user,
 		password,
-		dagger.PostgresOpts{
-			DbName:     "beeps",
-			InitScript: source.Directory("beeps-server/test"),
-		},
+		dagger.PostgresOpts{DbName: "beeps"},
 	).Database()
 }
 
