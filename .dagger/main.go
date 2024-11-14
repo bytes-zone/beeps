@@ -166,18 +166,3 @@ func (m *Beeps) Machete(ctx context.Context, source *dagger.Directory) *dagger.C
 	return m.buildContainer(source, "fmt").
 		WithExec([]string{"cargo", "machete"})
 }
-
-// Returns a container that echoes whatever string argument is provided
-func (m *Beeps) ContainerEcho(stringArg string) *dagger.Container {
-	return dag.Container().From("alpine:latest").WithExec([]string{"echo", stringArg})
-}
-
-// Returns lines that match a pattern in the files of the provided Directory
-func (m *Beeps) GrepDir(ctx context.Context, directoryArg *dagger.Directory, pattern string) (string, error) {
-	return dag.Container().
-		From("alpine:latest").
-		WithMountedDirectory("/mnt", directoryArg).
-		WithWorkdir("/mnt").
-		WithExec([]string{"grep", "-R", pattern, "."}).
-		Stdout(ctx)
-}
