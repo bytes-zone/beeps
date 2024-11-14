@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"dagger/beeps/internal/dagger"
+	"fmt"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -37,11 +38,11 @@ func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
 	).Database()
 }
 
-func (m *Beeps) buildContainer(source *dagger.Directory) *dagger.Container {
+func (m *Beeps) buildContainer(source *dagger.Directory, cachePrefix string) *dagger.Container {
 	return dag.Container().
 		From("rust:1.82.0").
 		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume("cargo-registry")).
-		WithMountedCache("/src/target", dag.CacheVolume("rust-compilation")).
+		WithMountedCache("/src/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cachePrefix))).
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		WithExec([]string{"cargo", "install", "typos-cli"}).
 		WithMountedDirectory("/src", source).
@@ -88,18 +89,18 @@ func (m *Beeps) Build(
 		command = append(command, "--release")
 	}
 
-	return m.buildContainer(source).WithExec(command)
+	return m.buildContainer(source, "build").WithExec(command)
 }
 
 // Lint source code with Clippy
 func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source).
+	return m.buildContainer(source, "clippy").
 		WithExec([]string{"cargo", "clippy"})
 }
 
 // Find typos with Typos
 func (m *Beeps) Typos(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source).
+	return m.buildContainer(source, "typos").
 		WithExec([]string{"typos"})
 }
 
