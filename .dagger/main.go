@@ -92,6 +92,42 @@ func (m *Beeps) Build(
 	return m.buildContainer(source, "build").WithExec(command)
 }
 
+// Run unit and integration tests for the project
+func (m *Beeps) Test(
+	ctx context.Context,
+	// +defaultPath=.
+	source *dagger.Directory,
+) *dagger.Container {
+	return m.buildContainer(source, "test").
+		WithServiceBinding(
+			"postgres",
+			m.Db(
+				ctx,
+				source,
+				dag.SetSecret("pguser", "beeps"),
+				dag.SetSecret("pgpassword", "beeps"),
+			).AsService(),
+		).
+		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
+		WithExec([]string{"cargo", "test"})
+}
+
+func (m *Beeps) Db(
+	ctx context.Context,
+	source *dagger.Directory,
+	user *dagger.Secret,
+	password *dagger.Secret,
+) *dagger.Container {
+	return dag.Postgres(
+		user,
+		password,
+		dagger.PostgresOpts{
+			DbName:     "beeps",
+			InitScript: source.Directory("beeps-server/test"),
+		},
+	).Database()
+}
+
 // Lint source code with Clippy
 func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) *dagger.Container {
 	return m.buildContainer(source, "clippy").
