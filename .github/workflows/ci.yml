@@ -4,79 +4,15 @@ on:
   push:
 
 jobs:
-  test:
-    runs-on: "ubuntu-latest"
-
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: beeps
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-
+  dagger:
+    name: dagger
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      # Set up Rust
-      - name: Setup Rust and Cargo
-        uses: moonrepo/setup-rust@v1.2.1
-
-      # Migrate
-      - name: Migrate
-        run: psql -h localhost -f beeps-server/test/schema.sql
-        env:
-          PGUSER: postgres
-          PGPASSWORD: postgres
-          PGDATABASE: beeps
-
-      # Test
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Test
-        run: cargo test
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/beeps
-
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust and Cargo
-        uses: moonrepo/setup-rust@v1.2.1
-
-      - name: Format
-        run: cargo fmt --check
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Rust and Cargo
-        uses: moonrepo/setup-rust@v1.2.1
-
-      - name: Lint
-        run: cargo clippy -- --deny warnings
-
-  typos:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: crate-ci/typos@master
-
-  machete:
-    runs-on: "ubuntu-latest"
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # Set up Rust
-      - name: Setup Rust and Cargo
-        uses: moonrepo/setup-rust@v1.2.1
-
-      # Check for unused dependencies
-      - uses: bnjbvr/cargo-machete@v0.7.0
+        uses: dagger/dagger-for-github@v6
+        with:
+          version: "latest"
+          verb: call
+          args: all
