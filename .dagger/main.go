@@ -41,7 +41,7 @@ func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
 func (m *Beeps) buildContainer(source *dagger.Directory, cachePrefix string) *dagger.Container {
 	return dag.Container().
 		From("rust:1.82.0").
-		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume("cargo-registry")).
+		WithMountedCache("/usr/local/cargo", dag.CacheVolume("cargo")).
 		WithMountedCache("/src/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cachePrefix))).
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src")
