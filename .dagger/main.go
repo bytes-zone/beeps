@@ -42,8 +42,9 @@ func (m *Beeps) buildContainer(source *dagger.Directory) *dagger.Container {
 		From("rust:1.82.0").
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		WithExec([]string{"cargo", "install", "typos-cli"}).
-		WithMountedDirectory("/src", source).
+		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume("cargo-registry")).
 		WithMountedCache("/src/target", dag.CacheVolume("rust-compilation")).
+		WithMountedDirectory("/src", source).
 		WithWorkdir("/src")
 }
 
