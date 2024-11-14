@@ -44,7 +44,8 @@ func (m *Beeps) buildContainer(source *dagger.Directory, cachePrefix string) *da
 		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume("cargo-registry")).
 		WithMountedCache("/src/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cachePrefix))).
 		WithExec([]string{"rustup", "component", "add", "clippy", "rustfmt"}).
-		WithExec([]string{"cargo", "install", "typos-cli", "cargo-machete"}).
+		WithExec([]string{"cargo", "install", "typos-cli"}).
+		WithExec([]string{"cargo", "install", "cargo-machete"}).
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src")
 }
