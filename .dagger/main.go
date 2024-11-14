@@ -72,6 +72,11 @@ func (m *Beeps) All(
 		return err
 	})
 
+	eg.Go(func() error {
+		_, err := m.Test(ctx, source).Sync(ctx)
+		return err
+	})
+
 	return eg.Wait()
 }
 
