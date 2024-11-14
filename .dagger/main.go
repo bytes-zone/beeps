@@ -44,7 +44,7 @@ func (m *Beeps) buildContainer(source *dagger.Directory, cachePrefix string) *da
 		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume("cargo-registry")).
 		WithMountedCache("/src/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cachePrefix))).
 		WithExec([]string{"rustup", "component", "add", "clippy", "rustfmt"}).
-		WithExec([]string{"cargo", "install", "typos-cli"}).
+		WithExec([]string{"cargo", "install", "typos-cli", "cargo-machete"}).
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src")
 }
@@ -74,6 +74,11 @@ func (m *Beeps) All(
 
 	eg.Go(func() error {
 		_, err := m.Fmt(ctx, source).Sync(ctx)
+		return err
+	})
+
+	eg.Go(func() error {
+		_, err := m.Machete(ctx, source).Sync(ctx)
 		return err
 	})
 
@@ -154,6 +159,12 @@ func (m *Beeps) Typos(ctx context.Context, source *dagger.Directory) *dagger.Con
 func (m *Beeps) Fmt(ctx context.Context, source *dagger.Directory) *dagger.Container {
 	return m.buildContainer(source, "fmt").
 		WithExec([]string{"cargo", "fmt", "--check"})
+}
+
+// Lint source code with `cargo machete`
+func (m *Beeps) Machete(ctx context.Context, source *dagger.Directory) *dagger.Container {
+	return m.buildContainer(source, "fmt").
+		WithExec([]string{"cargo", "machete"})
 }
 
 // Returns a container that echoes whatever string argument is provided
