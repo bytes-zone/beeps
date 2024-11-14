@@ -17,6 +17,8 @@ package main
 import (
 	"context"
 	"dagger/beeps/internal/dagger"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Beeps struct{}
@@ -43,6 +45,32 @@ func (m *Beeps) buildContainer(source *dagger.Directory) *dagger.Container {
 		WithMountedDirectory("/src", source).
 		WithMountedCache("/src/target", dag.CacheVolume("rust-compilation")).
 		WithWorkdir("/src")
+}
+
+func (m *Beeps) All(
+	ctx context.Context,
+	// +optional
+	// +defaultPath=.
+	source *dagger.Directory,
+) error {
+	eg, ctx := errgroup.WithContext(ctx)
+
+	eg.Go(func() error {
+		_, err := m.Build(ctx, source, false).Sync(ctx)
+		return err
+	})
+
+	eg.Go(func() error {
+		_, err := m.Clippy(ctx, source).Sync(ctx)
+		return err
+	})
+
+	eg.Go(func() error {
+		_, err := m.Typos(ctx, source).Sync(ctx)
+		return err
+	})
+
+	return eg.Wait()
 }
 
 // Build beeps and beeps-server
