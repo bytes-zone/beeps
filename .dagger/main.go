@@ -40,10 +40,10 @@ func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
 func (m *Beeps) buildContainer(source *dagger.Directory) *dagger.Container {
 	return dag.Container().
 		From("rust:1.82.0").
-		WithExec([]string{"rustup", "component", "add", "clippy"}).
-		WithExec([]string{"cargo", "install", "typos-cli"}).
 		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume("cargo-registry")).
 		WithMountedCache("/src/target", dag.CacheVolume("rust-compilation")).
+		WithExec([]string{"rustup", "component", "add", "clippy"}).
+		WithExec([]string{"cargo", "install", "typos-cli"}).
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src")
 }
