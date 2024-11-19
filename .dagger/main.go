@@ -47,6 +47,19 @@ func (m *Beeps) buildContainer(source *dagger.Directory, cacheKey string) *dagge
 		WithWorkdir("/src")
 }
 
+const RUST_CONTAINER_IMAGE = "rust:1.82.0"
+
+func (m *Beeps) rustBase(source *dagger.Directory, cacheKey string) *dagger.Container {
+	return dag.Container().
+		From(RUST_CONTAINER_IMAGE).
+		WithMountedCache("/root/.cargo", dag.CacheVolume(fmt.Sprintf("cargo-home-%s", cacheKey))).
+		WithEnvVariable("CARGO_HOME", "/root/.cargo").
+		WithMountedCache("/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
+		WithEnvVariable("CARGO_TARGET_DIR", "/target").
+		WithMountedDirectory("/src", source).
+		WithWorkdir("/src")
+}
+
 func (m *Beeps) All(
 	ctx context.Context,
 	// +optional
@@ -61,7 +74,7 @@ func (m *Beeps) All(
 	})
 
 	eg.Go(func() error {
-		_, err := m.Clippy(ctx, source).Sync(ctx)
+		_, err := m.Clippy(ctx, source)
 		return err
 	})
 
@@ -144,12 +157,11 @@ func (m *Beeps) Db(
 }
 
 // Lint source code with Clippy
-func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source, "clippy").
+func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) (string, error) {
+	return m.rustBase(source, "clippy").
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src").
-		WithExec([]string{"cargo", "clippy"})
+		WithExec([]string{"cargo", "clippy", "--", "--deny=warnings"}).
+		Stderr(ctx)
 }
 
 // Find typos with Typos
