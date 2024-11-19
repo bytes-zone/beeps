@@ -38,15 +38,6 @@ func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
 	).Database()
 }
 
-func (m *Beeps) buildContainer(source *dagger.Directory, cacheKey string) *dagger.Container {
-	return dag.Container().
-		From("rust:1.82.0").
-		WithMountedCache("/usr/local/cargo/registry", dag.CacheVolume(fmt.Sprintf("cargo-registry-%s", cacheKey))).
-		WithMountedCache("/src/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src")
-}
-
 const RUST_CONTAINER_IMAGE = "rust:1.82.0"
 
 func (m *Beeps) rustBase(source *dagger.Directory, cacheKey string, setup dagger.WithContainerFunc) *dagger.Container {
@@ -100,7 +91,7 @@ func (m *Beeps) All(
 	})
 
 	eg.Go(func() error {
-		_, err := m.Test(ctx, source).Sync(ctx)
+		_, err := m.Test(ctx, source)
 		return err
 	})
 
@@ -121,9 +112,7 @@ func (m *Beeps) Build(
 		command = append(command, "--release")
 	}
 
-	return m.buildContainer(source, "build").
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src").
+	return m.rustBase(source, "build", nil).
 		WithExec(command)
 }
 
@@ -132,9 +121,10 @@ func (m *Beeps) Test(
 	ctx context.Context,
 	// +defaultPath=.
 	source *dagger.Directory,
-) *dagger.Container {
-	return m.buildContainer(source, "test").
-		WithExec([]string{"cargo", "install", "sqlx-cli", "--features", "postgres"}).
+) (string, error) {
+	return m.rustBase(source, "test", func(r *dagger.Container) *dagger.Container {
+		return r.WithExec([]string{"cargo", "install", "sqlx-cli", "--no-default-features", "--features", "postgres"})
+	}).
 		WithServiceBinding(
 			"postgres",
 			m.Db(
@@ -144,10 +134,9 @@ func (m *Beeps) Test(
 			).AsService(),
 		).
 		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src").
 		WithExec([]string{"cargo", "sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
-		WithExec([]string{"cargo", "test"})
+		WithExec([]string{"cargo", "test"}).
+		Stdout(ctx)
 }
 
 func (m *Beeps) Db(
@@ -173,27 +162,24 @@ func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) (string, e
 
 // Find typos with Typos
 func (m *Beeps) Typos(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source, "typos").
-		WithExec([]string{"cargo", "install", "typos-cli"}).
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src").
-		WithExec([]string{"typos"})
+	return m.rustBase(source, "typos", func(r *dagger.Container) *dagger.Container {
+		return r.WithExec([]string{"cargo", "install", "typos-cli"})
+	}).
+		WithExec([]string{"/root/.cargo/bin/typos"})
 }
 
 // Lint source code with `cargo fmt`
 func (m *Beeps) Fmt(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source, "fmt").
-		WithExec([]string{"rustup", "component", "add", "rustfmt"}).
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src").
+	return m.rustBase(source, "fmt", func(r *dagger.Container) *dagger.Container {
+		return r.WithExec([]string{"rustup", "component", "add", "rustfmt"})
+	}).
 		WithExec([]string{"cargo", "fmt", "--check"})
 }
 
 // Lint source code with `cargo machete`
 func (m *Beeps) Machete(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.buildContainer(source, "fmt").
-		WithExec([]string{"cargo", "install", "cargo-machete"}).
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src").
+	return m.rustBase(source, "machete", func(r *dagger.Container) *dagger.Container {
+		return r.WithExec([]string{"cargo", "install", "cargo-machete"})
+	}).
 		WithExec([]string{"cargo", "machete"})
 }
