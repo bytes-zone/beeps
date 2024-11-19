@@ -49,13 +49,19 @@ func (m *Beeps) buildContainer(source *dagger.Directory, cacheKey string) *dagge
 
 const RUST_CONTAINER_IMAGE = "rust:1.82.0"
 
-func (m *Beeps) rustBase(source *dagger.Directory, cacheKey string) *dagger.Container {
-	return dag.Container().
+func (m *Beeps) rustBase(source *dagger.Directory, cacheKey string, setup dagger.WithContainerFunc) *dagger.Container {
+	baseWithCaches := dag.Container().
 		From(RUST_CONTAINER_IMAGE).
 		WithMountedCache("/root/.cargo", dag.CacheVolume(fmt.Sprintf("cargo-home-%s", cacheKey))).
 		WithEnvVariable("CARGO_HOME", "/root/.cargo").
 		WithMountedCache("/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
-		WithEnvVariable("CARGO_TARGET_DIR", "/target").
+		WithEnvVariable("CARGO_TARGET_DIR", "/target")
+
+	if setup != nil {
+		baseWithCaches = setup(baseWithCaches)
+	}
+
+	return baseWithCaches.
 		WithMountedDirectory("/src", source).
 		WithWorkdir("/src")
 }
@@ -158,8 +164,9 @@ func (m *Beeps) Db(
 
 // Lint source code with Clippy
 func (m *Beeps) Clippy(ctx context.Context, source *dagger.Directory) (string, error) {
-	return m.rustBase(source, "clippy").
-		WithExec([]string{"rustup", "component", "add", "clippy"}).
+	return m.rustBase(source, "clippy", func(c *dagger.Container) *dagger.Container {
+		return c.WithExec([]string{"rustup", "component", "add", "clippy"})
+	}).
 		WithExec([]string{"cargo", "clippy", "--", "--deny=warnings"}).
 		Stderr(ctx)
 }
