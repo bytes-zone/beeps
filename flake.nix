@@ -26,6 +26,10 @@
 
             pkgs.darwin.apple_sdk.frameworks.Security
             pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+
+            # dagger
+            pkgs.go
+            pkgs.gopls
           ];
         };
       }

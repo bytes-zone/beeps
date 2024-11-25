@@ -1,0 +1,14 @@
+{
+  "name": "beeps",
+  "engineVersion": "v0.13.7",
+  "sdk": "go",
+  "dependencies": [
+    {
+      "name": "postgres",
+      "source": "github.com/quartz-technology/daggerverse/postgres",
+      "pin": "6be53287110567fb5c9558f56189178ff0d2d390"
+    }
+  ],
+  "source": ".dagger",
+  "exclude": ["target"]
+}
