@@ -6,7 +6,7 @@ on:
 jobs:
   dagger:
     name: dagger
-    runs-on: ubuntu-latest
+    runs-on: dagger
     steps:
       - name: Checkout
         uses: actions/checkout@v4
