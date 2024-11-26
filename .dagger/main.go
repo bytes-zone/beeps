@@ -43,18 +43,32 @@ const RUST_CONTAINER_IMAGE = "rust:1.82.0"
 func (m *Beeps) rustBase(source *dagger.Directory, cacheKey string, setup dagger.WithContainerFunc) *dagger.Container {
 	baseWithCaches := dag.Container().
 		From(RUST_CONTAINER_IMAGE).
-		WithMountedCache("/root/.cargo", dag.CacheVolume(fmt.Sprintf("cargo-home-%s", cacheKey))).
-		WithEnvVariable("CARGO_HOME", "/root/.cargo").
-		WithMountedCache("/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
-		WithEnvVariable("CARGO_TARGET_DIR", "/target")
+		With(cargoCache(cacheKey))
 
 	if setup != nil {
 		baseWithCaches = setup(baseWithCaches)
 	}
 
-	return baseWithCaches.
-		WithMountedDirectory("/src", source).
-		WithWorkdir("/src")
+	return baseWithCaches.With(userSource(source))
+}
+
+func cargoCache(cacheKey string) dagger.WithContainerFunc {
+	return func(c *dagger.Container) *dagger.Container {
+		return c.
+			WithMountedCache("/root/.cargo", dag.CacheVolume(fmt.Sprintf("cargo-home-%s", cacheKey))).
+			WithEnvVariable("CARGO_HOME", "/root/.cargo").
+			WithMountedCache("/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
+			WithEnvVariable("CARGO_TARGET_DIR", "/target")
+	}
+}
+
+func userSource(source *dagger.Directory) dagger.WithContainerFunc {
+	return func(c *dagger.Container) *dagger.Container {
+		return c.
+			WithMountedDirectory("/src", source).
+			WithWorkdir("/src")
+	}
+
 }
 
 func (m *Beeps) All(
