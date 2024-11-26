@@ -47,6 +47,7 @@ func (m *Beeps) rustBase(cacheKey string) *dagger.Container {
 		WithEnvVariable("CARGO_HOME", "/root/.cargo").
 		WithMountedCache("/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
 		WithEnvVariable("CARGO_TARGET_DIR", "/target").
+		WithEnvVariable("PATH", "/root/.cargo/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
 }
 
 func cargoInstall(installFlags []string) dagger.WithContainerFunc {
