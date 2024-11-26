@@ -227,9 +227,19 @@ func (m *Beeps) Fmt(
 }
 
 // Lint source code with `cargo machete`
-func (m *Beeps) Machete(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.rustBase("machete").
-		With(cargoInstall([]string{"cargo-machete"})).
+func (m *Beeps) Machete(
+	ctx context.Context,
+	// +defaultPath=.
+	source *dagger.Directory,
+) *dagger.Container {
+	ctr := m.rustBase("machete")
+
+	exit, err := ctr.WithExec([]string{"cargo-machete", "--version"}).ExitCode(ctx)
+	if exit > 0 || err != nil {
+		ctr = ctr.WithExec([]string{"cargo", "install", "cargo-machete"})
+	}
+
+	return ctr.
 		With(userSource(source)).
 		WithExec([]string{"cargo", "machete"})
 }
