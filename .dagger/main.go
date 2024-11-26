@@ -43,17 +43,10 @@ const RUST_CONTAINER_IMAGE = "rust:1.82.0"
 func (m *Beeps) rustBase(cacheKey string) *dagger.Container {
 	return dag.Container().
 		From(RUST_CONTAINER_IMAGE).
-		With(cargoCache(cacheKey))
-}
-
-func cargoCache(cacheKey string) dagger.WithContainerFunc {
-	return func(c *dagger.Container) *dagger.Container {
-		return c.
-			WithMountedCache("/root/.cargo", dag.CacheVolume(fmt.Sprintf("cargo-home-%s", cacheKey))).
-			WithEnvVariable("CARGO_HOME", "/root/.cargo").
-			WithMountedCache("/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
-			WithEnvVariable("CARGO_TARGET_DIR", "/target")
-	}
+		WithMountedCache("/root/.cargo", dag.CacheVolume(fmt.Sprintf("cargo-home-%s", cacheKey))).
+		WithEnvVariable("CARGO_HOME", "/root/.cargo").
+		WithMountedCache("/target", dag.CacheVolume(fmt.Sprintf("rust-compilation-%s", cacheKey))).
+		WithEnvVariable("CARGO_TARGET_DIR", "/target").
 }
 
 func cargoInstall(installFlags []string) dagger.WithContainerFunc {
