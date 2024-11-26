@@ -209,9 +209,19 @@ func (m *Beeps) Typos(
 }
 
 // Lint source code with `cargo fmt`
-func (m *Beeps) Fmt(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.rustBase("fmt").
-		With(rustupComponent("rustfmt")).
+func (m *Beeps) Fmt(
+	ctx context.Context,
+	// +defaultPath=.
+	source *dagger.Directory,
+) *dagger.Container {
+	ctr := m.rustBase("fmt")
+
+	exit, err := ctr.WithExec([]string{"rustfmt", "-V"}).ExitCode(ctx)
+	if exit > 0 || err != nil {
+		ctr = ctr.WithExec([]string{"rustup", "component", "add", "rustfmt"})
+	}
+
+	return ctr.
 		With(userSource(source)).
 		WithExec([]string{"cargo", "fmt", "--check"})
 }
