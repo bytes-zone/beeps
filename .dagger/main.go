@@ -191,11 +191,21 @@ func (m *Beeps) Clippy(
 }
 
 // Find typos with Typos
-func (m *Beeps) Typos(ctx context.Context, source *dagger.Directory) *dagger.Container {
-	return m.rustBase("typos").
-		With(cargoInstall([]string{"typos"})).
+func (m *Beeps) Typos(
+	ctx context.Context,
+	// +defaultPath=.
+	source *dagger.Directory,
+) *dagger.Container {
+	ctr := m.rustBase("typos")
+
+	typosExitCode, err := ctr.WithExec([]string{"typos", "-V"}).ExitCode(ctx)
+	if typosExitCode > 0 || err != nil {
+		ctr = ctr.WithExec([]string{"cargo", "install", "typos-cli"})
+	}
+
+	return ctr.
 		With(userSource(source)).
-		WithExec([]string{"/root/.cargo/bin/typos"})
+		WithExec([]string{"typos"})
 }
 
 // Lint source code with `cargo fmt`
