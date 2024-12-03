@@ -136,14 +136,8 @@ func (m *Beeps) Test(
 	// +defaultPath=.
 	source *dagger.Directory,
 ) (string, error) {
-	ctr := m.rustBase("test")
-
-	sqlxExitCode, err := ctr.WithExec([]string{"sqlx", "-V"}).ExitCode(ctx)
-	if sqlxExitCode > 0 || err != nil {
-		ctr = ctr.With(cargoInstall([]string{"sqlx-cli", "--no-default-features", "--features", "postgres"}))
-	}
-
-	return ctr.
+	return m.rustBase("test").
+		With(cargoInstall([]string{"sqlx-cli", "--no-default-features", "--features", "postgres"})).
 		With(userSource(source)).
 		WithServiceBinding(
 			"postgres",
@@ -177,14 +171,8 @@ func (m *Beeps) Clippy(
 	// +defaultPath=.
 	source *dagger.Directory,
 ) (string, error) {
-	ctr := m.rustBase("clippy")
-
-	cargoClippyExitCode, err := ctr.WithExec([]string{"cargo-clippy", "--version"}).ExitCode(ctx)
-	if cargoClippyExitCode > 0 || err != nil {
-		ctr = ctr.WithExec([]string{"rustup", "component", "add", "clippy"})
-	}
-
-	return ctr.
+	return m.rustBase("clippy").
+		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		With(userSource(source)).
 		WithExec([]string{"cargo", "clippy", "--", "--deny=warnings"}).
 		Stderr(ctx)
@@ -196,14 +184,8 @@ func (m *Beeps) Typos(
 	// +defaultPath=.
 	source *dagger.Directory,
 ) *dagger.Container {
-	ctr := m.rustBase("typos")
-
-	typosExitCode, err := ctr.WithExec([]string{"typos", "-V"}).ExitCode(ctx)
-	if typosExitCode > 0 || err != nil {
-		ctr = ctr.WithExec([]string{"cargo", "install", "typos-cli"})
-	}
-
-	return ctr.
+	return m.rustBase("typos").
+		WithExec([]string{"cargo", "install", "typos-cli"}).
 		With(userSource(source)).
 		WithExec([]string{"typos"})
 }
@@ -214,14 +196,8 @@ func (m *Beeps) Fmt(
 	// +defaultPath=.
 	source *dagger.Directory,
 ) *dagger.Container {
-	ctr := m.rustBase("fmt")
-
-	exit, err := ctr.WithExec([]string{"rustfmt", "-V"}).ExitCode(ctx)
-	if exit > 0 || err != nil {
-		ctr = ctr.WithExec([]string{"rustup", "component", "add", "rustfmt"})
-	}
-
-	return ctr.
+	return m.rustBase("fmt").
+		WithExec([]string{"rustup", "component", "add", "rustfmt"}).
 		With(userSource(source)).
 		WithExec([]string{"cargo", "fmt", "--check"})
 }
@@ -232,14 +208,8 @@ func (m *Beeps) Machete(
 	// +defaultPath=.
 	source *dagger.Directory,
 ) *dagger.Container {
-	ctr := m.rustBase("machete")
-
-	exit, err := ctr.WithExec([]string{"cargo-machete", "--version"}).ExitCode(ctx)
-	if exit > 0 || err != nil {
-		ctr = ctr.WithExec([]string{"cargo", "install", "cargo-machete"})
-	}
-
-	return ctr.
+	return m.rustBase("machete").
+		WithExec([]string{"cargo", "install", "cargo-machete"}).
 		With(userSource(source)).
 		WithExec([]string{"cargo", "machete"})
 }
