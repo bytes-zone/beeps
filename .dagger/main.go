@@ -18,6 +18,7 @@ import (
 	"context"
 	"dagger/beeps/internal/dagger"
 	"fmt"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -70,45 +71,80 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 	}
 }
 
+type NiceOutput struct {
+	build   string
+	test    string
+	clippy  string
+	typos   string
+	fmt     string
+	machete string
+}
+
+func section(title string, body string) string {
+	return fmt.Sprintf("## %s\n\n```\n%s\n```", title, body)
+}
+
+func (n *NiceOutput) Format() string {
+	arr := []string{
+		section("Build", n.build),
+		section("Test", n.test),
+		section("Clippy", n.clippy),
+		section("Typos", n.typos),
+		section("Fmt", n.fmt),
+		section("Machete", n.machete),
+	}
+	return strings.Join(arr, "\n\n")
+}
+
 func (m *Beeps) All(
 	ctx context.Context,
 	// +optional
 	// +defaultPath=.
 	source *dagger.Directory,
-) error {
+) (string, error) {
 	eg, ctx := errgroup.WithContext(ctx)
 
+	nice := NiceOutput{}
+
 	eg.Go(func() error {
-		_, err := m.Build(ctx, source, false).Sync(ctx)
+		out, err := m.Build(ctx, source, false).Stderr(ctx)
+		nice.build = out
 		return err
 	})
 
 	eg.Go(func() error {
-		_, err := m.Clippy(ctx, source)
+		out, err := m.Clippy(ctx, source).Stderr(ctx)
+		nice.clippy = out
 		return err
 	})
 
 	eg.Go(func() error {
-		_, err := m.Typos(ctx, source).Sync(ctx)
+		out, err := m.Typos(ctx, source).Stderr(ctx)
+		nice.typos = out
 		return err
 	})
 
 	eg.Go(func() error {
-		_, err := m.Fmt(ctx, source).Sync(ctx)
+		out, err := m.Fmt(ctx, source).Stderr(ctx)
+		nice.fmt = out
 		return err
 	})
 
 	eg.Go(func() error {
-		_, err := m.Machete(ctx, source).Sync(ctx)
+		out, err := m.Machete(ctx, source).Stdout(ctx)
+		nice.machete = out
 		return err
 	})
 
 	eg.Go(func() error {
-		_, err := m.Test(ctx, source)
+		out, err := m.Test(ctx, source).Stdout(ctx)
+		nice.test = out
 		return err
 	})
 
-	return eg.Wait()
+	err := eg.Wait()
+
+	return nice.Format(), err
 }
 
 // Build beeps and beeps-server
@@ -135,11 +171,10 @@ func (m *Beeps) Test(
 	ctx context.Context,
 	// +defaultPath=.
 	source *dagger.Directory,
-) (string, error) {
+) *dagger.Container {
 	return m.rustBase("test").
 		With(userSource(source)).
-		WithExec([]string{"cargo", "test"}).
-		Stdout(ctx)
+		WithExec([]string{"cargo", "test"})
 }
 
 func (m *Beeps) Db(
@@ -159,12 +194,11 @@ func (m *Beeps) Clippy(
 	ctx context.Context,
 	// +defaultPath=.
 	source *dagger.Directory,
-) (string, error) {
+) *dagger.Container {
 	return m.rustBase("clippy").
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		With(userSource(source)).
-		WithExec([]string{"cargo", "clippy", "--", "--deny=warnings"}).
-		Stderr(ctx)
+		WithExec([]string{"cargo", "clippy", "--", "--deny=warnings"})
 }
 
 // Find typos with Typos
