@@ -47,13 +47,13 @@ impl Hlc {
             return;
         }
 
-        if self.timestamp == other.timestamp {
-            self.counter = self.counter.max(other.counter) + 1;
-        } else if self.timestamp > other.timestamp {
-            self.counter += 1;
-        } else {
-            self.timestamp = other.timestamp;
-            self.counter = other.counter + 1;
+        match self.timestamp.cmp(&other.timestamp) {
+            std::cmp::Ordering::Equal => self.counter = self.counter.max(other.counter) + 1,
+            std::cmp::Ordering::Greater => self.counter += 1,
+            std::cmp::Ordering::Less => {
+                self.timestamp = other.timestamp;
+                self.counter = other.counter + 1;
+            }
         }
     }
 
