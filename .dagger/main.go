@@ -72,12 +72,13 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 }
 
 type NiceOutput struct {
-	build   string
-	test    string
-	clippy  string
-	typos   string
-	fmt     string
-	machete string
+	build     string
+	test      string
+	clippy    string
+	typos     string
+	fmt       string
+	machete   string
+	wasmBuild bool
 }
 
 func section(title string, body string) string {
@@ -92,6 +93,7 @@ func (n *NiceOutput) Format() string {
 		section("Typos", n.typos),
 		section("Fmt", n.fmt),
 		section("Machete", n.machete),
+		section("WASM Build", fmt.Sprintf("Success: %t", n.wasmBuild)),
 	}
 	return strings.Join(arr, "\n\n")
 }
@@ -140,6 +142,12 @@ func (m *Beeps) All(
 		out, err := m.Test(ctx, source).Stdout(ctx)
 		nice.test = out
 		return err
+	})
+
+	eg.Go(func() error {
+		m.WasmBuild(ctx, source, "browser", "bundler")
+		nice.wasmBuild = true
+		return nil
 	})
 
 	err := eg.Wait()
