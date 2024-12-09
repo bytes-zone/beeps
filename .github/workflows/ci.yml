@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  dagger:
+    name: dagger
+    runs-on: dagger
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Test
+        uses: dagger/dagger-for-github@v7
+        with:
+          version: "latest"
+          verb: call
+          args: all
