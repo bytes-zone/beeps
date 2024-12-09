@@ -170,7 +170,7 @@ mod test {
         }
 
         #[test]
-        fn increments_timstamp_when_timestamp_is_in_the_future() {
+        fn increments_timestamp_when_timestamp_is_in_the_future() {
             let now = Utc::now();
 
             let hlc = Hlc {
