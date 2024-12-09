@@ -16,6 +16,10 @@ impl<T> Lww<T> {
             self.clock = clock;
         }
     }
+
+    pub fn value(&self) -> &T {
+        &self.value
+    }
 }
 
 #[cfg(test)]

@@ -72,12 +72,13 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 }
 
 type NiceOutput struct {
-	build   string
-	test    string
-	clippy  string
-	typos   string
-	fmt     string
-	machete string
+	build     string
+	test      string
+	clippy    string
+	typos     string
+	fmt       string
+	machete   string
+	wasmBuild string
 }
 
 func section(title string, body string) string {
@@ -92,6 +93,7 @@ func (n *NiceOutput) Format() string {
 		section("Typos", n.typos),
 		section("Fmt", n.fmt),
 		section("Machete", n.machete),
+		section("WASM Build", n.wasmBuild),
 	}
 	return strings.Join(arr, "\n\n")
 }
@@ -139,6 +141,12 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.Test(ctx, source).Stdout(ctx)
 		nice.test = out
+		return err
+	})
+
+	eg.Go(func() error {
+		out, err := m.WasmBuild(ctx, source, "browser", "bundler").Stderr(ctx)
+		nice.wasmBuild = out
 		return err
 	})
 
@@ -235,4 +243,20 @@ func (m *Beeps) Machete(
 		WithExec([]string{"cargo", "install", "cargo-machete"}).
 		With(userSource(source)).
 		WithExec([]string{"cargo", "machete"})
+}
+
+// Build WASM package
+func (m *Beeps) WasmBuild(
+	ctx context.Context,
+	// +defaultPath=.
+	source *dagger.Directory,
+	// +default="browser"
+	crate string,
+	// +default="bundler"
+	target string,
+) *dagger.Container {
+	return m.rustBase("wasm-pack").
+		WithExec([]string{"cargo", "install", "wasm-pack"}).
+		With(userSource(source)).
+		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
 }
