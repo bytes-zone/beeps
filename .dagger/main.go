@@ -119,7 +119,7 @@ func (m *Beeps) All(
 	})
 
 	eg.Go(func() error {
-		out, err := m.Typos(ctx, source).Stderr(ctx)
+		out, err := m.Typos(ctx, source).Stdout(ctx)
 		nice.typos = out
 		return err
 	})
