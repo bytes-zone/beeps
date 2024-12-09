@@ -236,3 +236,20 @@ func (m *Beeps) Machete(
 		With(userSource(source)).
 		WithExec([]string{"cargo", "machete"})
 }
+
+// Build WASM package
+func (m *Beeps) WasmBuild(
+	ctx context.Context,
+	// +defaultPath=.
+	source *dagger.Directory,
+	// +default="browser"
+	crate string,
+	// +default="bundler"
+	target string,
+) *dagger.Directory {
+	return m.rustBase("wasm-pack").
+		WithExec([]string{"cargo", "install", "wasm-pack"}).
+		With(userSource(source)).
+		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/wasm-pack-out"}).
+		Directory("/wasm-pack-out")
+}
