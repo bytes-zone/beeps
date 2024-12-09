@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.39"
-uuid = { version = "1.11.0", features = ["js", "v4", "rng"] }
+uuid = { version = "1.11.0", features = ["v4", "rng"] }
