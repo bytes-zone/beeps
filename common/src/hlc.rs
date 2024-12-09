@@ -39,9 +39,36 @@ impl Hlc {
     pub fn next(&self) -> Self {
         self.next_at(Utc::now())
     }
+
+    pub fn mut_receive_at(&mut self, other: &Self, now: DateTime<Utc>) {
+        if now > self.timestamp && now > other.timestamp {
+            self.timestamp = now;
+            self.counter = 0;
+            return;
+        }
+
+        if self.timestamp == other.timestamp {
+            self.counter = self.counter.max(other.counter) + 1;
+        } else if self.timestamp > other.timestamp {
+            self.counter += 1;
+        } else {
+            self.timestamp = other.timestamp;
+            self.counter = other.counter + 1;
+        }
+    }
+
+    pub fn mut_receive(&mut self, other: &Self) {
+        self.mut_receive_at(other, Utc::now());
+    }
+
+    pub fn receive_at(&self, other: &Self, now: DateTime<Utc>) -> Self {
         let mut next = self.clone();
-        next.increment();
+        next.mut_receive_at(other, now);
         next
+    }
+
+    pub fn receive(&self, other: &Self) -> Self {
+        self.receive_at(other, Utc::now())
     }
 }
 
@@ -156,6 +183,113 @@ mod test {
             // changed
             assert_eq!(next.timestamp, now);
             assert_eq!(next.counter, 0);
+
+            // unchanged
+            assert_eq!(next.node, hlc.node);
+        }
+    }
+
+    mod receive {
+        use super::*;
+        #[test]
+        fn acts_like_increment_when_both_timestamps_are_behind() {
+            let now = Utc::now();
+
+            let hlc = Hlc {
+                timestamp: now - Duration::seconds(1),
+                counter: 0,
+                node: Uuid::new_v4(),
+            };
+            let other = Hlc {
+                timestamp: now - Duration::seconds(1),
+                counter: 0,
+                node: Uuid::new_v4(),
+            };
+
+            let next = hlc.receive_at(&other, now);
+
+            // changed
+            assert_eq!(next.timestamp, now, "should accept largest timestamp");
+            assert_eq!(next.counter, 0, "should reset counter to 0");
+
+            // unchanged
+            assert_eq!(next.node, hlc.node);
+        }
+
+        #[test]
+        fn increments_counter_when_timestamps_are_equal() {
+            let now = Utc::now();
+
+            let hlc = Hlc {
+                timestamp: now,
+                counter: 0,
+                node: Uuid::new_v4(),
+            };
+            let other = Hlc {
+                timestamp: now,
+                counter: 1, // should increment from this
+                node: Uuid::new_v4(),
+            };
+
+            let next = hlc.receive_at(&other, now);
+
+            // changed
+            assert_eq!(next.counter, 2, "should increment counter");
+
+            // unchanged
+            assert_eq!(next.timestamp, now);
+            assert_eq!(next.node, hlc.node);
+        }
+
+        #[test]
+        fn increments_counter_when_other_is_earlier() {
+            let now = Utc::now();
+
+            let hlc = Hlc {
+                timestamp: now,
+                counter: 1, // should increment from this
+                node: Uuid::new_v4(),
+            };
+            let other = Hlc {
+                timestamp: now,
+                counter: 0,
+                node: Uuid::new_v4(),
+            };
+
+            let next = hlc.receive_at(&other, now);
+
+            // changed
+            assert_eq!(next.counter, 2, "should increment counter");
+
+            // unchanged
+            assert_eq!(next.timestamp, now);
+            assert_eq!(next.node, hlc.node);
+        }
+
+        #[test]
+        fn accepts_timestamp_and_increments_when_other_timestamp_is_ahead() {
+            let now = Utc::now();
+
+            let hlc = Hlc {
+                timestamp: now,
+                counter: 0,
+                node: Uuid::new_v4(),
+            };
+            let other = Hlc {
+                timestamp: now + Duration::seconds(1),
+                counter: 1, // should increment from here
+                node: Uuid::new_v4(),
+            };
+
+            let next = hlc.receive_at(&other, now);
+
+            // changed
+            assert_eq!(
+                next.timestamp,
+                now + Duration::seconds(1),
+                "should accept larger timestamp"
+            );
+            assert_eq!(next.counter, 2, "increments timestamp from other");
 
             // unchanged
             assert_eq!(next.node, hlc.node);
