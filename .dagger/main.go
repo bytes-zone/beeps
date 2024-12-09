@@ -78,7 +78,7 @@ type NiceOutput struct {
 	typos     string
 	fmt       string
 	machete   string
-	wasmBuild bool
+	wasmBuild string
 }
 
 func section(title string, body string) string {
@@ -93,7 +93,7 @@ func (n *NiceOutput) Format() string {
 		section("Typos", n.typos),
 		section("Fmt", n.fmt),
 		section("Machete", n.machete),
-		section("WASM Build", fmt.Sprintf("Success: %t", n.wasmBuild)),
+		section("WASM Build", n.wasmBuild),
 	}
 	return strings.Join(arr, "\n\n")
 }
@@ -145,9 +145,9 @@ func (m *Beeps) All(
 	})
 
 	eg.Go(func() error {
-		m.WasmBuild(ctx, source, "browser", "bundler")
-		nice.wasmBuild = true
-		return nil
+		out, err := m.WasmBuild(ctx, source, "browser", "bundler").Stderr(ctx)
+		nice.wasmBuild = out
+		return err
 	})
 
 	err := eg.Wait()
@@ -254,10 +254,9 @@ func (m *Beeps) WasmBuild(
 	crate string,
 	// +default="bundler"
 	target string,
-) *dagger.Directory {
+) *dagger.Container {
 	return m.rustBase("wasm-pack").
 		WithExec([]string{"cargo", "install", "wasm-pack"}).
 		With(userSource(source)).
-		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/wasm-pack-out"}).
-		Directory("/wasm-pack-out")
+		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
 }
