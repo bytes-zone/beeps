@@ -30,7 +30,15 @@ impl Hlc {
         self.increment_at(Utc::now());
     }
 
+    pub fn next_at(&self, now: DateTime<Utc>) -> Self {
+        let mut next = self.clone();
+        next.increment_at(now);
+        next
+    }
+
     pub fn next(&self) -> Self {
+        self.next_at(Utc::now())
+    }
         let mut next = self.clone();
         next.increment();
         next
@@ -118,41 +126,39 @@ mod test {
         #[test]
         fn increments_counter_when_timestamp_is_in_the_past() {
             let now = Utc::now();
-            let node = Uuid::new_v4();
 
-            let mut hlc = Hlc {
+            let hlc = Hlc {
                 timestamp: now + Duration::seconds(1),
                 counter: 0,
-                node,
+                node: Uuid::new_v4(),
             };
-            hlc.increment_at(now);
+            let next = hlc.next_at(now);
 
             // changed
-            assert_eq!(hlc.counter, 1);
+            assert_eq!(next.counter, 1);
 
             // unchanged
-            assert_eq!(hlc.timestamp, now + Duration::seconds(1));
-            assert_eq!(hlc.node, node);
+            assert_eq!(next.timestamp, now + Duration::seconds(1));
+            assert_eq!(next.node, hlc.node);
         }
 
         #[test]
         fn increments_timstamp_when_timestamp_is_in_the_future() {
             let now = Utc::now();
-            let node = Uuid::new_v4();
 
-            let mut hlc = Hlc {
+            let hlc = Hlc {
                 timestamp: now - Duration::seconds(1),
                 counter: 1,
-                node,
+                node: Uuid::new_v4(),
             };
-            hlc.increment_at(now);
+            let next = hlc.next_at(now);
 
             // changed
-            assert_eq!(hlc.timestamp, now);
-            assert_eq!(hlc.counter, 0);
+            assert_eq!(next.timestamp, now);
+            assert_eq!(next.counter, 0);
 
             // unchanged
-            assert_eq!(hlc.node, node);
+            assert_eq!(next.node, hlc.node);
         }
     }
 }
