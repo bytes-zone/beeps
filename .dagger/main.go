@@ -257,6 +257,8 @@ func (m *Beeps) WasmBuild(
 ) *dagger.Container {
 	return m.rustBase("wasm-pack").
 		WithExec([]string{"cargo", "install", "wasm-pack"}).
+		WithExec([]string{"cargo", "install", "wasm-bindgen-cli"}).
+		WithExec([]string{"rustup", "component", "add", "rust-std", "--target", "wasm32-unknown-unknown"}).
 		With(userSource(source)).
 		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
 }

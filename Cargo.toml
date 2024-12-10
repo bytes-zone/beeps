@@ -2,7 +2,5 @@
 resolver = "2"
 members = ["common", "browser"]
 
-[profile.wasm]
-inherits = "release"
-# Tell `rustc` to optimize for small code size.
+[profile.release.target.wasm32-unknown-unknown]
 opt-level = "s"
