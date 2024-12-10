@@ -1,4 +1,4 @@
-use crate::hlc::Hlc;
+use crate::{hlc::Hlc, merge::Merge};
 use core::fmt::{self, Debug, Formatter};
 
 #[derive(PartialEq, Eq, Clone)]
@@ -12,26 +12,25 @@ impl<T> Lww<T> {
         Self { value, clock }
     }
 
-    pub fn set(&mut self, value: T, clock: Hlc) -> &Self {
-        if clock > self.clock {
-            self.value = value;
-            self.clock = clock;
-        }
-
-        self
-    }
-
-    pub fn merge(mut self, other: Lww<T>) -> Self {
-        self.set(other.value, other.clock);
-        self
-    }
-
     pub fn value(&self) -> &T {
         &self.value
     }
 
     pub fn clock(&self) -> &Hlc {
         &self.clock
+    }
+}
+
+impl<T> Merge for Lww<T>
+where
+    T: Clone,
+{
+    fn merge(&self, other: &Self) -> Self {
+        if other.clock > self.clock {
+            other.clone()
+        } else {
+            self.clone()
+        }
     }
 }
 
@@ -46,19 +45,16 @@ impl<T: Debug> Debug for Lww<T> {
 
 #[cfg(test)]
 mod test {
-    use proptest::{prop_assert_eq, proptest};
-
-    use crate::test_utils::clock;
-
     use super::*;
+    use crate::test_utils::clock;
+    use proptest::proptest;
 
     #[test]
     fn overwrites_if_clock_is_newer() {
         let node = uuid::Uuid::nil();
         let first_clock = Hlc::new(node);
 
-        let mut lww = Lww::new(1, first_clock.clone());
-        lww.set(2, first_clock.next());
+        let lww = Lww::new(1, first_clock.clone()).merge(&Lww::new(2, first_clock.next()));
 
         assert_eq!(lww.value, 2);
     }
@@ -68,8 +64,7 @@ mod test {
         let node = uuid::Uuid::nil();
         let first_clock = Hlc::new(node);
 
-        let mut lww = Lww::new(1, first_clock.clone());
-        lww.set(2, first_clock.clone());
+        let lww = Lww::new(1, first_clock.clone()).merge(&Lww::new(2, first_clock));
 
         assert_eq!(lww.value, 1);
     }
@@ -79,43 +74,32 @@ mod test {
         let node = uuid::Uuid::nil();
         let first_clock = Hlc::new(node);
 
-        let mut lww = Lww::new(1, first_clock.next());
-        lww.set(2, first_clock);
+        let merged = Lww::new(1, first_clock.next()).merge(&Lww::new(2, first_clock));
 
-        assert_eq!(lww.value, 1);
+        assert_eq!(merged.value, 1);
     }
 
     proptest! {
         #[test]
         fn merge_commutative(a in clock(), b in clock()) {
-            let lww_a = Lww::new(1, a);
-            let lww_b = Lww::new(1, b);
-
-            let merge_ab = lww_a.clone().merge(lww_b.clone());
-            let merge_ba = lww_b.clone().merge(lww_a.clone());
-
-            prop_assert_eq!(merge_ab, merge_ba);
+            crate::merge::test_commutative(
+                Lww::new(1, a),
+                Lww::new(1, b),
+            )
         }
 
         #[test]
         fn merge_associative(a in clock(), b in clock(), c in clock()) {
-            let lww_a = Lww::new(1, a);
-            let lww_b = Lww::new(1, b);
-            let lww_c = Lww::new(1, c);
-
-            let merge_ab = lww_a.clone().merge(lww_b.clone()).merge(lww_c.clone());
-            let merge_abc = lww_a.clone().merge(lww_b.clone().merge(lww_c.clone()));
-
-            prop_assert_eq!(merge_ab, merge_abc);
+            crate::merge::test_associative(
+                Lww::new(1, a),
+                Lww::new(1, b),
+                Lww::new(1, c),
+            )
         }
 
         #[test]
         fn merge_idempotent(a in clock()) {
-            let lww_a = Lww::new(1, a);
-
-            let merge_aa = lww_a.clone().merge(lww_a.clone());
-
-            prop_assert_eq!(merge_aa, lww_a);
+            crate::merge::test_idempotent(Lww::new(1, a))
         }
     }
 }

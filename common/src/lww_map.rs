@@ -1,4 +1,5 @@
 use crate::lww::Lww;
+use crate::merge::Merge;
 use std::collections::{
     hash_map::{Entry, Iter},
     HashMap,
@@ -12,6 +13,7 @@ pub struct LwwMap<K, V> {
 impl<K, V> LwwMap<K, V>
 where
     K: Eq + Hash,
+    V: Clone,
 {
     pub fn new() -> Self {
         Self {
@@ -25,10 +27,9 @@ where
 
     pub fn insert(&mut self, key: K, value: Lww<V>) {
         match self.inner.entry(key) {
-            Entry::Occupied(entry) => {
-                let (key, existing) = entry.remove_entry();
-                let next = existing.merge(value);
-                self.inner.insert(key, next);
+            Entry::Occupied(mut entry) => {
+                let current = entry.get_mut();
+                *current = current.merge(&value);
             }
             Entry::Vacant(entry) => {
                 entry.insert(value);
@@ -44,6 +45,7 @@ where
 impl<K, V> Default for LwwMap<K, V>
 where
     K: Eq + Hash,
+    V: Clone,
 {
     fn default() -> Self {
         Self::new()
@@ -97,7 +99,7 @@ mod test {
 
                 let result = map.get(&"test").unwrap();
 
-                prop_assert_eq!(result, &lww1.merge(lww2));
+                prop_assert_eq!(result, &lww1.merge(&lww2));
             }
         }
     }
