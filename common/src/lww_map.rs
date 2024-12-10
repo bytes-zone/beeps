@@ -21,7 +21,7 @@ where
         }
     }
 
-    pub fn get(&mut self, key: &K) -> Option<&Lww<V>> {
+    pub fn get(&self, key: &K) -> Option<&Lww<V>> {
         self.inner.get(key)
     }
 
@@ -46,6 +46,14 @@ where
     /// a G-Set. We will need it to merge, though!
     fn drain(&mut self) -> Drain<'_, K, Lww<V>> {
         self.inner.drain()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
@@ -84,11 +92,11 @@ mod test {
 
         #[test]
         fn get_nothing() {
-            let mut map = LwwMap::<&str, i32>::new();
+            let map = LwwMap::<&str, i32>::new();
             assert_eq!(map.get(&"foo"), None);
         }
 
-        // a "get_something" test would duplicate "set::can_insert_from_nothing"
+        // a "get_something" test would duplicate "insert::can_insert_from_nothing"
     }
 
     mod insert {
@@ -121,6 +129,60 @@ mod test {
                 let result = map.get(&"test").unwrap();
 
                 prop_assert_eq!(result, &lww1.merge(lww2));
+            }
+        }
+    }
+
+    mod merge {
+        use crate::test_utils::clock;
+        use proptest::{prop_assert_eq, proptest};
+
+        use super::*;
+
+        #[test]
+        fn merge_nothing() {
+            let map1 = LwwMap::<&str, i32>::new();
+            let map2 = LwwMap::<&str, i32>::new();
+
+            let merged = map1.merge(map2);
+
+            assert_eq!(merged.len(), 0);
+        }
+
+        #[test]
+        fn retains_all_keys() {
+            let mut map1 = LwwMap::<&str, i32>::new();
+            map1.insert("foo", Lww::new(1, Hlc::new(Uuid::nil())));
+
+            let mut map2 = LwwMap::<&str, i32>::new();
+            map2.insert("bar", Lww::new(2, Hlc::new(Uuid::nil())));
+
+            let merged = map1.merge(map2);
+
+            assert_eq!(merged.get(&"foo").unwrap().value(), &1);
+            assert_eq!(merged.get(&"bar").unwrap().value(), &2);
+        }
+
+        proptest! {
+            #[test]
+            fn merges_according_to_merge_semantics_of_value(
+                c1 in clock(),
+                c2 in clock(),
+            ) {
+                let mut map1 = LwwMap::<&str, &str>::new();
+                let lww1 = Lww::new("c1", c1.clone());
+                map1.insert("test", lww1.clone());
+
+                let mut map2 = LwwMap::<&str, &str>::new();
+                let lww2 = Lww::new("c2", c2.clone());
+                map2.insert("test", lww2.clone());
+
+                let merged_lww = lww1.merge(lww2);
+                let merged_map = map1.merge(map2);
+
+                let result = merged_map.get(&"test").unwrap();
+
+                prop_assert_eq!(result, &merged_lww);
             }
         }
     }
