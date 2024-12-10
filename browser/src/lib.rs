@@ -19,5 +19,8 @@ pub fn main() {
     let clock = common::hlc::Hlc::new(uuid::Uuid::new_v4());
     let lww = common::lww::Lww::new(1, clock);
 
-    alert(&format!("set value: {}", lww.value()));
+    let mut map = common::lww_map::LwwMap::new();
+    map.insert("test", lww);
+
+    alert(&format!("set value: {:?}", map.get(&"test")));
 }
