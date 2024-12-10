@@ -1,11 +1,11 @@
-use crate::hlc::Hlc;
 use crate::lww_map::LwwMap;
+use crate::{hlc::Hlc, lww::Lww};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 pub struct Store {
     clock: Hlc,
-    pings: LwwMap<DateTime<Utc>, Option<String>>,
+    pings: LwwMap<DateTime<Utc>, Lww<Option<String>>>,
 }
 
 impl Store {
