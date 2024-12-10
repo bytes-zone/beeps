@@ -85,7 +85,7 @@ mod test {
 
         proptest! {
             #[test]
-            fn insert_(
+            fn insert_follows_merge_precedence_rules(
                 c1 in clock(),
                 c2 in clock(),
             ) {
