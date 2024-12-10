@@ -1,7 +1,7 @@
 use crate::lww::Lww;
 use crate::merge::Merge;
 use std::collections::{
-    hash_map::{Entry, Iter},
+    hash_map::{Drain, Entry, Iter},
     HashMap,
 };
 use std::hash::Hash;
@@ -40,6 +40,26 @@ where
 
     pub fn iter(&self) -> Iter<'_, K, Lww<V>> {
         self.inner.iter()
+    }
+
+    /// Private because we can't remove properties from the map. It behaves like
+    /// a G-Set. We will need it to merge, though!
+    fn drain(&mut self) -> Drain<'_, K, Lww<V>> {
+        self.inner.drain()
+    }
+}
+
+impl<K, V> Merge for LwwMap<K, V>
+where
+    K: Eq + Hash,
+    V: Clone,
+{
+    fn merge(mut self, mut other: Self) -> Self {
+        for (k, v) in other.drain() {
+            self.insert(k, v)
+        }
+
+        self
     }
 }
 
