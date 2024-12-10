@@ -1,5 +1,7 @@
 use crate::hlc::Hlc;
+use core::fmt::{self, Debug, Formatter};
 
+#[derive(PartialEq, Eq)]
 pub struct Lww<T> {
     value: T,
     clock: Hlc,
@@ -17,8 +19,21 @@ impl<T> Lww<T> {
         }
     }
 
+    pub fn merge(&mut self, other: Lww<T>) {
+        self.set(other.value, other.clock)
+    }
+
     pub fn value(&self) -> &T {
         &self.value
+    }
+}
+
+impl<T: Debug> Debug for Lww<T> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("Lww")
+            .field("value", &self.value)
+            .field("clock", &self.clock)
+            .finish()
     }
 }
 

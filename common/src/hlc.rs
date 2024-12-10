@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Hlc {
     timestamp: DateTime<Utc>,
     counter: u64,
@@ -12,6 +12,15 @@ impl Hlc {
     pub fn new(node: Uuid) -> Self {
         Self {
             timestamp: Utc::now(),
+            counter: 0,
+            node,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn new_at(node: Uuid, timestamp: DateTime<Utc>) -> Self {
+        Self {
+            timestamp,
             counter: 0,
             node,
         }
