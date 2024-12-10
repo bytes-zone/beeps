@@ -79,6 +79,7 @@ type NiceOutput struct {
 	fmt       string
 	machete   string
 	wasmBuild string
+	wasmSize  string
 }
 
 func section(title string, body string) string {
@@ -94,6 +95,7 @@ func (n *NiceOutput) Format() string {
 		section("Fmt", n.fmt),
 		section("Machete", n.machete),
 		section("WASM Build", n.wasmBuild),
+		section("WASM Size", n.wasmSize),
 	}
 	return strings.Join(arr, "\n\n")
 }
@@ -147,6 +149,12 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.WasmBuild(ctx, source, "browser", "bundler").Stderr(ctx)
 		nice.wasmBuild = out
+		return err
+	})
+
+	eg.Go(func() error {
+		out, err := m.WasmSize(ctx, source, "browser", "bundler")
+		nice.wasmSize = out
 		return err
 	})
 
@@ -261,4 +269,19 @@ func (m *Beeps) WasmBuild(
 		WithExec([]string{"rustup", "component", "add", "rust-std", "--target", "wasm32-unknown-unknown"}).
 		With(userSource(source)).
 		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
+}
+
+// Check WASM sizes
+func (m *Beeps) WasmSize(
+	ctx context.Context,
+	// +defaultPath=.
+	source *dagger.Directory,
+	// +default="browser"
+	crate string,
+	// +default="bundler"
+	target string,
+) (string, error) {
+	return m.WasmBuild(ctx, source, crate, target).
+		WithExec([]string{"ls", "-lh", "/pkg"}).
+		Stdout(ctx)
 }
