@@ -2,5 +2,5 @@
 resolver = "2"
 members = ["common", "browser"]
 
-[profile.release.target.wasm32-unknown-unknown]
+[profile.release.package.browser]
 opt-level = "s"
