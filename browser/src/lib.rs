@@ -22,5 +22,6 @@ pub fn main() {
     let mut map = common::lww_map::LwwMap::new();
     map.insert("test", lww);
 
-    alert(&format!("set value: {:?}", map.get(&"test")));
+    alert("set value to…");
+    alert(&map.get(&"test").unwrap().value().to_string());
 }
