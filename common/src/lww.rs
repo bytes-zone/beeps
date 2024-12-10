@@ -29,6 +29,10 @@ impl<T> Lww<T> {
     pub fn value(&self) -> &T {
         &self.value
     }
+
+    pub fn clock(&self) -> &Hlc {
+        &self.clock
+    }
 }
 
 impl<T: Debug> Debug for Lww<T> {
