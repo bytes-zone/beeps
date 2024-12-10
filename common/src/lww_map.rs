@@ -1,5 +1,8 @@
 use crate::lww::Lww;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{
+    hash_map::{Entry, Iter},
+    HashMap,
+};
 use std::hash::Hash;
 
 pub struct LwwMap<K, V> {
@@ -31,6 +34,10 @@ where
                 entry.insert(value);
             }
         };
+    }
+
+    pub fn iter(&self) -> Iter<'_, K, Lww<V>> {
+        self.inner.iter()
     }
 }
 
