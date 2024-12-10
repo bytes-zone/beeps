@@ -6,6 +6,7 @@ use std::collections::{
 };
 use std::hash::Hash;
 
+#[derive(Clone)]
 pub struct LwwMap<K, V> {
     inner: HashMap<K, Lww<V>>,
 }
@@ -78,6 +79,28 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<K, V> std::fmt::Debug for LwwMap<K, V>
+where
+    K: std::fmt::Debug,
+    V: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LwwMap")
+            .field("inner", &self.inner)
+            .finish()
+    }
+}
+
+impl<K, V> PartialEq for LwwMap<K, V>
+where
+    K: Eq + Hash,
+    V: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 
@@ -183,6 +206,48 @@ mod test {
                 let result = merged_map.get(&"test").unwrap();
 
                 prop_assert_eq!(result, &merged_lww);
+            }
+
+            #[test]
+            fn merge_idempotent(
+                c1 in clock(),
+            ) {
+                let mut map = LwwMap::<&str, &str>::new();
+                map.insert("test", Lww::new("c1", c1));
+
+                crate::merge::test_idempotent(map);
+            }
+
+            #[test]
+            fn merge_commutative(
+                c1 in clock(),
+                c2 in clock(),
+            ) {
+                let mut map1 = LwwMap::<&str, &str>::new();
+                map1.insert("test", Lww::new("c1", c1));
+
+                let mut map2 = LwwMap::<&str, &str>::new();
+                map2.insert("test", Lww::new("c2", c2));
+
+                crate::merge::test_commutative(map1, map2);
+            }
+
+            #[test]
+            fn merge_associative(
+                c1 in clock(),
+                c2 in clock(),
+                c3 in clock(),
+            ) {
+                let mut map1 = LwwMap::<&str, &str>::new();
+                map1.insert("test", Lww::new("c1", c1));
+
+                let mut map2 = LwwMap::<&str, &str>::new();
+                map2.insert("test", Lww::new("c2", c2));
+
+                let mut map3 = LwwMap::<&str, &str>::new();
+                map3.insert("test", Lww::new("c3", c3));
+
+                crate::merge::test_associative(map1, map2, map3);
             }
         }
     }
