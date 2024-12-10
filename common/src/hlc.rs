@@ -17,6 +17,15 @@ impl Hlc {
         }
     }
 
+    #[cfg(test)]
+    pub fn new_at(node: Uuid, timestamp: DateTime<Utc>) -> Self {
+        Self {
+            timestamp,
+            counter: 0,
+            node,
+        }
+    }
+
     pub fn increment_at(&mut self, now: DateTime<Utc>) {
         if now > self.timestamp {
             self.timestamp = now;

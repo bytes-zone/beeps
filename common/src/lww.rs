@@ -19,6 +19,10 @@ impl<T> Lww<T> {
         }
     }
 
+    pub fn merge(&mut self, other: Lww<T>) {
+        self.set(other.value, other.clock)
+    }
+
     pub fn value(&self) -> &T {
         &self.value
     }
