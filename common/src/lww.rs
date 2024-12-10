@@ -23,7 +23,7 @@ impl<T> Lww<T> {
 
     pub fn merge(mut self, other: Lww<T>) -> Self {
         self.set(other.value, other.clock);
-        return self;
+        self
     }
 
     pub fn value(&self) -> &T {
