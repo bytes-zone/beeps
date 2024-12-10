@@ -22,8 +22,10 @@ where
 
     pub fn insert(&mut self, key: K, value: Lww<V>) {
         match self.inner.entry(key) {
-            Entry::Occupied(mut entry) => {
-                entry.get_mut().merge(value);
+            Entry::Occupied(entry) => {
+                let (key, existing) = entry.remove_entry();
+                let next = existing.merge(value);
+                self.inner.insert(key, next);
             }
             Entry::Vacant(entry) => {
                 entry.insert(value);
@@ -60,8 +62,8 @@ mod test {
     }
 
     mod set {
-        use chrono::{TimeZone, Utc};
-        use proptest::{prop_assert_eq, prop_compose, proptest};
+        use crate::test_utils::clock;
+        use proptest::{prop_assert_eq, proptest};
 
         use super::*;
 
@@ -73,39 +75,22 @@ mod test {
             assert_eq!(map.get(&"test").unwrap().value(), &1);
         }
 
-        prop_compose! {
-            fn clock()
-                (uuid: u128, timestamp in 0i64..2_000_000_000i64) -> Hlc {
-                Hlc::new_at(
-                    Uuid::from_u128(uuid),
-                    Utc.timestamp_opt(timestamp, 0).unwrap(),
-                )
-            }
-        }
-
         proptest! {
             #[test]
-            fn insert_(
+            fn insert_follows_lww_rules(
                 c1 in clock(),
                 c2 in clock(),
             ) {
                 let mut map = LwwMap::<&str, &str>::new();
-                map.insert("test", Lww::new("c1", c1.clone()));
-                map.insert("test", Lww::new("c2", c2.clone()));
+                let lww1 = Lww::new("c1", c1.clone());
+                let lww2 = Lww::new("c2", c2.clone());
+
+                map.insert("test", lww1.clone());
+                map.insert("test", lww2.clone());
 
                 let result = map.get(&"test").unwrap();
 
-                match c1.cmp(&c2) {
-                    std::cmp::Ordering::Less => {
-                        prop_assert_eq!(result.value(), &"c2");
-                    }
-                    std::cmp::Ordering::Equal => {
-                        prop_assert_eq!(result.value(), &"c1");
-                    }
-                    std::cmp::Ordering::Greater => {
-                        prop_assert_eq!(result.value(), &"c1");
-                    }
-                }
+                prop_assert_eq!(result, &lww1.merge(lww2));
             }
         }
     }
