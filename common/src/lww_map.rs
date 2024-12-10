@@ -77,27 +77,20 @@ mod test {
 
         proptest! {
             #[test]
-            fn insert_follows_merge_precedence_rules(
+            fn insert_follows_lww_rules(
                 c1 in clock(),
                 c2 in clock(),
             ) {
                 let mut map = LwwMap::<&str, &str>::new();
-                map.insert("test", Lww::new("c1", c1.clone()));
-                map.insert("test", Lww::new("c2", c2.clone()));
+                let lww1 = Lww::new("c1", c1.clone());
+                let lww2 = Lww::new("c2", c2.clone());
+
+                map.insert("test", lww1.clone());
+                map.insert("test", lww2.clone());
 
                 let result = map.get(&"test").unwrap();
 
-                match c1.cmp(&c2) {
-                    std::cmp::Ordering::Less => {
-                        prop_assert_eq!(result.value(), &"c2");
-                    }
-                    std::cmp::Ordering::Equal => {
-                        prop_assert_eq!(result.value(), &"c1");
-                    }
-                    std::cmp::Ordering::Greater => {
-                        prop_assert_eq!(result.value(), &"c1");
-                    }
-                }
+                prop_assert_eq!(result, &lww1.merge(lww2));
             }
         }
     }
