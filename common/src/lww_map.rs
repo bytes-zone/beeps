@@ -24,8 +24,8 @@ where
         match self.inner.entry(key) {
             Entry::Occupied(entry) => {
                 let (key, existing) = entry.remove_entry();
-                let new = existing.merge(value);
-                self.inner.insert(key, new);
+                let next = existing.merge(value);
+                self.inner.insert(key, next);
             }
             Entry::Vacant(entry) => {
                 entry.insert(value);
