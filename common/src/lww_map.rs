@@ -60,8 +60,8 @@ mod test {
     }
 
     mod set {
-        use chrono::{TimeZone, Utc};
-        use proptest::{prop_assert_eq, prop_compose, proptest};
+        use crate::test_utils::clock;
+        use proptest::{prop_assert_eq, proptest};
 
         use super::*;
 
@@ -71,16 +71,6 @@ mod test {
             map.insert("test", Lww::new(1, Hlc::new(Uuid::nil())));
 
             assert_eq!(map.get(&"test").unwrap().value(), &1);
-        }
-
-        prop_compose! {
-            fn clock()
-                (uuid: u128, timestamp in 0i64..2_000_000_000i64) -> Hlc {
-                Hlc::new_at(
-                    Uuid::from_u128(uuid),
-                    Utc.timestamp_opt(timestamp, 0).unwrap(),
-                )
-            }
         }
 
         proptest! {
