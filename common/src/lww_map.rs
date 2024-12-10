@@ -91,7 +91,7 @@ mod test {
         // a "get_something" test would duplicate "set::can_insert_from_nothing"
     }
 
-    mod set {
+    mod insert {
         use crate::test_utils::clock;
         use proptest::{prop_assert_eq, proptest};
 
