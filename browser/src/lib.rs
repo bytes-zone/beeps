@@ -19,7 +19,7 @@ pub fn main() {
     let clock = common::hlc::Hlc::new(uuid::Uuid::new_v4());
     let lww = common::lww::Lww::new(1, clock);
 
-    let mut map = common::lww_map::LwwMap::new();
+    let mut map = common::grow_only_map::GrowOnlyMap::new();
     map.insert("test", lww);
 
     alert("set value to…");
