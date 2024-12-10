@@ -22,8 +22,10 @@ where
 
     pub fn insert(&mut self, key: K, value: Lww<V>) {
         match self.inner.entry(key) {
-            Entry::Occupied(mut entry) => {
-                entry.get_mut().merge(value);
+            Entry::Occupied(entry) => {
+                let (key, existing) = entry.remove_entry();
+                let new = existing.merge(value);
+                self.inner.insert(key, new);
             }
             Entry::Vacant(entry) => {
                 entry.insert(value);
