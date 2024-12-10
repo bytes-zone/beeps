@@ -27,9 +27,10 @@ where
 
     pub fn insert(&mut self, key: K, value: Lww<V>) {
         match self.inner.entry(key) {
-            Entry::Occupied(mut entry) => {
-                let current = entry.get_mut();
-                *current = current.merge(&value);
+            Entry::Occupied(entry) => {
+                let (key, current) = entry.remove_entry();
+                let next = current.merge(value);
+                self.inner.insert(key, next);
             }
             Entry::Vacant(entry) => {
                 entry.insert(value);
@@ -99,7 +100,7 @@ mod test {
 
                 let result = map.get(&"test").unwrap();
 
-                prop_assert_eq!(result, &lww1.merge(&lww2));
+                prop_assert_eq!(result, &lww1.merge(lww2));
             }
         }
     }

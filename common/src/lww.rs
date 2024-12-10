@@ -25,11 +25,11 @@ impl<T> Merge for Lww<T>
 where
     T: Clone,
 {
-    fn merge(&self, other: &Self) -> Self {
+    fn merge(self, other: Self) -> Self {
         if other.clock > self.clock {
-            other.clone()
+            other
         } else {
-            self.clone()
+            self
         }
     }
 }
@@ -54,7 +54,7 @@ mod test {
         let node = uuid::Uuid::nil();
         let first_clock = Hlc::new(node);
 
-        let lww = Lww::new(1, first_clock.clone()).merge(&Lww::new(2, first_clock.next()));
+        let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock.next()));
 
         assert_eq!(lww.value, 2);
     }
@@ -64,7 +64,7 @@ mod test {
         let node = uuid::Uuid::nil();
         let first_clock = Hlc::new(node);
 
-        let lww = Lww::new(1, first_clock.clone()).merge(&Lww::new(2, first_clock));
+        let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock));
 
         assert_eq!(lww.value, 1);
     }
@@ -74,7 +74,7 @@ mod test {
         let node = uuid::Uuid::nil();
         let first_clock = Hlc::new(node);
 
-        let merged = Lww::new(1, first_clock.next()).merge(&Lww::new(2, first_clock));
+        let merged = Lww::new(1, first_clock.next()).merge(Lww::new(2, first_clock));
 
         assert_eq!(merged.value, 1);
     }
