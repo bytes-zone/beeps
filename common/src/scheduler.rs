@@ -2,6 +2,7 @@ use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
 use rand_pcg::Pcg32;
 
+#[derive(Clone)]
 pub struct Scheduler {
     average_pings_per_minute: f64,
     ping: DateTime<Utc>,
@@ -93,6 +94,36 @@ mod test {
             let mut scheduler = Scheduler::new(minutes_per_ping, last_ping);
 
             prop_assert!(scheduler.next().unwrap() > last_ping);
+        }
+
+        #[test]
+        fn average_is_close_to_lambda(
+            minutes_per_ping in 1f64..60f64,
+            last_timestamp in 0i64..2_000_000_000_000i64,
+        ) {
+            let scheduler = Scheduler::new(minutes_per_ping, Utc.timestamp_opt(last_timestamp, 0).unwrap());
+            let scheduler_offset = scheduler.clone();
+
+            let sample_size = 1_000;
+
+            let total_minutes: i64 = scheduler
+                .zip(scheduler_offset.skip(1))
+                .take(sample_size)
+                .map(|(a, b)| b - a)
+                .sum::<chrono::Duration>()
+                .num_minutes();
+
+            let average = total_minutes as f64 / sample_size as f64;
+
+            let diff = (average / minutes_per_ping).abs() - 1.0;
+
+            assert!(
+                diff < 0.1,
+                "{:0.2} was not close to {:0.2} ({:0.4})",
+                average,
+                minutes_per_ping,
+                diff,
+            );
         }
     }
 }
