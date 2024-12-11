@@ -10,8 +10,8 @@ impl NodeId {
     pub fn random() -> Self {
         Self(
             Pcg32::new(
-                Utc::now().timestamp_subsec_nanos().into(),
-                0xa02bdbf7bb3c0a7, // Default value for stream
+                Utc::now().timestamp() as u64, // Seed (underflow OK if we're somehow pre-1970)
+                0xa02bdbf7bb3c0a7,             // Stream (default)
             )
             .gen(),
         )
