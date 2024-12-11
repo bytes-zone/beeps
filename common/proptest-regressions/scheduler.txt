@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 1448526d411572b9881e9cd499076f14cb0c13c72ec67ea95b2b852e7e287630 # shrinks to minutes_per_ping = 1.0, last_timestamp = 0
+cc 160d4ab95067b899d2bf69e779c372ad7032b6e8ce9476d8e31472f605e82689 # shrinks to minutes_per_ping = 59.354495389257174, last_timestamp = 941551605863
+cc 230541e4602c62c8229e9f379e5b0aed4ce4670d675aa5813f0d89abc370e2c5 # shrinks to minutes_per_ping = 39.188871055005045, last_timestamp = 1196535491115
+cc 49bf6c47acfd3e5bc88183e93d8f49c77c1d39e62a3c0916e9a9ee91b39fefe0 # shrinks to minutes_per_ping = 46.563233399818785, last_timestamp = 757156473983
+cc 85a27bd115042e986f3273a044510ca2006fc7156884ac88a2cb81e9faee8ed3 # shrinks to minutes_per_ping = 31.45855222379157, last_timestamp = 1586135308040
+cc 484e75a4475e28b5a1d7a177e29588c0495ef6ee2b8a033ac3bf3faac3cd0dc0 # shrinks to minutes_per_ping = 59.15631794994404, last_timestamp = 438463341168
