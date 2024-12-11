@@ -1,4 +1,3 @@
-pub mod app;
 pub mod grow_only_map;
 pub mod hlc;
 pub mod lww;
