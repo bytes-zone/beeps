@@ -1,5 +1,6 @@
 mod utils;
 
+use common::node_id::NodeId;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -16,7 +17,7 @@ pub fn main() {
     // intended to demonstrate any particular thing.
     alert("Beginning test.");
 
-    let clock = common::hlc::Hlc::new(uuid::Uuid::new_v4());
+    let clock = common::hlc::Hlc::new(NodeId::random());
     let lww = common::lww::Lww::new(1, clock);
 
     let mut map = common::grow_only_map::GrowOnlyMap::new();

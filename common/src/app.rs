@@ -1,7 +1,8 @@
 use crate::grow_only_map::GrowOnlyMap;
-use crate::{hlc::Hlc, lww::Lww};
+use crate::hlc::Hlc;
+use crate::lww::Lww;
+use crate::node_id::NodeId;
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
 
 pub struct Store {
     clock: Hlc,
@@ -9,7 +10,7 @@ pub struct Store {
 }
 
 impl Store {
-    pub fn new(node: Uuid) -> Self {
+    pub fn new(node: NodeId) -> Self {
         Self {
             clock: Hlc::new(node),
             pings: GrowOnlyMap::new(),

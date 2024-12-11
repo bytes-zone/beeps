@@ -108,7 +108,6 @@ mod test {
     use super::*;
     use crate::hlc::Hlc;
     use crate::lww::Lww;
-    use uuid::Uuid;
 
     mod get {
         use super::*;
@@ -123,7 +122,7 @@ mod test {
     }
 
     mod insert {
-        use crate::test_utils::clock;
+        use crate::{node_id::NodeId, test_utils::clock};
         use proptest::{prop_assert_eq, proptest};
 
         use super::*;
@@ -131,7 +130,7 @@ mod test {
         #[test]
         fn can_insert_from_nothing() {
             let mut map = GrowOnlyMap::<&str, Lww<i32>>::new();
-            map.insert("test", Lww::new(1, Hlc::new(Uuid::nil())));
+            map.insert("test", Lww::new(1, Hlc::new(NodeId::min())));
 
             assert_eq!(map.get(&"test").unwrap().value(), &1);
         }
@@ -157,7 +156,7 @@ mod test {
     }
 
     mod merge {
-        use crate::test_utils::clock;
+        use crate::{node_id::NodeId, test_utils::clock};
         use proptest::{prop_assert_eq, proptest};
 
         use super::*;
@@ -175,10 +174,10 @@ mod test {
         #[test]
         fn retains_all_keys() {
             let mut map1 = GrowOnlyMap::<&str, Lww<i32>>::new();
-            map1.insert("foo", Lww::new(1, Hlc::new(Uuid::nil())));
+            map1.insert("foo", Lww::new(1, Hlc::new(NodeId::min())));
 
             let mut map2 = GrowOnlyMap::<&str, Lww<i32>>::new();
-            map2.insert("bar", Lww::new(2, Hlc::new(Uuid::nil())));
+            map2.insert("bar", Lww::new(2, Hlc::new(NodeId::min())));
 
             let merged = map1.merge(map2);
 

@@ -46,12 +46,12 @@ impl<T: Debug> Debug for Lww<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_utils::clock;
+    use crate::{node_id::NodeId, test_utils::clock};
     use proptest::proptest;
 
     #[test]
     fn overwrites_if_clock_is_newer() {
-        let node = uuid::Uuid::nil();
+        let node = NodeId::min();
         let first_clock = Hlc::new(node);
 
         let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock.next()));
@@ -61,7 +61,7 @@ mod test {
 
     #[test]
     fn rejects_if_clock_is_equal() {
-        let node = uuid::Uuid::nil();
+        let node = NodeId::min();
         let first_clock = Hlc::new(node);
 
         let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock));
@@ -71,7 +71,7 @@ mod test {
 
     #[test]
     fn rejects_if_clock_is_older() {
-        let node = uuid::Uuid::nil();
+        let node = NodeId::min();
         let first_clock = Hlc::new(node);
 
         let merged = Lww::new(1, first_clock.next()).merge(Lww::new(2, first_clock));
