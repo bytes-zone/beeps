@@ -64,6 +64,25 @@ mod test {
     use chrono::TimeZone;
     use proptest::prelude::*;
 
+    // The scheduler needs to be random, but consistent over time. We don't
+    // really care about the values here, just that we have a heads-up if the
+    // generation changes in some way.
+    #[test]
+    fn well_known_values() {
+        let scheduler = Scheduler::new(45.0, Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap());
+
+        let dates = scheduler.take(5).collect::<Vec<_>>();
+        let expected = vec![
+            Utc.with_ymd_and_hms(2024, 1, 1, 0, 17, 29).unwrap(),
+            Utc.with_ymd_and_hms(2024, 1, 1, 0, 56, 45).unwrap(),
+            Utc.with_ymd_and_hms(2024, 1, 1, 2, 19, 23).unwrap(),
+            Utc.with_ymd_and_hms(2024, 1, 1, 3, 28, 26).unwrap(),
+            Utc.with_ymd_and_hms(2024, 1, 1, 4, 20, 39).unwrap(),
+        ];
+
+        assert_eq!(dates, expected);
+    }
+
     proptest! {
         #[test]
         fn next_is_later_than_last_ping(
