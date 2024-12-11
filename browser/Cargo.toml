@@ -21,5 +21,5 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 
 # Enable this to get wasm-pack to leave names in the file, making it possible to
 # analyze with Twiggy.
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-g', '-O']
+# [package.metadata.wasm-pack.profile.release]
+# wasm-opt = ['-g', '-O']
