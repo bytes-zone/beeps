@@ -5,7 +5,7 @@ use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct NodeId(u16);
+pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] u16);
 
 impl NodeId {
     pub fn random() -> Self {
