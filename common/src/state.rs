@@ -4,10 +4,22 @@ use crate::lww::Lww;
 use crate::merge::Merge;
 use chrono::{DateTime, Utc};
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct State {
     pub minutes_per_ping: Lww<f64>,
+    #[cfg_attr(test, proptest(strategy = "pings()"))]
     pub pings: GMap<DateTime<Utc>, Lww<Option<String>>>,
+}
+
+#[cfg(test)]
+proptest::prop_compose! {
+    // TODO: we're going to all this hassle just to be able to use the timestamp
+    // as a key. I'm not the happiest about that. Is there any way to make this
+    // more succinct?
+    fn pings()(items in proptest::collection::hash_map(crate::test::timestamp(), proptest::prelude::any::<Lww<Option<String>>>(), 1..5)) -> GMap<DateTime<Utc>, Lww<Option<String>>> {
+        GMap(items)
+    }
 }
 
 impl State {
@@ -31,5 +43,29 @@ impl Merge for State {
         self.pings = self.pings.merge(other.pings);
 
         self
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_merge_idempotent(a: State) {
+            crate::merge::test_idempotent(a)
+        }
+
+        #[test]
+        fn test_merge_commutative(a: State, b: State) {
+            println!("{a:#?}");
+            crate::merge::test_commutative(a, b)
+        }
+
+        #[test]
+        fn test_merge_associative(a: State, b: State, c: State) {
+            crate::merge::test_associative(a, b, c)
+        }
     }
 }
