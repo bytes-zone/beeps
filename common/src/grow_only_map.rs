@@ -6,9 +6,7 @@ use std::collections::{
 use std::hash::Hash;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub struct GrowOnlyMap<K: Eq + Hash, V: Merge> {
-    inner: HashMap<K, V>,
-}
+pub struct GrowOnlyMap<K: Eq + Hash, V: Merge>(HashMap<K, V>);
 
 impl<K, V> GrowOnlyMap<K, V>
 where
@@ -16,21 +14,19 @@ where
     V: Merge,
 {
     pub fn new() -> Self {
-        Self {
-            inner: HashMap::new(),
-        }
+        Self(HashMap::new())
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.inner.get(key)
+        self.0.get(key)
     }
 
     pub fn insert(&mut self, key: K, value: V) {
-        match self.inner.entry(key) {
+        match self.0.entry(key) {
             Entry::Occupied(entry) => {
                 let (key, current) = entry.remove_entry();
                 let next = current.merge(value);
-                self.inner.insert(key, next);
+                self.0.insert(key, next);
             }
             Entry::Vacant(entry) => {
                 entry.insert(value);
@@ -39,21 +35,21 @@ where
     }
 
     pub fn iter(&self) -> Iter<'_, K, V> {
-        self.inner.iter()
+        self.0.iter()
     }
 
     /// Private because we can't remove properties from the map. It behaves like
     /// a G-Set. We will need it to merge, though!
     fn drain(&mut self) -> Drain<'_, K, V> {
-        self.inner.drain()
+        self.0.drain()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.0.is_empty()
     }
 
     pub fn len(&self) -> usize {
-        self.inner.len()
+        self.0.len()
     }
 }
 
@@ -87,9 +83,7 @@ where
     V: Merge + std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LwwMap")
-            .field("inner", &self.inner)
-            .finish()
+        f.debug_struct("LwwMap").field("0", &self.0).finish()
     }
 }
 
@@ -99,7 +93,7 @@ where
     V: Merge + PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.inner == other.inner
+        self.0 == other.0
     }
 }
 
