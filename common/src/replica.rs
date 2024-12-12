@@ -13,12 +13,9 @@ pub struct Replica {
 
 impl Replica {
     pub fn new(node_id: NodeId) -> Self {
-        let clock = Hlc::new(node_id);
-        let document = State::new_at(clock.clone());
-
         let out = Self {
-            clock: clock.next(),
-            document,
+            clock: Hlc::new(node_id),
+            document: State::default(),
         };
 
         out.check_clock_ordering();

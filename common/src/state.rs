@@ -11,11 +11,17 @@ pub struct State {
 }
 
 impl State {
-    pub fn new_at(clock: Hlc) -> Self {
+    pub fn new() -> Self {
         Self {
-            minutes_per_ping: Lww::new(45.0, clock.clone()),
+            minutes_per_ping: Lww::new(45.0, Hlc::zero()),
             pings: GMap::new(),
         }
+    }
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
