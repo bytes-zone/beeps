@@ -3,10 +3,19 @@ use chrono::{DateTime, TimeZone, Utc};
 use std::fmt::Display;
 
 #[derive(PartialEq, Eq, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Hlc {
+    #[cfg_attr(test, proptest(strategy = "timestamp()"))]
     timestamp: DateTime<Utc>,
     counter: u64,
     node: NodeId,
+}
+
+#[cfg(test)]
+proptest::prop_compose! {
+    fn timestamp()(unix in 0..2_000_000_000_000i64) -> DateTime<Utc> {
+        Utc.timestamp_opt(unix, 0).unwrap()
+    }
 }
 
 impl Hlc {
@@ -119,16 +128,11 @@ mod test {
 
     proptest! {
         #[test]
-        fn zero_is_less_than_every_other_hlc(ts in 0..2_000_000_000_000i64, counter: u64, node: NodeId) {
-            let to_compare = Hlc {
-                timestamp: Utc.timestamp_opt(ts, 0).unwrap(),
-                counter,
-                node,
-            };
+        fn zero_is_less_than_every_other_hlc(other: Hlc) {
             let zero = Hlc::zero();
 
-            prop_assume!(zero != to_compare);
-            prop_assert!(zero < to_compare);
+            prop_assume!(zero != other);
+            prop_assert!(zero < other);
         }
     }
 
