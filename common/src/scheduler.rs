@@ -104,7 +104,7 @@ mod test {
             let scheduler = Scheduler::new(minutes_per_ping, Utc.timestamp_opt(last_timestamp, 0).unwrap());
             let scheduler_offset = scheduler.clone();
 
-            let sample_size = 1_000;
+            let sample_size = 2_000;
 
             let total_minutes: i64 = scheduler
                 .zip(scheduler_offset.skip(1))
