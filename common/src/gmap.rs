@@ -7,7 +7,7 @@ use std::hash::Hash;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct GMap<K: Eq + Hash, V: Merge>(HashMap<K, V>);
+pub struct GMap<K: Eq + Hash, V: Merge>(pub(crate) HashMap<K, V>);
 
 impl<K, V> GMap<K, V>
 where
