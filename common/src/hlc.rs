@@ -5,17 +5,10 @@ use std::fmt::Display;
 #[derive(PartialEq, Eq, Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Hlc {
-    #[cfg_attr(test, proptest(strategy = "timestamp()"))]
+    #[cfg_attr(test, proptest(strategy = "crate::test::timestamp()"))]
     timestamp: DateTime<Utc>,
     counter: u64,
     node: NodeId,
-}
-
-#[cfg(test)]
-proptest::prop_compose! {
-    fn timestamp()(unix in 0..2_000_000_000_000i64) -> DateTime<Utc> {
-        Utc.timestamp_opt(unix, 0).unwrap()
-    }
 }
 
 impl Hlc {
