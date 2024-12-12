@@ -6,6 +6,7 @@ use std::collections::{
 use std::hash::Hash;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct GMap<K: Eq + Hash, V: Merge>(HashMap<K, V>);
 
 impl<K, V> GMap<K, V>
@@ -116,15 +117,14 @@ mod test {
     }
 
     mod insert {
-        use crate::{node_id::NodeId, test_utils::clock};
-        use proptest::{prop_assert_eq, proptest};
+        use proptest::prelude::*;
 
         use super::*;
 
         #[test]
         fn can_insert_from_nothing() {
             let mut map = GMap::<&str, Lww<i32>>::new();
-            map.insert("test", Lww::new(1, Hlc::new(NodeId::min())));
+            map.insert("test", Lww::new(1, Hlc::zero()));
 
             assert_eq!(map.get(&"test").unwrap().value(), &1);
         }
@@ -132,12 +132,12 @@ mod test {
         proptest! {
             #[test]
             fn insert_follows_lww_rules(
-                c1 in clock(),
-                c2 in clock(),
+                lww1: Lww<u8>,
+                lww2: Lww<u8>,
             ) {
-                let mut map = GMap::<&str, Lww<&str>>::new();
-                let lww1 = Lww::new("c1", c1.clone());
-                let lww2 = Lww::new("c2", c2.clone());
+                prop_assume!(lww1.value() != lww2.value());
+
+                let mut map = GMap::<&str, Lww<u8>>::new();
 
                 map.insert("test", lww1.clone());
                 map.insert("test", lww2.clone());
@@ -150,8 +150,7 @@ mod test {
     }
 
     mod merge {
-        use crate::{node_id::NodeId, test_utils::clock};
-        use proptest::{prop_assert_eq, proptest};
+        use proptest::prelude::*;
 
         use super::*;
 
@@ -167,11 +166,11 @@ mod test {
 
         #[test]
         fn retains_all_keys() {
-            let mut map1 = GMap::<&str, Lww<i32>>::new();
-            map1.insert("foo", Lww::new(1, Hlc::new(NodeId::min())));
+            let mut map1 = GMap::<&str, Lww<u8>>::new();
+            map1.insert("foo", Lww::new(1, Hlc::zero()));
 
-            let mut map2 = GMap::<&str, Lww<i32>>::new();
-            map2.insert("bar", Lww::new(2, Hlc::new(NodeId::min())));
+            let mut map2 = GMap::<&str, Lww<u8>>::new();
+            map2.insert("bar", Lww::new(2, Hlc::zero()));
 
             let merged = map1.merge(map2);
 
@@ -182,15 +181,13 @@ mod test {
         proptest! {
             #[test]
             fn merges_according_to_merge_semantics_of_value(
-                c1 in clock(),
-                c2 in clock(),
+                lww1: Lww<u8>,
+                lww2: Lww<u8>,
             ) {
-                let mut map1 = GMap::<&str, Lww<&str>>::new();
-                let lww1 = Lww::new("c1", c1.clone());
+                let mut map1 = GMap::<&str, Lww<u8>>::new();
                 map1.insert("test", lww1.clone());
 
-                let mut map2 = GMap::<&str, Lww<&str>>::new();
-                let lww2 = Lww::new("c2", c2.clone());
+                let mut map2 = GMap::<&str, Lww<u8>>::new();
                 map2.insert("test", lww2.clone());
 
                 let merged_lww = lww1.merge(lww2);
@@ -202,45 +199,22 @@ mod test {
             }
 
             #[test]
-            fn merge_idempotent(
-                c1 in clock(),
-            ) {
-                let mut map = GMap::<&str, Lww<&str>>::new();
-                map.insert("test", Lww::new("c1", c1));
-
-                crate::merge::test_idempotent(map);
+            fn merge_idempotent(a: GMap<u8, Lww<u8>>) {
+                crate::merge::test_idempotent(a);
             }
 
             #[test]
-            fn merge_commutative(
-                c1 in clock(),
-                c2 in clock(),
-            ) {
-                let mut map1 = GMap::<&str, Lww<&str>>::new();
-                map1.insert("test", Lww::new("c1", c1));
-
-                let mut map2 = GMap::<&str, Lww<&str>>::new();
-                map2.insert("test", Lww::new("c2", c2));
-
-                crate::merge::test_commutative(map1, map2);
+            fn merge_commutative(a: GMap<u8, Lww<u8>>, b: GMap<u8, Lww<u8>>) {
+                crate::merge::test_commutative(a, b);
             }
 
             #[test]
             fn merge_associative(
-                c1 in clock(),
-                c2 in clock(),
-                c3 in clock(),
+                a: GMap<u8, Lww<u8>>,
+                b: GMap<u8, Lww<u8>>,
+                c: GMap<u8, Lww<u8>>,
             ) {
-                let mut map1 = GMap::<&str, Lww<&str>>::new();
-                map1.insert("test", Lww::new("c1", c1));
-
-                let mut map2 = GMap::<&str, Lww<&str>>::new();
-                map2.insert("test", Lww::new("c2", c2));
-
-                let mut map3 = GMap::<&str, Lww<&str>>::new();
-                map3.insert("test", Lww::new("c3", c3));
-
-                crate::merge::test_associative(map1, map2, map3);
+                crate::merge::test_associative(a, b, c);
             }
         }
     }
