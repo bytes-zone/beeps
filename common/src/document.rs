@@ -4,6 +4,7 @@ use crate::lww::Lww;
 use crate::node_id::NodeId;
 use chrono::{DateTime, Utc};
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Document {
     // for bookkeeping
     clock: Hlc,

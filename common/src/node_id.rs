@@ -3,7 +3,7 @@ use rand::Rng;
 use rand_pcg::Pcg32;
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct NodeId(u16);
 

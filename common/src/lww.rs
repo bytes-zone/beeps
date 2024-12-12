@@ -1,7 +1,7 @@
 use crate::{hlc::Hlc, merge::Merge};
 use core::fmt::{self, Debug, Formatter};
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Lww<T> {
     value: T,
     clock: Hlc,

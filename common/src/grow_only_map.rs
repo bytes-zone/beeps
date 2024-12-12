@@ -5,7 +5,7 @@ use std::collections::{
 };
 use std::hash::Hash;
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct GrowOnlyMap<K: Eq + Hash, V: Merge> {
     inner: HashMap<K, V>,
 }

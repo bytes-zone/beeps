@@ -2,7 +2,7 @@ use crate::node_id::NodeId;
 use chrono::{DateTime, Utc};
 use std::fmt::Display;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Hlc {
     timestamp: DateTime<Utc>,
     counter: u64,
