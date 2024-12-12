@@ -1,5 +1,5 @@
 use crate::node_id::NodeId;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use std::fmt::Display;
 
 #[derive(PartialEq, Eq, Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -24,6 +24,14 @@ impl Hlc {
             timestamp,
             counter: 0,
             node,
+        }
+    }
+
+    pub fn zero() -> Self {
+        Self {
+            timestamp: Utc.timestamp_opt(0, 0).unwrap(),
+            counter: 0,
+            node: NodeId::min(),
         }
     }
 
@@ -107,6 +115,22 @@ impl Display for Hlc {
 mod test {
     use super::*;
     use chrono::Duration;
+    use proptest::{prop_assert, prop_assume, proptest};
+
+    proptest! {
+        #[test]
+        fn zero_is_less_than_every_other_hlc(ts in 0..2_000_000_000_000i64, counter: u64, node: NodeId) {
+            let to_compare = Hlc {
+                timestamp: Utc.timestamp_opt(ts, 0).unwrap(),
+                counter,
+                node,
+            };
+            let zero = Hlc::zero();
+
+            prop_assume!(zero != to_compare);
+            prop_assert!(zero < to_compare);
+        }
+    }
 
     mod ord {
         use super::*;
