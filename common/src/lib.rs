@@ -6,6 +6,3 @@ pub mod node_id;
 pub mod replica;
 pub mod scheduler;
 pub mod state;
-
-#[cfg(test)]
-mod test_utils;
