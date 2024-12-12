@@ -5,7 +5,7 @@ use crate::node_id::NodeId;
 use chrono::{DateTime, Utc};
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct Document {
+pub struct Replica {
     // for bookkeeping
     clock: Hlc,
 
@@ -14,7 +14,7 @@ pub struct Document {
     pings: GMap<DateTime<Utc>, Lww<Option<String>>>,
 }
 
-impl Document {
+impl Replica {
     pub fn new(node_id: NodeId) -> Self {
         let clock = Hlc::new(node_id);
         let minutes_per_ping = Lww::new(45.0, clock.clone());
@@ -90,7 +90,7 @@ mod test {
     #[test]
     fn minutes_per_ping() {
         let node_id = NodeId::random();
-        let mut doc = Document::new(node_id);
+        let mut doc = Replica::new(node_id);
 
         doc.set_minutes_per_ping(60.0);
         assert_eq!(*doc.minutes_per_ping(), 60.0);
@@ -99,7 +99,7 @@ mod test {
     #[test]
     fn add_ping() {
         let node_id = NodeId::random();
-        let mut doc = Document::new(node_id);
+        let mut doc = Replica::new(node_id);
 
         let when = Utc::now();
         doc.add_ping(when);
@@ -109,7 +109,7 @@ mod test {
     #[test]
     fn set_ping() {
         let node_id = NodeId::random();
-        let mut doc = Document::new(node_id);
+        let mut doc = Replica::new(node_id);
 
         let when = Utc::now();
         doc.add_ping(when);
