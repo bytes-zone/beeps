@@ -36,7 +36,11 @@ impl Document {
         self.check_clock_ordering();
     }
 
+    #[inline]
     fn check_clock_ordering(&self) {
+        // safety property for when we're using more than one CRDT here. Doing
+        // this gives us a way to reason about which update happened first, as
+        // well as letting us overcome clock drift.
         debug_assert!(&self.clock > self.minutes_per_ping.clock());
     }
 }
