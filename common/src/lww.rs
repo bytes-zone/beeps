@@ -12,6 +12,13 @@ impl<T> Lww<T> {
         Self { value, clock }
     }
 
+    pub fn set(&mut self, value: T, clock: Hlc) {
+        if clock > self.clock {
+            self.value = value;
+            self.clock = clock;
+        }
+    }
+
     pub fn value(&self) -> &T {
         &self.value
     }
