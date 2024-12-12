@@ -1,6 +1,7 @@
 use chrono::Utc;
 use rand::Rng;
 use rand_pcg::Pcg32;
+use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
@@ -23,6 +24,12 @@ impl NodeId {
 
     pub fn max() -> Self {
         Self(u16::MAX)
+    }
+}
+
+impl Display for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

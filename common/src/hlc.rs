@@ -1,5 +1,6 @@
 use crate::node_id::NodeId;
 use chrono::{DateTime, Utc};
+use std::fmt::Display;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Hlc {
@@ -93,6 +94,12 @@ impl Ord for Hlc {
 impl PartialOrd for Hlc {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl Display for Hlc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}::{}::{}", self.timestamp, self.counter, self.node)
     }
 }
 
