@@ -2,6 +2,7 @@ use crate::{hlc::Hlc, merge::Merge};
 use core::fmt::{self, Debug, Formatter};
 
 #[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Lww<T> {
     value: T,
     clock: Hlc,
@@ -53,13 +54,11 @@ impl<T: Debug> Debug for Lww<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{node_id::NodeId, test_utils::clock};
     use proptest::proptest;
 
     #[test]
     fn overwrites_if_clock_is_newer() {
-        let node = NodeId::min();
-        let first_clock = Hlc::new(node);
+        let first_clock = Hlc::zero();
 
         let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock.next()));
 
@@ -68,8 +67,7 @@ mod test {
 
     #[test]
     fn rejects_if_clock_is_equal() {
-        let node = NodeId::min();
-        let first_clock = Hlc::new(node);
+        let first_clock = Hlc::zero();
 
         let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock));
 
@@ -78,8 +76,7 @@ mod test {
 
     #[test]
     fn rejects_if_clock_is_older() {
-        let node = NodeId::min();
-        let first_clock = Hlc::new(node);
+        let first_clock = Hlc::zero();
 
         let merged = Lww::new(1, first_clock.next()).merge(Lww::new(2, first_clock));
 
@@ -88,25 +85,18 @@ mod test {
 
     proptest! {
         #[test]
-        fn merge_commutative(a in clock(), b in clock()) {
-            crate::merge::test_commutative(
-                Lww::new(1, a),
-                Lww::new(1, b),
-            )
+        fn merge_commutative(a: Lww<bool>, b: Lww<bool>) {
+            crate::merge::test_commutative(a, b)
         }
 
         #[test]
-        fn merge_associative(a in clock(), b in clock(), c in clock()) {
-            crate::merge::test_associative(
-                Lww::new(1, a),
-                Lww::new(1, b),
-                Lww::new(1, c),
-            )
+        fn merge_associative(a: Lww<bool>, b: Lww<bool>, c: Lww<bool>) {
+            crate::merge::test_associative(a, b, c)
         }
 
         #[test]
-        fn merge_idempotent(a in clock()) {
-            crate::merge::test_idempotent(Lww::new(1, a))
+        fn merge_idempotent(a: Lww<bool>) {
+            crate::merge::test_idempotent(a)
         }
     }
 }
