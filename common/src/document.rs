@@ -15,10 +15,14 @@ impl Document {
         let clock = Hlc::new(node_id);
         let minutes_per_ping = Lww::new(45.0, clock.clone());
 
-        Self {
+        let out = Self {
             clock: clock.next(),
             minutes_per_ping,
-        }
+        };
+
+        out.check_clock_ordering();
+
+        out
     }
 
     fn next_clock(&mut self) -> Hlc {
