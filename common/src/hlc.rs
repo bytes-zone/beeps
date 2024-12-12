@@ -7,6 +7,7 @@ use std::fmt::Display;
 pub struct Hlc {
     #[cfg_attr(test, proptest(strategy = "crate::test::timestamp()"))]
     timestamp: DateTime<Utc>,
+    #[cfg_attr(test, proptest(strategy = "0..=10u64"))]
     counter: u64,
     node: NodeId,
 }
