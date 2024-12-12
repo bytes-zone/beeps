@@ -25,7 +25,7 @@ pub fn main() {
     let clock = common::hlc::Hlc::new(NodeId::random());
     let lww = common::lww::Lww::new(1, clock);
 
-    let mut map = common::grow_only_map::GrowOnlyMap::new();
+    let mut map = common::gmap::GMap::new();
     map.insert("test", lww);
 
     alert("set value to…");

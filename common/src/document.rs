@@ -1,4 +1,4 @@
-use crate::grow_only_map::GrowOnlyMap;
+use crate::gmap::GMap;
 use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::node_id::NodeId;
@@ -11,7 +11,7 @@ pub struct Document {
 
     // data storage
     minutes_per_ping: Lww<f64>,
-    pings: GrowOnlyMap<DateTime<Utc>, Lww<Option<String>>>,
+    pings: GMap<DateTime<Utc>, Lww<Option<String>>>,
 }
 
 impl Document {
@@ -22,7 +22,7 @@ impl Document {
         let out = Self {
             clock: clock.next(),
             minutes_per_ping,
-            pings: GrowOnlyMap::new(),
+            pings: GMap::new(),
         };
 
         out.check_clock_ordering();
@@ -45,7 +45,7 @@ impl Document {
         self.check_clock_ordering();
     }
 
-    pub fn pings(&self) -> &GrowOnlyMap<DateTime<Utc>, Lww<Option<String>>> {
+    pub fn pings(&self) -> &GMap<DateTime<Utc>, Lww<Option<String>>> {
         &self.pings
     }
 

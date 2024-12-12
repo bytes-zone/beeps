@@ -6,9 +6,9 @@ use std::collections::{
 use std::hash::Hash;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub struct GrowOnlyMap<K: Eq + Hash, V: Merge>(HashMap<K, V>);
+pub struct GMap<K: Eq + Hash, V: Merge>(HashMap<K, V>);
 
-impl<K, V> GrowOnlyMap<K, V>
+impl<K, V> GMap<K, V>
 where
     K: Eq + Hash,
     V: Merge,
@@ -53,7 +53,7 @@ where
     }
 }
 
-impl<K, V> Merge for GrowOnlyMap<K, V>
+impl<K, V> Merge for GMap<K, V>
 where
     K: Eq + Hash,
     V: Merge,
@@ -67,7 +67,7 @@ where
     }
 }
 
-impl<K, V> Default for GrowOnlyMap<K, V>
+impl<K, V> Default for GMap<K, V>
 where
     K: Eq + Hash,
     V: Merge,
@@ -77,7 +77,7 @@ where
     }
 }
 
-impl<K, V> std::fmt::Debug for GrowOnlyMap<K, V>
+impl<K, V> std::fmt::Debug for GMap<K, V>
 where
     K: Eq + Hash + std::fmt::Debug,
     V: Merge + std::fmt::Debug,
@@ -87,7 +87,7 @@ where
     }
 }
 
-impl<K, V> PartialEq for GrowOnlyMap<K, V>
+impl<K, V> PartialEq for GMap<K, V>
 where
     K: Eq + Hash,
     V: Merge + PartialEq,
@@ -108,7 +108,7 @@ mod test {
 
         #[test]
         fn get_nothing() {
-            let map = GrowOnlyMap::<&str, Lww<i32>>::new();
+            let map = GMap::<&str, Lww<i32>>::new();
             assert_eq!(map.get(&"foo"), None);
         }
 
@@ -123,7 +123,7 @@ mod test {
 
         #[test]
         fn can_insert_from_nothing() {
-            let mut map = GrowOnlyMap::<&str, Lww<i32>>::new();
+            let mut map = GMap::<&str, Lww<i32>>::new();
             map.insert("test", Lww::new(1, Hlc::new(NodeId::min())));
 
             assert_eq!(map.get(&"test").unwrap().value(), &1);
@@ -135,7 +135,7 @@ mod test {
                 c1 in clock(),
                 c2 in clock(),
             ) {
-                let mut map = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map = GMap::<&str, Lww<&str>>::new();
                 let lww1 = Lww::new("c1", c1.clone());
                 let lww2 = Lww::new("c2", c2.clone());
 
@@ -157,8 +157,8 @@ mod test {
 
         #[test]
         fn merge_nothing() {
-            let map1 = GrowOnlyMap::<&str, Lww<i32>>::new();
-            let map2 = GrowOnlyMap::<&str, Lww<i32>>::new();
+            let map1 = GMap::<&str, Lww<i32>>::new();
+            let map2 = GMap::<&str, Lww<i32>>::new();
 
             let merged = map1.merge(map2);
 
@@ -167,10 +167,10 @@ mod test {
 
         #[test]
         fn retains_all_keys() {
-            let mut map1 = GrowOnlyMap::<&str, Lww<i32>>::new();
+            let mut map1 = GMap::<&str, Lww<i32>>::new();
             map1.insert("foo", Lww::new(1, Hlc::new(NodeId::min())));
 
-            let mut map2 = GrowOnlyMap::<&str, Lww<i32>>::new();
+            let mut map2 = GMap::<&str, Lww<i32>>::new();
             map2.insert("bar", Lww::new(2, Hlc::new(NodeId::min())));
 
             let merged = map1.merge(map2);
@@ -185,11 +185,11 @@ mod test {
                 c1 in clock(),
                 c2 in clock(),
             ) {
-                let mut map1 = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map1 = GMap::<&str, Lww<&str>>::new();
                 let lww1 = Lww::new("c1", c1.clone());
                 map1.insert("test", lww1.clone());
 
-                let mut map2 = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map2 = GMap::<&str, Lww<&str>>::new();
                 let lww2 = Lww::new("c2", c2.clone());
                 map2.insert("test", lww2.clone());
 
@@ -205,7 +205,7 @@ mod test {
             fn merge_idempotent(
                 c1 in clock(),
             ) {
-                let mut map = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map = GMap::<&str, Lww<&str>>::new();
                 map.insert("test", Lww::new("c1", c1));
 
                 crate::merge::test_idempotent(map);
@@ -216,10 +216,10 @@ mod test {
                 c1 in clock(),
                 c2 in clock(),
             ) {
-                let mut map1 = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map1 = GMap::<&str, Lww<&str>>::new();
                 map1.insert("test", Lww::new("c1", c1));
 
-                let mut map2 = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map2 = GMap::<&str, Lww<&str>>::new();
                 map2.insert("test", Lww::new("c2", c2));
 
                 crate::merge::test_commutative(map1, map2);
@@ -231,13 +231,13 @@ mod test {
                 c2 in clock(),
                 c3 in clock(),
             ) {
-                let mut map1 = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map1 = GMap::<&str, Lww<&str>>::new();
                 map1.insert("test", Lww::new("c1", c1));
 
-                let mut map2 = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map2 = GMap::<&str, Lww<&str>>::new();
                 map2.insert("test", Lww::new("c2", c2));
 
-                let mut map3 = GrowOnlyMap::<&str, Lww<&str>>::new();
+                let mut map3 = GMap::<&str, Lww<&str>>::new();
                 map3.insert("test", Lww::new("c3", c3));
 
                 crate::merge::test_associative(map1, map2, map3);
