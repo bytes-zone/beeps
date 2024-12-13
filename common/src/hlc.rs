@@ -1,15 +1,19 @@
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
+use crate::node_id::NodeId;
+use chrono::{DateTime, TimeZone, Utc};
+use std::fmt::Display;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Hlc {
+    #[cfg_attr(test, proptest(strategy = "crate::test::timestamp()"))]
     timestamp: DateTime<Utc>,
+    #[cfg_attr(test, proptest(strategy = "0..=10u64"))]
     counter: u64,
-    node: Uuid,
+    node: NodeId,
 }
 
 impl Hlc {
-    pub fn new(node: Uuid) -> Self {
+    pub fn new(node: NodeId) -> Self {
         Self {
             timestamp: Utc::now(),
             counter: 0,
@@ -18,11 +22,19 @@ impl Hlc {
     }
 
     #[cfg(test)]
-    pub fn new_at(node: Uuid, timestamp: DateTime<Utc>) -> Self {
+    pub fn new_at(node: NodeId, timestamp: DateTime<Utc>) -> Self {
         Self {
             timestamp,
             counter: 0,
             node,
+        }
+    }
+
+    pub fn zero() -> Self {
+        Self {
+            timestamp: Utc.timestamp_opt(0, 0).unwrap(),
+            counter: 0,
+            node: NodeId::min(),
         }
     }
 
@@ -96,10 +108,27 @@ impl PartialOrd for Hlc {
     }
 }
 
+impl Display for Hlc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}::{}::{}", self.timestamp, self.counter, self.node)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use chrono::Duration;
+    use proptest::{prop_assert, prop_assume, proptest};
+
+    proptest! {
+        #[test]
+        fn zero_is_less_than_every_other_hlc(other: Hlc) {
+            let zero = Hlc::zero();
+
+            prop_assume!(zero != other);
+            prop_assert!(zero < other);
+        }
+    }
 
     mod ord {
         use super::*;
@@ -111,12 +140,12 @@ mod test {
             let hlc1 = Hlc {
                 timestamp: now - Duration::seconds(1),
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let hlc2 = Hlc {
                 timestamp: now + Duration::seconds(1),
                 counter: 1,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             assert!(hlc1 < hlc2);
         }
@@ -128,12 +157,12 @@ mod test {
             let hlc1 = Hlc {
                 timestamp: now,
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let hlc2 = Hlc {
                 timestamp: now,
                 counter: 1,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             assert!(hlc1 < hlc2);
         }
@@ -145,12 +174,12 @@ mod test {
             let hlc1 = Hlc {
                 timestamp: now,
                 counter: 0,
-                node: Uuid::nil(),
+                node: NodeId::min(),
             };
             let hlc2 = Hlc {
                 timestamp: now,
                 counter: 0,
-                node: Uuid::max(),
+                node: NodeId::max(),
             };
             assert!(hlc1 < hlc2);
         }
@@ -166,7 +195,7 @@ mod test {
             let hlc = Hlc {
                 timestamp: now + Duration::seconds(1),
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let next = hlc.next_at(now);
 
@@ -185,7 +214,7 @@ mod test {
             let hlc = Hlc {
                 timestamp: now - Duration::seconds(1),
                 counter: 1,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let next = hlc.next_at(now);
 
@@ -207,12 +236,12 @@ mod test {
             let hlc = Hlc {
                 timestamp: now - Duration::seconds(1),
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let other = Hlc {
                 timestamp: now - Duration::seconds(1),
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
 
             let next = hlc.receive_at(&other, now);
@@ -232,12 +261,12 @@ mod test {
             let hlc = Hlc {
                 timestamp: now,
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let other = Hlc {
                 timestamp: now,
                 counter: 1, // should increment from this
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
 
             let next = hlc.receive_at(&other, now);
@@ -257,12 +286,12 @@ mod test {
             let hlc = Hlc {
                 timestamp: now,
                 counter: 1, // should increment from this
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let other = Hlc {
                 timestamp: now,
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
 
             let next = hlc.receive_at(&other, now);
@@ -282,12 +311,12 @@ mod test {
             let hlc = Hlc {
                 timestamp: now,
                 counter: 0,
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
             let other = Hlc {
                 timestamp: now + Duration::seconds(1),
                 counter: 1, // should increment from here
-                node: Uuid::new_v4(),
+                node: NodeId::random(),
             };
 
             let next = hlc.receive_at(&other, now);

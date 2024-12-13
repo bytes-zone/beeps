@@ -1,6 +1,12 @@
 mod utils;
 
+use common::node_id::NodeId;
 use wasm_bindgen::prelude::*;
+
+extern crate wee_alloc;
+
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
 extern "C" {
@@ -16,11 +22,12 @@ pub fn main() {
     // intended to demonstrate any particular thing.
     alert("Beginning test.");
 
-    let clock = common::hlc::Hlc::new(uuid::Uuid::new_v4());
+    let clock = common::hlc::Hlc::new(NodeId::random());
     let lww = common::lww::Lww::new(1, clock);
 
-    let mut map = common::lww_map::LwwMap::new();
+    let mut map = common::gmap::GMap::new();
     map.insert("test", lww);
 
-    alert(&format!("set value: {:?}", map.get(&"test")));
+    alert("set value to…");
+    alert(&map.get(&"test").unwrap().value().to_string());
 }
