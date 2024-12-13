@@ -201,6 +201,6 @@ mod test {
 
     prop_state_machine! {
         #[test]
-        fn run_with_macro(sequential 1..20 => ReplicaStateMachine);
+        fn state_machine(sequential 1..20 => ReplicaStateMachine);
     }
 }
