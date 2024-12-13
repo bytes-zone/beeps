@@ -109,6 +109,7 @@ dependencies = [
  "chrono",
  "proptest",
  "proptest-derive",
+ "proptest-state-machine",
  "rand",
  "rand_pcg",
  "serde",
@@ -295,6 +296,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "proptest-state-machine"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28278d6a11102264b0c569c33dbe5286ba00d2dd6d96ff2a94296e0e5b3d1e04"
+dependencies = [
+ "proptest",
 ]
 
 [[package]]
