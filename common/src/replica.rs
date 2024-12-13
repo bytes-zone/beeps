@@ -95,6 +95,7 @@ mod test {
     enum Transition {
         SetMinutesPerPing(f64),
         AddPing(chrono::DateTime<Utc>),
+        TagPing(chrono::DateTime<Utc>, String),
     }
 
     #[derive(Debug, Clone)]
@@ -118,8 +119,11 @@ mod test {
 
         fn transitions(_: &Self::State) -> BoxedStrategy<Self::Transition> {
             prop_oneof![
-                (1.0..60.0).prop_map(Transition::SetMinutesPerPing),
-                crate::test::timestamp().prop_map(Transition::AddPing),
+                1 => (1.0..60.0).prop_map(Transition::SetMinutesPerPing),
+                10 => crate::test::timestamp_range(0..=2i64).prop_map(Transition::AddPing),
+                10 =>
+                    (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
+                        .prop_map(|(ts, tag)| Transition::TagPing(ts, tag)),
             ]
             .boxed()
         }
@@ -132,9 +136,20 @@ mod test {
                 Transition::AddPing(when) => {
                     state.pings.insert(*when, None);
                 }
+                Transition::TagPing(when, tag) => {
+                    state.pings.insert(*when, Some(tag.clone()));
+                }
             }
 
             state
+        }
+
+        fn preconditions(state: &Self::State, transition: &Self::Transition) -> bool {
+            match transition {
+                Transition::SetMinutesPerPing(_) => true,
+                Transition::AddPing(when) => !state.pings.contains_key(when),
+                Transition::TagPing(when, _) => state.pings.contains_key(when),
+            }
         }
     }
 
@@ -168,6 +183,14 @@ mod test {
                     assert_eq!(
                         state.pings().get(&when).map(|lww| lww.value()),
                         ref_state.pings.get(&when)
+                    );
+                }
+                Transition::TagPing(when, tag) => {
+                    state.tag_ping(when, tag.clone());
+
+                    assert_eq!(
+                        state.pings().get(&when).map(|lww| lww.value()),
+                        Some(&Some(tag))
                     );
                 }
             }
