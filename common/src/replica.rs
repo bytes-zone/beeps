@@ -50,6 +50,8 @@ impl Replica {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use proptest::prelude::*;
     use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
 
@@ -92,11 +94,13 @@ mod test {
     #[derive(Debug, Clone)]
     enum Transition {
         SetMinutesPerPing(f64),
+        AddPing(chrono::DateTime<Utc>),
     }
 
     #[derive(Debug, Clone)]
     struct RefState {
         minutes_per_ping: f64,
+        pings: HashMap<DateTime<Utc>, Option<String>>,
     }
 
     impl ReferenceStateMachine for RefState {
@@ -107,21 +111,30 @@ mod test {
         fn init_state() -> BoxedStrategy<Self::State> {
             Just(RefState {
                 minutes_per_ping: 45.0,
+                pings: HashMap::new(),
             })
             .boxed()
         }
 
         fn transitions(_: &Self::State) -> BoxedStrategy<Self::Transition> {
-            prop_oneof![(1.0..60.0).prop_map(Transition::SetMinutesPerPing)].boxed()
+            prop_oneof![
+                (1.0..60.0).prop_map(Transition::SetMinutesPerPing),
+                crate::test::timestamp().prop_map(Transition::AddPing),
+            ]
+            .boxed()
         }
 
-        fn apply(state: Self::State, transition: &Self::Transition) -> Self::State {
+        fn apply(mut state: Self::State, transition: &Self::Transition) -> Self::State {
             match transition {
-                Transition::SetMinutesPerPing(new) => RefState {
-                    minutes_per_ping: *new,
-                    ..state
-                },
+                Transition::SetMinutesPerPing(new) => {
+                    state.minutes_per_ping = *new;
+                }
+                Transition::AddPing(when) => {
+                    state.pings.insert(*when, None);
+                }
             }
+
+            state
         }
     }
 
@@ -148,10 +161,18 @@ mod test {
                     state.set_minutes_per_ping(new);
 
                     assert_eq!(state.minutes_per_ping(), &ref_state.minutes_per_ping);
+                }
+                Transition::AddPing(when) => {
+                    state.add_ping(when);
 
-                    state
+                    assert_eq!(
+                        state.pings().get(&when).map(|lww| lww.value()),
+                        ref_state.pings.get(&when)
+                    );
                 }
             }
+
+            state
         }
 
         fn check_invariants(
