@@ -1,4 +1,5 @@
 pub trait Merge {
+    #[must_use]
     fn merge(self, other: Self) -> Self;
 }
 

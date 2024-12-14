@@ -51,12 +51,14 @@ impl Hlc {
         self.increment_at(Utc::now());
     }
 
+    #[must_use]
     pub fn next_at(&self, now: DateTime<Utc>) -> Self {
         let mut next = self.clone();
         next.increment_at(now);
         next
     }
 
+    #[must_use]
     pub fn next(&self) -> Self {
         self.next_at(Utc::now())
     }
@@ -82,12 +84,14 @@ impl Hlc {
         self.mut_receive_at(other, Utc::now());
     }
 
+    #[must_use]
     pub fn receive_at(&self, other: &Self, now: DateTime<Utc>) -> Self {
         let mut next = self.clone();
         next.mut_receive_at(other, now);
         next
     }
 
+    #[must_use]
     pub fn receive(&self, other: &Self) -> Self {
         self.receive_at(other, Utc::now())
     }

@@ -61,7 +61,7 @@ where
 {
     fn merge(mut self, mut other: Self) -> Self {
         for (k, v) in other.drain() {
-            self.insert(k, v)
+            self.insert(k, v);
         }
 
         self
@@ -95,6 +95,19 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a GMap<K, V>
+where
+    K: Eq + Hash,
+    V: Merge,
+{
+    type IntoIter = Iter<'a, K, V>;
+    type Item = (&'a K, &'a V);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

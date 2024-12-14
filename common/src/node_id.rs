@@ -8,11 +8,12 @@ use std::fmt::Display;
 pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] u16);
 
 impl NodeId {
+    #[allow(clippy::cast_sign_loss)]
     pub fn random() -> Self {
         Self(
             Pcg32::new(
-                Utc::now().timestamp() as u64, // Seed (underflow OK if we're somehow pre-1970)
-                0xa02bdbf7bb3c0a7,             // Stream (default)
+                Utc::now().timestamp() as u64, // Seed (we're OK with underflow if timestamp is somehow pre-1970)
+                0xa02_bdbf_7bb3_c0a7,          // Stream (default)
             )
             .gen(),
         )

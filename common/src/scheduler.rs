@@ -26,6 +26,7 @@ impl Scheduler {
 impl Iterator for Scheduler {
     type Item = DateTime<Utc>;
 
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
     fn next(&mut self) -> Option<Self::Item> {
         // Next, we'll generate a random number based seeded with the time of the
         // last ping. We do this because it allows us to generate the same sequence,
@@ -37,7 +38,7 @@ impl Iterator for Scheduler {
             // this as a seed, so we can accept whatever behavior we like *as long
             // as it's consistent*.
             self.ping.timestamp() as u64,
-            0xa02bdbf7bb3c0a7, // Default stream
+            0xa02_bdbf_7bb3_c0a7, // Default stream
         );
 
         // We want an exponential distribution of values (many small values with a
