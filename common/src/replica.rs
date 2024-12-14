@@ -1,4 +1,3 @@
-use crate::gmap::GMap;
 use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::node_id::NodeId;
