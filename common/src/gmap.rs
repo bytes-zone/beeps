@@ -49,6 +49,11 @@ where
         self.0.iter()
     }
 
+    /// Iterate over keys.
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.0.keys()
+    }
+
     /// Private because we can't remove properties from the map. It behaves like
     /// a G-Set. We will need it to merge, though!
     fn drain(&mut self) -> Drain<'_, K, V> {
