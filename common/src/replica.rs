@@ -24,11 +24,11 @@ impl Replica {
         self.clock.clone()
     }
 
-    pub fn minutes_per_ping(&self) -> &f64 {
+    pub fn minutes_per_ping(&self) -> &u16 {
         self.document.minutes_per_ping.value()
     }
 
-    pub fn set_minutes_per_ping(&mut self, new: f64) {
+    pub fn set_minutes_per_ping(&mut self, new: u16) {
         let clock = self.next_clock();
         self.document.minutes_per_ping.set(new, clock);
     }
@@ -62,8 +62,8 @@ mod test {
         let node_id = NodeId::random();
         let mut doc = Replica::new(node_id);
 
-        doc.set_minutes_per_ping(60.0);
-        assert_eq!(*doc.minutes_per_ping(), 60.0);
+        doc.set_minutes_per_ping(60);
+        assert_eq!(*doc.minutes_per_ping(), 60);
     }
 
     #[test]
@@ -93,14 +93,14 @@ mod test {
     // Property Test
     #[derive(Debug, Clone)]
     enum Transition {
-        SetMinutesPerPing(f64),
+        SetMinutesPerPing(u16),
         AddPing(chrono::DateTime<Utc>),
         TagPing(chrono::DateTime<Utc>, String),
     }
 
     #[derive(Debug, Clone)]
     struct RefState {
-        minutes_per_ping: f64,
+        minutes_per_ping: u16,
         pings: HashMap<DateTime<Utc>, Option<String>>,
     }
 
@@ -111,7 +111,7 @@ mod test {
 
         fn init_state() -> BoxedStrategy<Self::State> {
             Just(RefState {
-                minutes_per_ping: 45.0,
+                minutes_per_ping: 45,
                 pings: HashMap::new(),
             })
             .boxed()
@@ -119,7 +119,7 @@ mod test {
 
         fn transitions(_: &Self::State) -> BoxedStrategy<Self::Transition> {
             prop_oneof![
-                1 => (1.0..60.0).prop_map(Transition::SetMinutesPerPing),
+                1 => (1..=4u16).prop_map(|i| Transition::SetMinutesPerPing(i * 15)),
                 10 => crate::test::timestamp_range(0..=2i64).prop_map(Transition::AddPing),
                 10 =>
                     (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
