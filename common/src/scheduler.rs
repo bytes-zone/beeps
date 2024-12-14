@@ -11,10 +11,10 @@ pub struct Scheduler {
 impl Scheduler {
     // only temporary in test-only
     #[cfg(test)]
-    fn new(average_minutes_between_pings: f64, ping: DateTime<Utc>) -> Self {
+    fn new(average_minutes_between_pings: u16, ping: DateTime<Utc>) -> Self {
         // We want to eventually find out how many minutes we should wait for the
         // next ping. To do that, we need to know the rate of pings per minute.
-        let average_pings_per_minute = 1.0 / average_minutes_between_pings;
+        let average_pings_per_minute = 1.0 / average_minutes_between_pings as f64;
 
         Self {
             average_pings_per_minute,
@@ -70,7 +70,7 @@ mod test {
     // generation changes in some way.
     #[test]
     fn well_known_values() {
-        let scheduler = Scheduler::new(45.0, Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap());
+        let scheduler = Scheduler::new(45, Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap());
 
         let dates = scheduler.take(5).collect::<Vec<_>>();
         let expected = vec![
@@ -87,7 +87,7 @@ mod test {
     proptest! {
         #[test]
         fn next_is_later_than_last_ping(
-            minutes_per_ping in 1f64..60f64,
+            minutes_per_ping in 1..=60u16,
             last_timestamp in 0i64..2_000_000_000_000i64,
         ) {
             let last_ping = Utc.timestamp_opt(last_timestamp, 0).unwrap();
@@ -98,7 +98,7 @@ mod test {
 
         #[test]
         fn average_is_close_to_lambda(
-            minutes_per_ping in 1f64..60f64,
+            minutes_per_ping in 1..60u16,
             last_timestamp in 0i64..2_000_000_000_000i64,
         ) {
             let scheduler = Scheduler::new(minutes_per_ping, Utc.timestamp_opt(last_timestamp, 0).unwrap());
@@ -115,7 +115,7 @@ mod test {
 
             let average = total_minutes as f64 / sample_size as f64;
 
-            let diff = (average / minutes_per_ping).abs() - 1.0;
+            let diff = (average / minutes_per_ping as f64).abs() - 1.0;
 
             assert!(
                 diff < 0.1,
