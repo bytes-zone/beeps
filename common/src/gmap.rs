@@ -1,10 +1,15 @@
 use crate::merge::Merge;
-use std::collections::{
-    hash_map::{Drain, Entry, Iter},
-    HashMap,
-};
 use std::hash::Hash;
+use std::{
+    collections::{
+        hash_map::{Drain, Entry, Iter},
+        HashMap,
+    },
+    fmt,
+};
 
+/// A grow-only map (G-Map.) Allows any hashable type as a key, but values must
+/// implement `Merge`.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct GMap<K: Eq + Hash, V: Merge>(pub(crate) HashMap<K, V>);
@@ -14,14 +19,20 @@ where
     K: Eq + Hash,
     V: Merge,
 {
+    /// Create an empty `GMap`.
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
+    /// Get a value from the map.
     pub fn get(&self, key: &K) -> Option<&V> {
         self.0.get(key)
     }
 
+    /// Insert a value into the map. If the key already exists, the value will
+    /// be merged.
+    ///
+    /// TODO: would be more accurately called "upsert" or maybe "set"
     pub fn insert(&mut self, key: K, value: V) {
         match self.0.entry(key) {
             Entry::Occupied(entry) => {
@@ -35,6 +46,7 @@ where
         };
     }
 
+    /// Iterate over the map.
     pub fn iter(&self) -> Iter<'_, K, V> {
         self.0.iter()
     }
@@ -45,10 +57,12 @@ where
         self.0.drain()
     }
 
+    /// Check if the map is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Get the number of keys in the map.
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -61,7 +75,7 @@ where
 {
     fn merge(mut self, mut other: Self) -> Self {
         for (k, v) in other.drain() {
-            self.insert(k, v)
+            self.insert(k, v);
         }
 
         self
@@ -78,12 +92,12 @@ where
     }
 }
 
-impl<K, V> std::fmt::Debug for GMap<K, V>
+impl<K, V> fmt::Debug for GMap<K, V>
 where
-    K: Eq + Hash + std::fmt::Debug,
-    V: Merge + std::fmt::Debug,
+    K: Eq + Hash + fmt::Debug,
+    V: Merge + fmt::Debug,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LwwMap").field("0", &self.0).finish()
     }
 }
@@ -95,6 +109,19 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a GMap<K, V>
+where
+    K: Eq + Hash,
+    V: Merge,
+{
+    type IntoIter = Iter<'a, K, V>;
+    type Item = (&'a K, &'a V);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

@@ -1,50 +1,59 @@
-use crate::gmap::GMap;
 use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::node_id::NodeId;
 use crate::state::State;
 use chrono::{DateTime, Utc};
 
+/// The local state of a replica ("who am I" and "what do I know"). Reading the
+/// state should be fairly straightforward.
 pub struct Replica {
-    // for bookkeeping
+    /// The clock used to write. Should always be higher than any clock in state.
     clock: Hlc,
-    document: State,
+
+    /// Data that this replica will write to and sync with peers.
+    state: State,
 }
 
 impl Replica {
+    /// Create a new replica with the given node ID.
     pub fn new(node_id: NodeId) -> Self {
         Self {
             clock: Hlc::new(node_id),
-            document: State::default(),
+            state: State::default(),
         }
     }
 
+    /// Increment the clock and get the next value you should use. Always use
+    /// this when writing to ensure that the replica-level clock is the highest
+    /// in the state.
+    #[must_use]
     fn next_clock(&mut self) -> Hlc {
         self.clock.increment();
         self.clock.clone()
     }
 
-    pub fn minutes_per_ping(&self) -> &u16 {
-        self.document.minutes_per_ping.value()
+    /// Read the current state.
+    pub fn state(&self) -> &State {
+        &self.state
     }
 
+    /// Set the average number of minutes between pings.
     pub fn set_minutes_per_ping(&mut self, new: u16) {
         let clock = self.next_clock();
-        self.document.minutes_per_ping.set(new, clock);
+        self.state.minutes_per_ping.set(new, clock);
     }
 
-    pub fn pings(&self) -> &GMap<DateTime<Utc>, Lww<Option<String>>> {
-        &self.document.pings
-    }
-
+    /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
         let clock = self.next_clock();
-        self.document.pings.insert(when, Lww::new(None, clock));
+        self.state.pings.insert(when, Lww::new(None, clock));
     }
 
+    /// Tag an existing ping (although there are no guards against tagging a
+    /// ping that does not exist!)
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
         let clock = self.next_clock();
-        self.document.pings.insert(when, Lww::new(Some(tag), clock));
+        self.state.pings.insert(when, Lww::new(Some(tag), clock));
     }
 }
 
@@ -63,7 +72,7 @@ mod test {
         let mut doc = Replica::new(node_id);
 
         doc.set_minutes_per_ping(60);
-        assert_eq!(*doc.minutes_per_ping(), 60);
+        assert_eq!(*doc.state().minutes_per_ping.value(), 60);
     }
 
     #[test]
@@ -73,7 +82,13 @@ mod test {
 
         let when = Utc::now();
         doc.add_ping(when);
-        assert_eq!(doc.pings().get(&when).map(|lww| lww.value()), Some(&None));
+        assert_eq!(
+            doc.state()
+                .pings
+                .get(&when)
+                .map(super::super::lww::Lww::value),
+            Some(&None)
+        );
     }
 
     #[test]
@@ -85,7 +100,10 @@ mod test {
         doc.add_ping(when);
         doc.tag_ping(when, "test".to_string());
         assert_eq!(
-            doc.pings().get(&when).and_then(|lww| lww.value().clone()),
+            doc.state()
+                .pings
+                .get(&when)
+                .and_then(|lww| lww.value().clone()),
             Some("test".to_string())
         );
     }
@@ -175,13 +193,20 @@ mod test {
                 Transition::SetMinutesPerPing(new) => {
                     state.set_minutes_per_ping(new);
 
-                    assert_eq!(state.minutes_per_ping(), &ref_state.minutes_per_ping);
+                    assert_eq!(
+                        state.state().minutes_per_ping.value(),
+                        &ref_state.minutes_per_ping
+                    );
                 }
                 Transition::AddPing(when) => {
                     state.add_ping(when);
 
                     assert_eq!(
-                        state.pings().get(&when).map(|lww| lww.value()),
+                        state
+                            .state()
+                            .pings
+                            .get(&when)
+                            .map(super::super::lww::Lww::value),
                         ref_state.pings.get(&when)
                     );
                 }
@@ -189,7 +214,11 @@ mod test {
                     state.tag_ping(when, tag.clone());
 
                     assert_eq!(
-                        state.pings().get(&when).map(|lww| lww.value()),
+                        state
+                            .state()
+                            .pings
+                            .get(&when)
+                            .map(super::super::lww::Lww::value),
                         Some(&Some(tag))
                     );
                 }
@@ -206,17 +235,17 @@ mod test {
             // this gives us a way to reason about which update happened first, as
             // well as letting us overcome clock drift.
             debug_assert!(
-                &state.clock >= state.document.minutes_per_ping.clock(),
+                &state.clock >= state.state.minutes_per_ping.clock(),
                 "{} < {}",
                 state.clock,
-                state.document.minutes_per_ping.clock()
+                state.state.minutes_per_ping.clock()
             );
-            for (_, lww) in state.document.pings.iter() {
+            for (_, lww) in &state.state.pings {
                 debug_assert!(
                     &state.clock >= lww.clock(),
                     "{} < {}",
                     state.clock,
-                    state.document.minutes_per_ping.clock()
+                    state.state.minutes_per_ping.clock()
                 );
             }
         }

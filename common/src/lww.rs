@@ -1,18 +1,26 @@
 use crate::{hlc::Hlc, merge::Merge};
 use core::fmt::{self, Debug, Formatter};
 
+/// A last-write-wins register. Values can be anything you like. We decide which
+/// writes "win" when merging with a hybrid logical clock.
 #[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Lww<T> {
+    /// Any value we care to store.
     value: T,
+
+    /// The clock used to figure out which write wins.
     clock: Hlc,
 }
 
 impl<T> Lww<T> {
+    /// Create a new LWW register.
     pub fn new(value: T, clock: Hlc) -> Self {
         Self { value, clock }
     }
 
+    /// Set the value of the register. If the clock is newer than the current
+    /// clock, the write will be accepted.
     pub fn set(&mut self, value: T, clock: Hlc) {
         if clock > self.clock {
             self.value = value;
@@ -20,10 +28,12 @@ impl<T> Lww<T> {
         }
     }
 
+    /// Get the current value of the register.
     pub fn value(&self) -> &T {
         &self.value
     }
 
+    /// Get the current clock value guarding writes.
     pub fn clock(&self) -> &Hlc {
         &self.clock
     }
@@ -86,17 +96,17 @@ mod test {
     proptest! {
         #[test]
         fn merge_commutative(a: Lww<bool>, b: Lww<bool>) {
-            crate::merge::test_commutative(a, b)
+            crate::merge::test_commutative(a, b);
         }
 
         #[test]
         fn merge_associative(a: Lww<bool>, b: Lww<bool>, c: Lww<bool>) {
-            crate::merge::test_associative(a, b, c)
+            crate::merge::test_associative(a, b, c);
         }
 
         #[test]
         fn merge_idempotent(a: Lww<bool>) {
-            crate::merge::test_idempotent(a)
+            crate::merge::test_idempotent(a);
         }
     }
 }
