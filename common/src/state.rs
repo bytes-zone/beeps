@@ -4,10 +4,14 @@ use crate::lww::Lww;
 use crate::merge::Merge;
 use chrono::{DateTime, Utc};
 
+/// The state that gets synced between replicas.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct State {
+    /// The average number of minutes between each ping.
     pub minutes_per_ping: Lww<u16>,
+
+    /// The store of pings and tags that we have created.
     #[cfg_attr(test, proptest(strategy = "pings()"))]
     pub pings: GMap<DateTime<Utc>, Lww<Option<String>>>,
 }
@@ -23,6 +27,8 @@ proptest::prop_compose! {
 }
 
 impl State {
+    /// Create a new, empty state. It has a default `minutes_per_ping`, but with
+    /// a zero clock so that overwriting is always possible.
     pub fn new() -> Self {
         Self {
             minutes_per_ping: Lww::new(45, Hlc::zero()),
@@ -54,18 +60,18 @@ mod test {
     proptest! {
         #[test]
         fn test_merge_idempotent(a: State) {
-            crate::merge::test_idempotent(a)
+            crate::merge::test_idempotent(a);
         }
 
         #[test]
         fn test_merge_commutative(a: State, b: State) {
             println!("{a:#?}");
-            crate::merge::test_commutative(a, b)
+            crate::merge::test_commutative(a, b);
         }
 
         #[test]
         fn test_merge_associative(a: State, b: State, c: State) {
-            crate::merge::test_associative(a, b, c)
+            crate::merge::test_associative(a, b, c);
         }
     }
 }

@@ -3,11 +3,16 @@ use rand::Rng;
 use rand_pcg::Pcg32;
 use std::fmt::{self, Display};
 
+/// A unique identifier for a node in the network.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] u16);
 
 impl NodeId {
+    /// Get a random node ID based on the current time. When assigning, you
+    /// should check to make sure that there are no clocks in the current state
+    /// that match this ID. (Ideally you'd also check that there are no other
+    /// replicas who haven't written yet, but that's generally too much to ask.)
     #[expect(clippy::cast_sign_loss)]
     pub fn random() -> Self {
         Self(
@@ -19,10 +24,12 @@ impl NodeId {
         )
     }
 
+    /// The least possible `NodeId`.
     pub fn min() -> Self {
         Self(u16::MIN)
     }
 
+    /// The greatest possible `NodeId`.
     pub fn max() -> Self {
         Self(u16::MAX)
     }

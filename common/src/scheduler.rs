@@ -2,19 +2,25 @@ use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
 use rand_pcg::Pcg32;
 
+/// For beeps to work, we need to have a consistent sequence of pings, no matter
+/// which replica generates them. This iterator generates such a sequence.
 #[derive(Clone)]
 pub struct Scheduler {
+    /// The average number of pings per minute, the opposite of the input
+    /// average minutes per ping.
     average_pings_per_minute: f64,
+
+    /// The current ping.
     ping: DateTime<Utc>,
 }
 
 impl Scheduler {
-    // only temporary in test-only
+    // only temporarily in test-only
     #[cfg(test)]
     fn new(average_minutes_between_pings: u16, ping: DateTime<Utc>) -> Self {
         // We want to eventually find out how many minutes we should wait for the
         // next ping. To do that, we need to know the rate of pings per minute.
-        let average_pings_per_minute = 1.0 / average_minutes_between_pings as f64;
+        let average_pings_per_minute = 1.0 / f64::from(average_minutes_between_pings);
 
         Self {
             average_pings_per_minute,
@@ -116,14 +122,11 @@ mod test {
 
             let average = total_minutes as f64 / sample_size as f64;
 
-            let diff = (average / minutes_per_ping as f64).abs() - 1.0;
+            let diff = (average / f64::from(minutes_per_ping)).abs() - 1.0;
 
             assert!(
                 diff < 0.1,
-                "{:0.2} was not close to {:0.2} ({:0.4})",
-                average,
-                minutes_per_ping,
-                diff,
+                "{average:0.2} was not close to {minutes_per_ping:0.2} ({diff:0.4})",
             );
         }
     }

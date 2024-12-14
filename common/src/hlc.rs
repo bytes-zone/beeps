@@ -5,17 +5,27 @@ use std::{
     fmt::{self, Display},
 };
 
+/// A Hybrid Logical Clock (HLC.) Builds on a Lamport clock by adding a
+/// timestamp. This allows us to get a monotonically-increasing clock despite
+/// the fact that wall time can go backwards or smear for leap seconds.
 #[derive(PartialEq, Eq, Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Hlc {
+    /// The physical time component. First to break ties.
     #[cfg_attr(test, proptest(strategy = "crate::test::timestamp()"))]
     timestamp: DateTime<Utc>,
+
+    /// A counter we increment if the new physical time is equal to or less than
+    /// the previous. Second to break ties.
     #[cfg_attr(test, proptest(strategy = "0..=10u64"))]
     counter: u64,
+
+    /// The node ID of the replica that generated this HLC. Third to break ties.
     node: NodeId,
 }
 
 impl Hlc {
+    /// Create a new HLC with the given node ID.
     pub fn new(node: NodeId) -> Self {
         Self {
             timestamp: Utc::now(),
@@ -24,6 +34,8 @@ impl Hlc {
         }
     }
 
+    /// Create a new HLC with the given node ID and timestamp. Only for testing,
+    /// because we don't want to be able to create HLCs in the past otherwise!
     #[cfg(test)]
     pub fn new_at(node: NodeId, timestamp: DateTime<Utc>) -> Self {
         Self {
@@ -33,6 +45,8 @@ impl Hlc {
         }
     }
 
+    /// An HCL less than any other HLC. Useful as a base or default value in
+    /// something like an LWW-Register.
     pub fn zero() -> Self {
         Self {
             timestamp: Utc.timestamp_opt(0, 0).unwrap(),
@@ -41,6 +55,9 @@ impl Hlc {
         }
     }
 
+    /// Increment as if it's a specific time.
+    ///
+    /// TODO: might be better to be private.
     pub fn increment_at(&mut self, now: DateTime<Utc>) {
         if now > self.timestamp {
             self.timestamp = now;
@@ -50,10 +67,14 @@ impl Hlc {
         }
     }
 
+    /// Increment this HLC at the current physical time.
     pub fn increment(&mut self) {
         self.increment_at(Utc::now());
     }
 
+    /// Get the next HLC as if it's a specific time.
+    ///
+    /// TODO: might be better to be private.
     #[must_use]
     pub fn next_at(&self, now: DateTime<Utc>) -> Self {
         let mut next = self.clone();
@@ -61,11 +82,17 @@ impl Hlc {
         next
     }
 
+    /// Get the next HLC at the current physical time.
     #[must_use]
     pub fn next(&self) -> Self {
         self.next_at(Utc::now())
     }
 
+    /// Update this HCL to be higher than a HLC we're receiving from another
+    /// replica. This is helpful for being able to continue to issue timestamps
+    /// across all replicas, even if some physical clocks are rushing.
+    ///
+    /// This variant allows you to specify what time "now" is.
     pub fn mut_receive_at(&mut self, other: &Self, now: DateTime<Utc>) {
         if now > self.timestamp && now > other.timestamp {
             self.timestamp = now;
@@ -83,10 +110,16 @@ impl Hlc {
         }
     }
 
+    /// Update this HCL to be higher than a HLC we're receiving from another
+    /// replica. This is helpful for being able to continue to issue timestamps
+    /// across all replicas, even if some physical clocks are rushing.
     pub fn mut_receive(&mut self, other: &Self) {
         self.mut_receive_at(other, Utc::now());
     }
 
+    /// Like `mut_receive`, but gives you the a HLC instead of mutating.
+    ///
+    /// TODO: might be better to be private.
     #[must_use]
     pub fn receive_at(&self, other: &Self, now: DateTime<Utc>) -> Self {
         let mut next = self.clone();
@@ -94,6 +127,7 @@ impl Hlc {
         next
     }
 
+    /// Like `mut_receive`, but gives you the a HLC instead of mutating.
     #[must_use]
     pub fn receive(&self, other: &Self) -> Self {
         self.receive_at(other, Utc::now())
