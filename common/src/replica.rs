@@ -83,7 +83,10 @@ mod test {
         let when = Utc::now();
         doc.add_ping(when);
         assert_eq!(
-            doc.state().pings.get(&when).map(super::super::lww::Lww::value),
+            doc.state()
+                .pings
+                .get(&when)
+                .map(super::super::lww::Lww::value),
             Some(&None)
         );
     }
@@ -199,7 +202,11 @@ mod test {
                     state.add_ping(when);
 
                     assert_eq!(
-                        state.state().pings.get(&when).map(super::super::lww::Lww::value),
+                        state
+                            .state()
+                            .pings
+                            .get(&when)
+                            .map(super::super::lww::Lww::value),
                         ref_state.pings.get(&when)
                     );
                 }
@@ -207,7 +214,11 @@ mod test {
                     state.tag_ping(when, tag.clone());
 
                     assert_eq!(
-                        state.state().pings.get(&when).map(super::super::lww::Lww::value),
+                        state
+                            .state()
+                            .pings
+                            .get(&when)
+                            .map(super::super::lww::Lww::value),
                         Some(&Some(tag))
                     );
                 }
