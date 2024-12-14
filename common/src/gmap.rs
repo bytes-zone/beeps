@@ -31,9 +31,7 @@ where
 
     /// Insert a value into the map. If the key already exists, the value will
     /// be merged.
-    ///
-    /// TODO: would be more accurately called "upsert" or maybe "set"
-    pub fn insert(&mut self, key: K, value: V) {
+    pub fn upsert(&mut self, key: K, value: V) {
         match self.0.entry(key) {
             Entry::Occupied(entry) => {
                 let (key, current) = entry.remove_entry();
@@ -75,7 +73,7 @@ where
 {
     fn merge(mut self, mut other: Self) -> Self {
         for (k, v) in other.drain() {
-            self.insert(k, v);
+            self.upsert(k, v);
         }
 
         self
@@ -151,7 +149,7 @@ mod test {
         #[test]
         fn can_insert_from_nothing() {
             let mut map = GMap::<&str, Lww<i32>>::new();
-            map.insert("test", Lww::new(1, Hlc::zero()));
+            map.upsert("test", Lww::new(1, Hlc::zero()));
 
             assert_eq!(map.get(&"test").unwrap().value(), &1);
         }
@@ -166,8 +164,8 @@ mod test {
 
                 let mut map = GMap::<&str, Lww<u8>>::new();
 
-                map.insert("test", lww1.clone());
-                map.insert("test", lww2.clone());
+                map.upsert("test", lww1.clone());
+                map.upsert("test", lww2.clone());
 
                 let result = map.get(&"test").unwrap();
 
@@ -194,10 +192,10 @@ mod test {
         #[test]
         fn retains_all_keys() {
             let mut map1 = GMap::<&str, Lww<u8>>::new();
-            map1.insert("foo", Lww::new(1, Hlc::zero()));
+            map1.upsert("foo", Lww::new(1, Hlc::zero()));
 
             let mut map2 = GMap::<&str, Lww<u8>>::new();
-            map2.insert("bar", Lww::new(2, Hlc::zero()));
+            map2.upsert("bar", Lww::new(2, Hlc::zero()));
 
             let merged = map1.merge(map2);
 
@@ -212,10 +210,10 @@ mod test {
                 lww2: Lww<u8>,
             ) {
                 let mut map1 = GMap::<&str, Lww<u8>>::new();
-                map1.insert("test", lww1.clone());
+                map1.upsert("test", lww1.clone());
 
                 let mut map2 = GMap::<&str, Lww<u8>>::new();
-                map2.insert("test", lww2.clone());
+                map2.upsert("test", lww2.clone());
 
                 let merged_lww = lww1.merge(lww2);
                 let merged_map = map1.merge(map2);
