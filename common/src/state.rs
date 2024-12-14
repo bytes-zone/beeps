@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct State {
-    pub minutes_per_ping: Lww<f64>,
+    pub minutes_per_ping: Lww<u16>,
     #[cfg_attr(test, proptest(strategy = "pings()"))]
     pub pings: GMap<DateTime<Utc>, Lww<Option<String>>>,
 }
@@ -25,7 +25,7 @@ proptest::prop_compose! {
 impl State {
     pub fn new() -> Self {
         Self {
-            minutes_per_ping: Lww::new(45.0, Hlc::zero()),
+            minutes_per_ping: Lww::new(45, Hlc::zero()),
             pings: GMap::new(),
         }
     }
