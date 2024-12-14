@@ -1,4 +1,4 @@
-#![warn(clippy::pedantic)]
+#![warn(clippy::pedantic, clippy::allow_attributes, clippy::absolute_paths)]
 #![allow(clippy::must_use_candidate)]
 
 pub mod gmap;

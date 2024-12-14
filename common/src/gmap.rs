@@ -1,9 +1,12 @@
 use crate::merge::Merge;
-use std::collections::{
-    hash_map::{Drain, Entry, Iter},
-    HashMap,
-};
 use std::hash::Hash;
+use std::{
+    collections::{
+        hash_map::{Drain, Entry, Iter},
+        HashMap,
+    },
+    fmt,
+};
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
@@ -78,12 +81,12 @@ where
     }
 }
 
-impl<K, V> std::fmt::Debug for GMap<K, V>
+impl<K, V> fmt::Debug for GMap<K, V>
 where
-    K: Eq + Hash + std::fmt::Debug,
-    V: Merge + std::fmt::Debug,
+    K: Eq + Hash + fmt::Debug,
+    V: Merge + fmt::Debug,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LwwMap").field("0", &self.0).finish()
     }
 }
