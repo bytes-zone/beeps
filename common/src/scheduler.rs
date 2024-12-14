@@ -15,9 +15,9 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    // only temporarily in test-only
-    #[cfg(test)]
-    fn new(average_minutes_between_pings: u16, ping: DateTime<Utc>) -> Self {
+    /// Start a new scheduler with the given average minutes per ping, starting
+    /// at the given time.
+    pub fn new(average_minutes_between_pings: u16, ping: DateTime<Utc>) -> Self {
         // We want to eventually find out how many minutes we should wait for the
         // next ping. To do that, we need to know the rate of pings per minute.
         let average_pings_per_minute = 1.0 / f64::from(average_minutes_between_pings);
