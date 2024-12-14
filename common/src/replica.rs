@@ -1,6 +1,7 @@
 use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::node_id::NodeId;
+use crate::scheduler::Scheduler;
 use crate::state::State;
 use chrono::{DateTime, Utc};
 
@@ -54,6 +55,36 @@ impl Replica {
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
         let clock = self.next_clock();
         self.state.pings.upsert(when, Lww::new(Some(tag), clock));
+    }
+
+    /// Does the same as `schedule_ping` but allows you to specify the cutoff.
+    fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) {
+        let latest_ping = self
+            .state
+            .pings
+            .keys()
+            .max()
+            .copied()
+            .unwrap_or_else(Utc::now);
+
+        let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
+
+        for next in scheduler {
+            let clock = self.next_clock();
+            self.state.pings.upsert(next, Lww::new(None, clock));
+
+            // accepting one past the cutoff gets us into the future
+            if next > cutoff {
+                break;
+            }
+        }
+    }
+
+    /// Schedule pings into the future. We don't just schedule *up to* the given
+    /// time, but go one past that. That means that if the given time is the
+    /// current time, we end up with the time we should next notify at.
+    pub fn schedule_pings(&mut self) {
+        self.schedule_pings_with_cutoff(Utc::now());
     }
 }
 
