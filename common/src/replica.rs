@@ -8,14 +8,14 @@ use chrono::{DateTime, Utc};
 pub struct Replica {
     // for bookkeeping
     clock: Hlc,
-    document: State,
+    state: State,
 }
 
 impl Replica {
     pub fn new(node_id: NodeId) -> Self {
         Self {
             clock: Hlc::new(node_id),
-            document: State::default(),
+            state: State::default(),
         }
     }
 
@@ -24,27 +24,23 @@ impl Replica {
         self.clock.clone()
     }
 
-    pub fn minutes_per_ping(&self) -> &u16 {
-        self.document.minutes_per_ping.value()
+    pub fn state(&self) -> &State {
+        &self.state
     }
 
     pub fn set_minutes_per_ping(&mut self, new: u16) {
         let clock = self.next_clock();
-        self.document.minutes_per_ping.set(new, clock);
-    }
-
-    pub fn pings(&self) -> &GMap<DateTime<Utc>, Lww<Option<String>>> {
-        &self.document.pings
+        self.state.minutes_per_ping.set(new, clock);
     }
 
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
         let clock = self.next_clock();
-        self.document.pings.insert(when, Lww::new(None, clock));
+        self.state.pings.insert(when, Lww::new(None, clock));
     }
 
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
         let clock = self.next_clock();
-        self.document.pings.insert(when, Lww::new(Some(tag), clock));
+        self.state.pings.insert(when, Lww::new(Some(tag), clock));
     }
 }
 
@@ -63,7 +59,7 @@ mod test {
         let mut doc = Replica::new(node_id);
 
         doc.set_minutes_per_ping(60);
-        assert_eq!(*doc.minutes_per_ping(), 60);
+        assert_eq!(*doc.state().minutes_per_ping.value(), 60);
     }
 
     #[test]
@@ -73,7 +69,10 @@ mod test {
 
         let when = Utc::now();
         doc.add_ping(when);
-        assert_eq!(doc.pings().get(&when).map(|lww| lww.value()), Some(&None));
+        assert_eq!(
+            doc.state().pings.get(&when).map(|lww| lww.value()),
+            Some(&None)
+        );
     }
 
     #[test]
@@ -85,7 +84,10 @@ mod test {
         doc.add_ping(when);
         doc.tag_ping(when, "test".to_string());
         assert_eq!(
-            doc.pings().get(&when).and_then(|lww| lww.value().clone()),
+            doc.state()
+                .pings
+                .get(&when)
+                .and_then(|lww| lww.value().clone()),
             Some("test".to_string())
         );
     }
@@ -175,13 +177,16 @@ mod test {
                 Transition::SetMinutesPerPing(new) => {
                     state.set_minutes_per_ping(new);
 
-                    assert_eq!(state.minutes_per_ping(), &ref_state.minutes_per_ping);
+                    assert_eq!(
+                        state.state().minutes_per_ping.value(),
+                        &ref_state.minutes_per_ping
+                    );
                 }
                 Transition::AddPing(when) => {
                     state.add_ping(when);
 
                     assert_eq!(
-                        state.pings().get(&when).map(|lww| lww.value()),
+                        state.state().pings.get(&when).map(|lww| lww.value()),
                         ref_state.pings.get(&when)
                     );
                 }
@@ -189,7 +194,7 @@ mod test {
                     state.tag_ping(when, tag.clone());
 
                     assert_eq!(
-                        state.pings().get(&when).map(|lww| lww.value()),
+                        state.state().pings.get(&when).map(|lww| lww.value()),
                         Some(&Some(tag))
                     );
                 }
@@ -206,17 +211,17 @@ mod test {
             // this gives us a way to reason about which update happened first, as
             // well as letting us overcome clock drift.
             debug_assert!(
-                &state.clock >= state.document.minutes_per_ping.clock(),
+                &state.clock >= state.state.minutes_per_ping.clock(),
                 "{} < {}",
                 state.clock,
-                state.document.minutes_per_ping.clock()
+                state.state.minutes_per_ping.clock()
             );
-            for (_, lww) in state.document.pings.iter() {
+            for (_, lww) in state.state.pings.iter() {
                 debug_assert!(
                     &state.clock >= lww.clock(),
                     "{} < {}",
                     state.clock,
-                    state.document.minutes_per_ping.clock()
+                    state.state.minutes_per_ping.clock()
                 );
             }
         }
