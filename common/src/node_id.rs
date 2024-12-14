@@ -8,7 +8,7 @@ use std::fmt::Display;
 pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] u16);
 
 impl NodeId {
-    #[allow(clippy::cast_sign_loss)]
+    #[expect(clippy::cast_sign_loss)]
     pub fn random() -> Self {
         Self(
             Pcg32::new(
