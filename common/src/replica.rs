@@ -59,13 +59,15 @@ impl Replica {
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
     fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) {
-        let latest_ping = self
-            .state
-            .pings
-            .keys()
-            .max()
-            .copied()
-            .unwrap_or_else(Utc::now);
+        let latest_ping = if let Some(ping) = self.state.latest_ping().copied() {
+            ping
+        } else {
+            let now = Utc::now();
+            let clock = self.next_clock();
+            self.state.pings.upsert(now, Lww::new(None, clock));
+
+            now
+        };
 
         let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
 
