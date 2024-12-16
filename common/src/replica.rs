@@ -152,7 +152,7 @@ mod test {
 
             doc.set_minutes_per_ping(1);
             doc.add_ping(now - chrono::Duration::days(1));
-            doc.schedule_pings_with_cutoff(now);
+            doc.schedule_pings();
 
             assert!(doc.state().pings.len() > 1);
         }
@@ -165,7 +165,7 @@ mod test {
 
             doc.set_minutes_per_ping(1);
             doc.add_ping(now - chrono::Duration::days(1));
-            doc.schedule_pings_with_cutoff(now);
+            doc.schedule_pings();
 
             assert_eq!(
                 doc.state()
