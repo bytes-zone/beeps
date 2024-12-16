@@ -1,6 +1,7 @@
 use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::node_id::NodeId;
+use crate::scheduler::Scheduler;
 use crate::state::State;
 use chrono::{DateTime, Utc};
 
@@ -46,14 +47,46 @@ impl Replica {
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
         let clock = self.next_clock();
-        self.state.pings.insert(when, Lww::new(None, clock));
+        self.state.pings.upsert(when, Lww::new(None, clock));
     }
 
     /// Tag an existing ping (although there are no guards against tagging a
     /// ping that does not exist!)
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
         let clock = self.next_clock();
-        self.state.pings.insert(when, Lww::new(Some(tag), clock));
+        self.state.pings.upsert(when, Lww::new(Some(tag), clock));
+    }
+
+    /// Does the same as `schedule_ping` but allows you to specify the cutoff.
+    fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) {
+        let latest_ping = if let Some(ping) = self.state.latest_ping().copied() {
+            ping
+        } else {
+            let now = Utc::now();
+            let clock = self.next_clock();
+            self.state.pings.upsert(now, Lww::new(None, clock));
+
+            now
+        };
+
+        let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
+
+        for next in scheduler {
+            let clock = self.next_clock();
+            self.state.pings.upsert(next, Lww::new(None, clock));
+
+            // accepting one past the cutoff gets us into the future
+            if next > cutoff {
+                break;
+            }
+        }
+    }
+
+    /// Schedule pings into the future. We don't just schedule *up to* the given
+    /// time, but go one past that. That means that if the given time is the
+    /// current time, we end up with the time we should next notify at.
+    pub fn schedule_pings(&mut self) {
+        self.schedule_pings_with_cutoff(Utc::now());
     }
 }
 
@@ -108,7 +141,64 @@ mod test {
         );
     }
 
-    // Property Test
+    mod schedule_pings {
+        use super::*;
+
+        #[test]
+        fn fills_from_last_time_until_cutoff() {
+            let mut doc = Replica::new(NodeId::random());
+
+            let now = Utc::now();
+
+            doc.set_minutes_per_ping(1);
+            doc.add_ping(now - chrono::Duration::days(1));
+            doc.schedule_pings();
+
+            assert!(doc.state().pings.len() > 1);
+        }
+
+        #[test]
+        fn fills_one_date_exactly_in_the_future() {
+            let mut doc = Replica::new(NodeId::random());
+
+            let now = Utc::now();
+
+            doc.set_minutes_per_ping(1);
+            doc.add_ping(now - chrono::Duration::days(1));
+            doc.schedule_pings();
+
+            assert_eq!(
+                doc.state()
+                    .pings
+                    .keys()
+                    .filter(|p| *p > &now)
+                    .collect::<Vec<_>>()
+                    .len(),
+                1
+            );
+        }
+
+        #[test]
+        fn any_dates_filled_are_from_the_scheduler() {
+            let mut doc = Replica::new(NodeId::random());
+
+            let now = Utc::now();
+            let start = now - chrono::Duration::days(1);
+
+            doc.set_minutes_per_ping(1);
+            doc.add_ping(start);
+            doc.schedule_pings();
+
+            let scheduler = Scheduler::new(1, start);
+            let scheduled = scheduler.take(10).collect::<Vec<_>>();
+
+            for date in scheduled {
+                assert!(doc.state().pings.contains_key(&date));
+            }
+        }
+    }
+
+    // Big ol' property test for system properties
     #[derive(Debug, Clone)]
     enum Transition {
         SetMinutesPerPing(u16),

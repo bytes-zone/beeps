@@ -35,6 +35,12 @@ impl State {
             pings: GMap::new(),
         }
     }
+
+    /// Get the ping with the latest timestamp. Returns `None` if we have no
+    /// pings.
+    pub fn latest_ping(&self) -> Option<&DateTime<Utc>> {
+        self.pings.keys().max()
+    }
 }
 
 impl Default for State {
