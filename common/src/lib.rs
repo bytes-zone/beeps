@@ -17,6 +17,9 @@ pub mod gmap;
 /// A Hybrid Logical clock (HLC)
 pub mod hlc;
 
+/// Initially-unknown values that can only become more known.
+pub mod known;
+
 /// A Last-Write-Wins (LWW) register.
 pub mod lww;
 
@@ -34,9 +37,6 @@ pub mod state;
 
 /// Scheduling pings
 pub mod scheduler;
-
-/// Initially-unknown values that can only become more known.
-pub mod unknown;
 
 #[cfg(test)]
 mod test;

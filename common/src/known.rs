@@ -5,7 +5,7 @@ use crate::merge::Merge;
 /// but it can go from `None` to `Some` and never back.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub enum Unknown<T: Merge> {
+pub enum Known<T: Merge> {
     /// The value is unknown.
     #[cfg_attr(test, proptest(weight = 1))]
     Unknown,
@@ -15,7 +15,7 @@ pub enum Unknown<T: Merge> {
     Known(T),
 }
 
-impl<T: Merge> Merge for Unknown<T> {
+impl<T: Merge> Merge for Known<T> {
     fn merge(self, other: Self) -> Self {
         match (self, other) {
             (pick @ Self::Unknown, Self::Unknown) => pick,
@@ -37,30 +37,30 @@ mod test {
 
         proptest! {
             #[test]
-            fn known_always_beats_unknown(other: Unknown<Lww<bool>>) {
-                assert_eq!(Unknown::Unknown.merge(other.clone()), other)
+            fn known_always_beats_unknown(other: Known<Lww<bool>>) {
+                assert_eq!(Known::Unknown.merge(other.clone()), other)
             }
 
             #[test]
             fn known_values_merge(a: Lww<bool>, b: Lww<bool>) {
                 assert_eq!(
-                    Unknown::Known(a.clone()).merge(Unknown::Known(b.clone())),
-                    Unknown::Known(a.merge(b))
+                    Known::Known(a.clone()).merge(Known::Known(b.clone())),
+                    Known::Known(a.merge(b))
                 )
             }
 
             #[test]
-            fn idempotent(a: Unknown<Lww<bool>>) {
+            fn idempotent(a: Known<Lww<bool>>) {
                 crate::merge::test_idempotent(a);
             }
 
             #[test]
-            fn commutative(a: Unknown<Lww<bool>>, b: Unknown<Lww<bool>>) {
+            fn commutative(a: Known<Lww<bool>>, b: Known<Lww<bool>>) {
                 crate::merge::test_commutative(a, b);
             }
 
             #[test]
-            fn associative(a: Unknown<Lww<bool>>, b: Unknown<Lww<bool>>, c: Unknown<Lww<bool>>) {
+            fn associative(a: Known<Lww<bool>>, b: Known<Lww<bool>>, c: Known<Lww<bool>>) {
                 crate::merge::test_associative(a, b, c);
             }
         }
