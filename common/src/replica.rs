@@ -50,7 +50,7 @@ impl Replica {
         let clock = self.next_clock();
         self.state
             .pings
-            .upsert(when, Known::known(Lww::new(None, clock)));
+            .upsert(when, Known::new(Lww::new(None, clock)));
     }
 
     /// Tag an existing ping (although there are no guards against tagging a
@@ -59,7 +59,7 @@ impl Replica {
         let clock = self.next_clock();
         self.state
             .pings
-            .upsert(when, Known::known(Lww::new(Some(tag), clock)));
+            .upsert(when, Known::new(Lww::new(Some(tag), clock)));
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.

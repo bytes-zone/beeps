@@ -6,15 +6,18 @@ use crate::merge::Merge;
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Known<T: Merge> {
+    /// The inner option that controls merging.
     pub option: Option<T>,
 }
 
 impl<T: Merge> Known<T> {
+    /// Construct an unknown value.
     pub fn unknown() -> Self {
         Self { option: None }
     }
 
-    pub fn known(value: T) -> Self {
+    /// Construct a known value.
+    pub fn new(value: T) -> Self {
         Self {
             option: Some(value),
         }
@@ -25,9 +28,8 @@ impl<T: Merge> Merge for Known<T> {
     fn merge(self, other: Self) -> Self {
         Self {
             option: match (self.option, other.option) {
-                (pick @ None, None) => pick,
-                (None, pick @ Some(_)) => pick,
-                (pick @ Some(_), None) => pick,
+                (None, None) => None,
+                (None, pick @ Some(_)) | (pick @ Some(_), None) => pick,
                 (Some(self_k), Some(other_k)) => Some(self_k.merge(other_k)),
             },
         }
@@ -52,8 +54,8 @@ mod test {
             #[test]
             fn known_values_merge(a: Lww<bool>, b: Lww<bool>) {
                 assert_eq!(
-                    Known::known(a.clone()).merge(Known::known(b.clone())),
-                    Known::known(a.merge(b))
+                    Known::new(a.clone()).merge(Known::new(b.clone())),
+                    Known::new(a.merge(b))
                 )
             }
 
