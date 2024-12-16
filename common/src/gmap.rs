@@ -69,6 +69,11 @@ where
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    /// Check if the map contains a key.
+    pub fn contains_key(&self, k: &K) -> bool {
+        self.0.contains_key(k)
+    }
 }
 
 impl<K, V> Merge for GMap<K, V>

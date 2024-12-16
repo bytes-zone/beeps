@@ -177,6 +177,25 @@ mod test {
                 1
             );
         }
+
+        #[test]
+        fn any_dates_filled_are_from_the_scheduler() {
+            let mut doc = Replica::new(NodeId::random());
+
+            let now = Utc::now();
+            let start = now - chrono::Duration::days(1);
+
+            doc.set_minutes_per_ping(1);
+            doc.add_ping(start);
+            doc.schedule_pings();
+
+            let scheduler = Scheduler::new(1, start);
+            let scheduled = scheduler.take(10).collect::<Vec<_>>();
+
+            for date in scheduled {
+                assert!(doc.state().pings.contains_key(&date));
+            }
+        }
     }
 
     // Big ol' property test for system properties
