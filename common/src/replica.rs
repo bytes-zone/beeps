@@ -141,7 +141,7 @@ mod test {
         );
     }
 
-    // Property Test
+    // Big ol' property test for system properties
     #[derive(Debug, Clone)]
     enum Transition {
         SetMinutesPerPing(u16),
