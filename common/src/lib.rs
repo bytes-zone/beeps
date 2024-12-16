@@ -35,5 +35,8 @@ pub mod state;
 /// Scheduling pings
 pub mod scheduler;
 
+/// Initially-unknown values that can only become more known.
+pub mod unknown;
+
 #[cfg(test)]
 mod test;
