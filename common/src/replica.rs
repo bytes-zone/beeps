@@ -1,4 +1,5 @@
 use crate::hlc::Hlc;
+use crate::known::Known;
 use crate::lww::Lww;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
@@ -47,14 +48,18 @@ impl Replica {
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
         let clock = self.next_clock();
-        self.state.pings.upsert(when, Lww::new(None, clock));
+        self.state
+            .pings
+            .upsert(when, Known::known(Lww::new(None, clock)));
     }
 
     /// Tag an existing ping (although there are no guards against tagging a
     /// ping that does not exist!)
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
         let clock = self.next_clock();
-        self.state.pings.upsert(when, Lww::new(Some(tag), clock));
+        self.state
+            .pings
+            .upsert(when, Known::known(Lww::new(Some(tag), clock)));
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
@@ -63,8 +68,7 @@ impl Replica {
             ping
         } else {
             let now = Utc::now();
-            let clock = self.next_clock();
-            self.state.pings.upsert(now, Lww::new(None, clock));
+            self.state.pings.upsert(now, Known::unknown());
 
             now
         };
@@ -72,8 +76,7 @@ impl Replica {
         let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
 
         for next in scheduler {
-            let clock = self.next_clock();
-            self.state.pings.upsert(next, Lww::new(None, clock));
+            self.state.pings.upsert(next, Known::unknown());
 
             // accepting one past the cutoff gets us into the future
             if next > cutoff {
@@ -92,12 +95,10 @@ impl Replica {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-
+    use super::*;
     use proptest::prelude::*;
     use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
-
-    use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn minutes_per_ping() {
@@ -115,13 +116,7 @@ mod test {
 
         let when = Utc::now();
         doc.add_ping(when);
-        assert_eq!(
-            doc.state()
-                .pings
-                .get(&when)
-                .map(super::super::lww::Lww::value),
-            Some(&None)
-        );
+        assert_eq!(doc.state().pings.get(&when), Some(&Known::unknown()));
     }
 
     #[test]
@@ -136,6 +131,7 @@ mod test {
             doc.state()
                 .pings
                 .get(&when)
+                .and_then(|k| k.option.clone())
                 .and_then(|lww| lww.value().clone()),
             Some("test".to_string())
         );
@@ -296,8 +292,9 @@ mod test {
                             .state()
                             .pings
                             .get(&when)
-                            .map(super::super::lww::Lww::value),
-                        ref_state.pings.get(&when)
+                            .and_then(|k| k.option.clone())
+                            .map(|l| l.value().clone()),
+                        ref_state.pings.get(&when).cloned()
                     );
                 }
                 Transition::TagPing(when, tag) => {
@@ -308,8 +305,9 @@ mod test {
                             .state()
                             .pings
                             .get(&when)
-                            .map(super::super::lww::Lww::value),
-                        Some(&Some(tag))
+                            .and_then(|k| k.option.clone())
+                            .map(|lww| lww.value().clone()),
+                        Some(Some(tag))
                     );
                 }
             }
@@ -330,13 +328,15 @@ mod test {
                 state.clock,
                 state.state.minutes_per_ping.clock()
             );
-            for (_, lww) in &state.state.pings {
-                debug_assert!(
-                    &state.clock >= lww.clock(),
-                    "{} < {}",
-                    state.clock,
-                    state.state.minutes_per_ping.clock()
-                );
+            for (_, lww_opt) in &state.state.pings {
+                if let Some(lww) = &lww_opt.option {
+                    debug_assert!(
+                        &state.clock >= lww.clock(),
+                        "{} < {}",
+                        state.clock,
+                        state.state.minutes_per_ping.clock()
+                    );
+                }
             }
         }
     }

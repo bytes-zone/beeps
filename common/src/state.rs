@@ -1,5 +1,6 @@
 use crate::gmap::GMap;
 use crate::hlc::Hlc;
+use crate::known::Known;
 use crate::lww::Lww;
 use crate::merge::Merge;
 use chrono::{DateTime, Utc};
@@ -13,7 +14,7 @@ pub struct State {
 
     /// The store of pings and tags that we have created.
     #[cfg_attr(test, proptest(strategy = "pings()"))]
-    pub pings: GMap<DateTime<Utc>, Lww<Option<String>>>,
+    pub pings: GMap<DateTime<Utc>, Known<Lww<Option<String>>>>,
 }
 
 #[cfg(test)]
@@ -21,7 +22,7 @@ proptest::prop_compose! {
     // TODO: we're going to all this hassle just to be able to use the timestamp
     // as a key. I'm not the happiest about that. Is there any way to make this
     // more succinct?
-    fn pings()(items in proptest::collection::hash_map(crate::test::timestamp(), proptest::prelude::any::<Lww<Option<String>>>(), 1..5)) -> GMap<DateTime<Utc>, Lww<Option<String>>> {
+    fn pings()(items in proptest::collection::hash_map(crate::test::timestamp(), proptest::prelude::any::<Known<Lww<Option<String>>>>(), 1..5)) -> GMap<DateTime<Utc>, Known<Lww<Option<String>>>> {
         GMap(items)
     }
 }

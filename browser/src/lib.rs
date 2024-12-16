@@ -50,6 +50,9 @@ pub fn main() {
             .state()
             .pings
             .get(&now)
+            .cloned()
+            .unwrap()
+            .option
             .unwrap()
             .value()
             .as_ref()

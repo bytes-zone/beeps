@@ -5,26 +5,32 @@ use crate::merge::Merge;
 /// but it can only go from `None` to `Some` and never back.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct Known<T: Merge>(Option<T>);
+pub struct Known<T: Merge> {
+    pub option: Option<T>,
+}
 
 impl<T: Merge> Known<T> {
     pub fn unknown() -> Self {
-        Self(None)
+        Self { option: None }
     }
 
     pub fn known(value: T) -> Self {
-        Self(Some(value))
+        Self {
+            option: Some(value),
+        }
     }
 }
 
 impl<T: Merge> Merge for Known<T> {
     fn merge(self, other: Self) -> Self {
-        Self(match (self.0, other.0) {
-            (pick @ None, None) => pick,
-            (None, pick @ Some(_)) => pick,
-            (pick @ Some(_), None) => pick,
-            (Some(self_k), Some(other_k)) => Some(self_k.merge(other_k)),
-        })
+        Self {
+            option: match (self.option, other.option) {
+                (pick @ None, None) => pick,
+                (None, pick @ Some(_)) => pick,
+                (pick @ Some(_), None) => pick,
+                (Some(self_k), Some(other_k)) => Some(self_k.merge(other_k)),
+            },
+        }
     }
 }
 
