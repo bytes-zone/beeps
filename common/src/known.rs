@@ -2,7 +2,7 @@ use crate::merge::Merge;
 
 /// A CRDT that allows many replicas to register an unknown value without
 /// overwriting a known value. In practice, this behaves like a `Lww<Option<T>>`
-/// but it can go from `None` to `Some` and never back.
+/// but it can only go from `None` to `Some` and never back.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Known<T: Merge>(Option<T>);
