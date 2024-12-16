@@ -14,6 +14,9 @@
 /// A grow-only map (G-Map.) Values must be mergeable.
 pub mod gmap;
 
+/// A grow-only set (G-Set.)
+pub mod gset;
+
 /// A Hybrid Logical clock (HLC)
 pub mod hlc;
 
