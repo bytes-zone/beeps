@@ -141,6 +141,44 @@ mod test {
         );
     }
 
+    mod schedule_pings {
+        use super::*;
+
+        #[test]
+        fn fills_from_last_time_until_cutoff() {
+            let mut doc = Replica::new(NodeId::random());
+
+            let now = Utc::now();
+
+            doc.set_minutes_per_ping(1);
+            doc.add_ping(now - chrono::Duration::days(1));
+            doc.schedule_pings_with_cutoff(now);
+
+            assert!(doc.state().pings.len() > 1);
+        }
+
+        #[test]
+        fn fills_one_date_exactly_in_the_future() {
+            let mut doc = Replica::new(NodeId::random());
+
+            let now = Utc::now();
+
+            doc.set_minutes_per_ping(1);
+            doc.add_ping(now - chrono::Duration::days(1));
+            doc.schedule_pings_with_cutoff(now);
+
+            assert_eq!(
+                doc.state()
+                    .pings
+                    .keys()
+                    .filter(|p| *p > &now)
+                    .collect::<Vec<_>>()
+                    .len(),
+                1
+            );
+        }
+    }
+
     // Big ol' property test for system properties
     #[derive(Debug, Clone)]
     enum Transition {
