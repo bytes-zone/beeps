@@ -95,7 +95,7 @@ mod test {
     use super::*;
     use proptest::prelude::*;
     use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
 
     #[test]
     fn minutes_per_ping() {
@@ -202,7 +202,8 @@ mod test {
     #[derive(Debug, Clone)]
     struct RefState {
         minutes_per_ping: u16,
-        pings: HashMap<DateTime<Utc>, Option<String>>,
+        pings: HashSet<DateTime<Utc>>,
+        tags: HashMap<DateTime<Utc>, Option<String>>,
     }
 
     impl ReferenceStateMachine for RefState {
@@ -213,7 +214,8 @@ mod test {
         fn init_state() -> BoxedStrategy<Self::State> {
             Just(RefState {
                 minutes_per_ping: 45,
-                pings: HashMap::new(),
+                pings: HashSet::new(),
+                tags: HashMap::new(),
             })
             .boxed()
         }
@@ -235,10 +237,10 @@ mod test {
                     state.minutes_per_ping = *new;
                 }
                 Transition::AddPing(when) => {
-                    state.pings.insert(*when, None);
+                    state.pings.insert(*when);
                 }
                 Transition::TagPing(when, tag) => {
-                    state.pings.insert(*when, Some(tag.clone()));
+                    state.tags.insert(*when, Some(tag.clone()));
                 }
             }
 
@@ -248,8 +250,8 @@ mod test {
         fn preconditions(state: &Self::State, transition: &Self::Transition) -> bool {
             match transition {
                 Transition::SetMinutesPerPing(_) => true,
-                Transition::AddPing(when) => !state.pings.contains_key(when),
-                Transition::TagPing(when, _) => state.pings.contains_key(when),
+                Transition::AddPing(when) => !state.pings.contains(when),
+                Transition::TagPing(when, _) => state.pings.contains(when),
             }
         }
     }
@@ -291,7 +293,7 @@ mod test {
                             .get(&when)
                             .and_then(|k| k.option.clone())
                             .map(|l| l.value().clone()),
-                        ref_state.pings.get(&when).cloned()
+                        ref_state.tags.get(&when).cloned()
                     );
                 }
                 Transition::TagPing(when, tag) => {
