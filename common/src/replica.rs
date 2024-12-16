@@ -47,10 +47,7 @@ impl Replica {
 
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
-        let clock = self.next_clock();
-        self.state
-            .pings
-            .upsert(when, Known::new(Lww::new(None, clock)));
+        self.state.pings.upsert(when, Known::unknown());
     }
 
     /// Tag an existing ping (although there are no guards against tagging a
