@@ -97,21 +97,81 @@ mod test {
     use super::*;
     use proptest::prelude::*;
 
-    proptest! {
+    mod merge {
+        use super::*;
+
+        proptest::proptest! {
+            #[test]
+            fn test_idempotent(a: State) {
+                crate::merge::test_idempotent(a);
+            }
+
+            #[test]
+            fn test_commutative(a: State, b: State) {
+                println!("{a:#?}");
+                crate::merge::test_commutative(a, b);
+            }
+
+            #[test]
+            fn test_associative(a: State, b: State, c: State) {
+                crate::merge::test_associative(a, b, c);
+            }
+        }
+    }
+
+    mod set_minutes_per_ping {
+        use super::*;
+
         #[test]
-        fn test_merge_idempotent(a: State) {
-            crate::merge::test_idempotent(a);
+        fn set() {
+            let mut state = State::new();
+
+            state.set_minutes_per_ping(60, state.minutes_per_ping.clock().next());
+            assert_eq!(*state.minutes_per_ping.value(), 60);
+        }
+    }
+
+    mod add_ping {
+        use super::*;
+
+        #[test]
+        fn add_ping() {
+            let mut state = State::new();
+
+            let when = Utc::now();
+            state.add_ping(when);
+            assert!(state.pings.contains(&when));
+        }
+    }
+
+    mod tag_ping {
+        use super::*;
+
+        #[test]
+        fn when_ping_exists() {
+            let mut state = State::new();
+
+            let when = Utc::now();
+            state.add_ping(when);
+            assert!(
+                state.tag_ping(when, "test".to_string(), Hlc::zero()),
+                "tagging did not succeed, but should have (ping existed)"
+            );
+
+            assert_eq!(
+                state.tags.get(&when).map(Lww::value),
+                Some(&"test".to_string())
+            );
         }
 
         #[test]
-        fn test_merge_commutative(a: State, b: State) {
-            println!("{a:#?}");
-            crate::merge::test_commutative(a, b);
-        }
+        fn when_ping_does_not_exist() {
+            let mut state = State::new();
 
-        #[test]
-        fn test_merge_associative(a: State, b: State, c: State) {
-            crate::merge::test_associative(a, b, c);
+            assert!(
+                !state.tag_ping(Utc::now(), "test".to_string(), Hlc::zero()),
+                "tagging succeeded, but should not have (ping did not exist)"
+            )
         }
     }
 
