@@ -47,16 +47,14 @@ impl Replica {
 
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
-        self.state.pings.upsert(when, Known::unknown());
+        self.state.pings.insert(when);
     }
 
     /// Tag an existing ping (although there are no guards against tagging a
     /// ping that does not exist!)
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
         let clock = self.next_clock();
-        self.state
-            .pings
-            .upsert(when, Known::new(Lww::new(Some(tag), clock)));
+        self.state.tags.upsert(when, Lww::new(tag, clock));
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
@@ -65,7 +63,7 @@ impl Replica {
             ping
         } else {
             let now = Utc::now();
-            self.state.pings.upsert(now, Known::unknown());
+            self.state.pings.insert(now);
 
             now
         };
@@ -73,7 +71,7 @@ impl Replica {
         let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
 
         for next in scheduler {
-            self.state.pings.upsert(next, Known::unknown());
+            self.state.pings.insert(next);
 
             // accepting one past the cutoff gets us into the future
             if next > cutoff {
@@ -113,7 +111,7 @@ mod test {
 
         let when = Utc::now();
         doc.add_ping(when);
-        assert_eq!(doc.state().pings.get(&when), Some(&Known::unknown()));
+        assert!(doc.state().pings.contains(&when));
     }
 
     #[test]
@@ -125,12 +123,8 @@ mod test {
         doc.add_ping(when);
         doc.tag_ping(when, "test".to_string());
         assert_eq!(
-            doc.state()
-                .pings
-                .get(&when)
-                .and_then(|k| k.option.clone())
-                .and_then(|lww| lww.value().clone()),
-            Some("test".to_string())
+            doc.state().tags.get(&when).map(|l| l.value()),
+            Some(&"test".to_string())
         );
     }
 
@@ -163,7 +157,7 @@ mod test {
             assert_eq!(
                 doc.state()
                     .pings
-                    .keys()
+                    .iter()
                     .filter(|p| *p > &now)
                     .collect::<Vec<_>>()
                     .len(),
@@ -186,7 +180,7 @@ mod test {
             let scheduled = scheduler.take(10).collect::<Vec<_>>();
 
             for date in scheduled {
-                assert!(doc.state().pings.contains_key(&date));
+                assert!(doc.state().pings.contains(&date));
             }
         }
     }
@@ -203,7 +197,7 @@ mod test {
     struct RefState {
         minutes_per_ping: u16,
         pings: HashSet<DateTime<Utc>>,
-        tags: HashMap<DateTime<Utc>, Option<String>>,
+        tags: HashMap<DateTime<Utc>, String>,
     }
 
     impl ReferenceStateMachine for RefState {
@@ -240,7 +234,7 @@ mod test {
                     state.pings.insert(*when);
                 }
                 Transition::TagPing(when, tag) => {
-                    state.tags.insert(*when, Some(tag.clone()));
+                    state.tags.insert(*when, tag.clone());
                 }
             }
 
@@ -287,26 +281,16 @@ mod test {
                     state.add_ping(when);
 
                     assert_eq!(
-                        state
-                            .state()
-                            .pings
-                            .get(&when)
-                            .and_then(|k| k.option.clone())
-                            .map(|l| l.value().clone()),
-                        ref_state.tags.get(&when).cloned()
+                        state.state().pings.contains(&when),
+                        ref_state.pings.contains(&when)
                     );
                 }
                 Transition::TagPing(when, tag) => {
                     state.tag_ping(when, tag.clone());
 
                     assert_eq!(
-                        state
-                            .state()
-                            .pings
-                            .get(&when)
-                            .and_then(|k| k.option.clone())
-                            .map(|lww| lww.value().clone()),
-                        Some(Some(tag))
+                        state.state().tags.get(&when).map(|l| l.value()),
+                        ref_state.tags.get(&when),
                     );
                 }
             }
@@ -327,15 +311,13 @@ mod test {
                 state.clock,
                 state.state.minutes_per_ping.clock()
             );
-            for (_, lww_opt) in &state.state.pings {
-                if let Some(lww) = &lww_opt.option {
-                    debug_assert!(
-                        &state.clock >= lww.clock(),
-                        "{} < {}",
-                        state.clock,
-                        state.state.minutes_per_ping.clock()
-                    );
-                }
+            for (_, lww) in &state.state.tags {
+                debug_assert!(
+                    &state.clock >= lww.clock(),
+                    "{} < {}",
+                    state.clock,
+                    state.state.minutes_per_ping.clock()
+                );
             }
         }
     }

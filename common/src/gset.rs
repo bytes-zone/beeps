@@ -1,15 +1,43 @@
 use crate::merge::Merge;
 use core::fmt;
-use std::collections::HashSet;
+use std::collections::{hash_set, HashSet};
 use std::hash::Hash;
 use std::iter::Extend;
 
 /// A Grow-Only Set (G-Set) CRDT.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct GSet<T: Eq + Hash> {
     /// The items in the set. Should only be added to while in use.
-    items: HashSet<T>,
+    pub(crate) items: HashSet<T>,
+}
+
+impl<T: Eq + Hash> GSet<T> {
+    pub fn new() -> Self {
+        Self {
+            items: HashSet::new(),
+        }
+    }
+
+    pub fn iter(&self) -> hash_set::Iter<'_, T> {
+        self.items.iter()
+    }
+
+    pub fn insert(&mut self, value: T) -> bool {
+        self.items.insert(value)
+    }
+
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
+    where
+        T: std::borrow::Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.items.contains(value)
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
 }
 
 impl<T: Eq + Hash> Merge for GSet<T> {

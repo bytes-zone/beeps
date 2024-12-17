@@ -45,17 +45,6 @@ pub fn main() {
     replica.add_ping(now);
     replica.tag_ping(now, "HI!".to_string());
 
-    alert(
-        replica
-            .state()
-            .pings
-            .get(&now)
-            .cloned()
-            .unwrap()
-            .option
-            .unwrap()
-            .value()
-            .as_ref()
-            .unwrap(),
-    );
+    alert(&replica.state().pings.contains(&now).to_string());
+    alert(&replica.state().tags.get(&now).map(|l| l.value()).unwrap());
 }
