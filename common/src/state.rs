@@ -20,24 +20,6 @@ pub struct State {
     pub tags: GMap<DateTime<Utc>, Lww<String>>,
 }
 
-#[cfg(test)]
-proptest::prop_compose! {
-    // TODO: we're going to all this hassle just to be able to use the timestamp
-    // as a key. I'm not the happiest about that. Is there any way to make this
-    // more succinct?
-    fn pings()(items in proptest::collection::btree_set(crate::test::timestamp(), 1..5)) -> GSet<DateTime<Utc>> {
-        GSet { items }
-    }
-}
-
-#[cfg(test)]
-proptest::prop_compose! {
-    // Same here
-    fn tags()(items in proptest::collection::hash_map(crate::test::timestamp(), proptest::prelude::any::<Lww<String>>(), 1..5)) -> GMap<DateTime<Utc>, Lww<String>> {
-        GMap(items)
-    }
-}
-
 impl State {
     /// Create a new, empty state. It has a default `minutes_per_ping`, but with
     /// a zero clock so that overwriting is always possible.
@@ -68,6 +50,24 @@ impl Merge for State {
         self.pings = self.pings.merge(other.pings);
 
         self
+    }
+}
+
+#[cfg(test)]
+proptest::prop_compose! {
+    // TODO: we're going to all this hassle just to be able to use the timestamp
+    // as a key. I'm not the happiest about that. Is there any way to make this
+    // more succinct?
+    fn pings()(items in proptest::collection::btree_set(crate::test::timestamp(), 1..5)) -> GSet<DateTime<Utc>> {
+        GSet { items }
+    }
+}
+
+#[cfg(test)]
+proptest::prop_compose! {
+    // Same here
+    fn tags()(items in proptest::collection::hash_map(crate::test::timestamp(), proptest::prelude::any::<Lww<String>>(), 1..5)) -> GMap<DateTime<Utc>, Lww<String>> {
+        GMap(items)
     }
 }
 
