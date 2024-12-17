@@ -291,6 +291,7 @@ func (m *Beeps) WasmSize(
 	target string,
 ) (string, error) {
 	return m.WasmBuild(ctx, source, crate, target).
+		WithExec([]string{"bash", "-c", "for target in /pkg/*.js /pkg/*.wasm; do gzip -9c $target > $target.gzip; done"}).
 		WithExec([]string{"ls", "-lh", "/pkg"}).
 		Stdout(ctx)
 }
