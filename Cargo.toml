@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["common", "browser"]
+members = ["common", "browser", "tui"]
 
 [profile.release.package.browser]
 opt-level = "s"
