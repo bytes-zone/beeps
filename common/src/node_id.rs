@@ -4,7 +4,9 @@ use rand_pcg::Pcg32;
 use std::fmt::{self, Display};
 
 /// A unique identifier for a node in the network.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize,
+)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] u16);
 
