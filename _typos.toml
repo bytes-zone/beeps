@@ -1,2 +1,3 @@
 [default.extend-words]
-ba = "ba" # as in merge_ab/merge_ba
+ba = "ba"           # as in merge_ab/merge_ba
+ratatui = "ratatui" # library name
