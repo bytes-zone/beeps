@@ -172,7 +172,7 @@ mod test {
             assert!(
                 !state.tag_ping(Utc::now(), "test".to_string(), Hlc::zero()),
                 "tagging succeeded, but should not have (ping did not exist)"
-            )
+            );
         }
     }
 
