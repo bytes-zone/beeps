@@ -12,6 +12,12 @@ pub struct GSet<T: Eq + Hash> {
     pub(crate) items: HashSet<T>,
 }
 
+impl<T: Eq + Hash> Default for GSet<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Eq + Hash> GSet<T> {
     /// Creates an empty GSet
     pub fn new() -> Self {
