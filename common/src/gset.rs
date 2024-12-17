@@ -71,7 +71,7 @@ impl<T: Eq + Hash> Default for GSet<T> {
 }
 
 impl<'a, T: Eq + Hash> IntoIterator for &'a GSet<T> {
-    type IntoIter = std::collections::hash_set::Iter<'a, T>;
+    type IntoIter = hash_set::Iter<'a, T>;
     type Item = &'a T;
 
     fn into_iter(self) -> Self::IntoIter {
