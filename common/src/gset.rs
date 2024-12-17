@@ -19,7 +19,7 @@ impl<T: Eq + Hash> Default for GSet<T> {
 }
 
 impl<T: Eq + Hash> GSet<T> {
-    /// Creates an empty GSet
+    /// Creates an empty `GSet`
     pub fn new() -> Self {
         Self {
             items: HashSet::new(),
