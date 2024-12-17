@@ -11,7 +11,7 @@ pub struct State {
     /// The average number of minutes between each ping.
     pub minutes_per_ping: Lww<u16>,
 
-    /// The pings that have been filled into this struct.
+    /// The pings that have been scheduled so far.
     #[cfg_attr(test, proptest(strategy = "pings()"))]
     pub pings: GSet<DateTime<Utc>>,
 
@@ -37,7 +37,7 @@ impl State {
         self.pings.iter().max()
     }
 
-    /// Set the average number of minutes between pings.
+    /// Set the average number of minutes between pings going forward.
     pub fn set_minutes_per_ping(&mut self, new: u16, clock: Hlc) {
         self.minutes_per_ping.set(new, clock);
     }
@@ -47,8 +47,9 @@ impl State {
         self.pings.insert(when);
     }
 
-    /// Tag an existing ping (returns false if the ping cannot be tagged because
-    /// it does not exist.)
+    /// Tag an existing ping. Only allows you to tag pings that you know exist.
+    /// If you need to get more pings, schedule them with `Scheduler` and
+    /// `add_ping` first. `Replica` provides an easy way to coordinate this.
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String, clock: Hlc) -> bool {
         if !self.pings.contains(&when) {
             return false;
