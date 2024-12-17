@@ -15,8 +15,7 @@
 mod utils;
 
 use chrono::Utc;
-use common::node_id::NodeId;
-use common::replica::Replica;
+use common::{Lww, NodeId, Replica};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -45,14 +44,6 @@ pub fn main() {
     replica.add_ping(now);
     replica.tag_ping(now, "HI!".to_string());
 
-    alert(
-        replica
-            .state()
-            .pings
-            .get(&now)
-            .unwrap()
-            .value()
-            .as_ref()
-            .unwrap(),
-    );
+    alert(&replica.state().pings.contains(&now).to_string());
+    alert(replica.state().tags.get(&now).map(Lww::value).unwrap());
 }

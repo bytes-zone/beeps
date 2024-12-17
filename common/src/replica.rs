@@ -46,15 +46,14 @@ impl Replica {
 
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
-        let clock = self.next_clock();
-        self.state.pings.upsert(when, Lww::new(None, clock));
+        self.state.pings.insert(when);
     }
 
     /// Tag an existing ping (although there are no guards against tagging a
     /// ping that does not exist!)
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
         let clock = self.next_clock();
-        self.state.pings.upsert(when, Lww::new(Some(tag), clock));
+        self.state.tags.upsert(when, Lww::new(tag, clock));
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
@@ -63,8 +62,7 @@ impl Replica {
             ping
         } else {
             let now = Utc::now();
-            let clock = self.next_clock();
-            self.state.pings.upsert(now, Lww::new(None, clock));
+            self.state.pings.insert(now);
 
             now
         };
@@ -72,8 +70,7 @@ impl Replica {
         let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
 
         for next in scheduler {
-            let clock = self.next_clock();
-            self.state.pings.upsert(next, Lww::new(None, clock));
+            self.state.pings.insert(next);
 
             // accepting one past the cutoff gets us into the future
             if next > cutoff {
@@ -92,12 +89,11 @@ impl Replica {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-
+    use super::*;
+    use crate::lww::Lww;
     use proptest::prelude::*;
     use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
-
-    use super::*;
+    use std::collections::{HashMap, HashSet};
 
     #[test]
     fn minutes_per_ping() {
@@ -115,13 +111,7 @@ mod test {
 
         let when = Utc::now();
         doc.add_ping(when);
-        assert_eq!(
-            doc.state()
-                .pings
-                .get(&when)
-                .map(super::super::lww::Lww::value),
-            Some(&None)
-        );
+        assert!(doc.state().pings.contains(&when));
     }
 
     #[test]
@@ -133,11 +123,8 @@ mod test {
         doc.add_ping(when);
         doc.tag_ping(when, "test".to_string());
         assert_eq!(
-            doc.state()
-                .pings
-                .get(&when)
-                .and_then(|lww| lww.value().clone()),
-            Some("test".to_string())
+            doc.state().tags.get(&when).map(Lww::value),
+            Some(&"test".to_string())
         );
     }
 
@@ -170,7 +157,7 @@ mod test {
             assert_eq!(
                 doc.state()
                     .pings
-                    .keys()
+                    .iter()
                     .filter(|p| *p > &now)
                     .collect::<Vec<_>>()
                     .len(),
@@ -193,7 +180,7 @@ mod test {
             let scheduled = scheduler.take(10).collect::<Vec<_>>();
 
             for date in scheduled {
-                assert!(doc.state().pings.contains_key(&date));
+                assert!(doc.state().pings.contains(&date));
             }
         }
     }
@@ -209,7 +196,8 @@ mod test {
     #[derive(Debug, Clone)]
     struct RefState {
         minutes_per_ping: u16,
-        pings: HashMap<DateTime<Utc>, Option<String>>,
+        pings: HashSet<DateTime<Utc>>,
+        tags: HashMap<DateTime<Utc>, String>,
     }
 
     impl ReferenceStateMachine for RefState {
@@ -220,7 +208,8 @@ mod test {
         fn init_state() -> BoxedStrategy<Self::State> {
             Just(RefState {
                 minutes_per_ping: 45,
-                pings: HashMap::new(),
+                pings: HashSet::new(),
+                tags: HashMap::new(),
             })
             .boxed()
         }
@@ -242,10 +231,10 @@ mod test {
                     state.minutes_per_ping = *new;
                 }
                 Transition::AddPing(when) => {
-                    state.pings.insert(*when, None);
+                    state.pings.insert(*when);
                 }
                 Transition::TagPing(when, tag) => {
-                    state.pings.insert(*when, Some(tag.clone()));
+                    state.tags.insert(*when, tag.clone());
                 }
             }
 
@@ -255,8 +244,8 @@ mod test {
         fn preconditions(state: &Self::State, transition: &Self::Transition) -> bool {
             match transition {
                 Transition::SetMinutesPerPing(_) => true,
-                Transition::AddPing(when) => !state.pings.contains_key(when),
-                Transition::TagPing(when, _) => state.pings.contains_key(when),
+                Transition::AddPing(when) => !state.pings.contains(when),
+                Transition::TagPing(when, _) => state.pings.contains(when),
             }
         }
     }
@@ -292,24 +281,16 @@ mod test {
                     state.add_ping(when);
 
                     assert_eq!(
-                        state
-                            .state()
-                            .pings
-                            .get(&when)
-                            .map(super::super::lww::Lww::value),
-                        ref_state.pings.get(&when)
+                        state.state().pings.contains(&when),
+                        ref_state.pings.contains(&when)
                     );
                 }
                 Transition::TagPing(when, tag) => {
                     state.tag_ping(when, tag.clone());
 
                     assert_eq!(
-                        state
-                            .state()
-                            .pings
-                            .get(&when)
-                            .map(super::super::lww::Lww::value),
-                        Some(&Some(tag))
+                        state.state().tags.get(&when).map(Lww::value),
+                        ref_state.tags.get(&when),
                     );
                 }
             }
@@ -330,7 +311,7 @@ mod test {
                 state.clock,
                 state.state.minutes_per_ping.clock()
             );
-            for (_, lww) in &state.state.pings {
+            for (_, lww) in &state.state.tags {
                 debug_assert!(
                     &state.clock >= lww.clock(),
                     "{} < {}",

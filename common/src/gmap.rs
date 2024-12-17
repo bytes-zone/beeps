@@ -106,7 +106,7 @@ where
     V: Merge + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LwwMap").field("0", &self.0).finish()
+        f.debug_struct("GMap").field("0", &self.0).finish()
     }
 }
 
