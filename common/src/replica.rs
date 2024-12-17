@@ -90,6 +90,7 @@ impl Replica {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::lww::Lww;
     use proptest::prelude::*;
     use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
     use std::collections::{HashMap, HashSet};
@@ -122,7 +123,7 @@ mod test {
         doc.add_ping(when);
         doc.tag_ping(when, "test".to_string());
         assert_eq!(
-            doc.state().tags.get(&when).map(|l| l.value()),
+            doc.state().tags.get(&when).map(Lww::value),
             Some(&"test".to_string())
         );
     }
@@ -288,7 +289,7 @@ mod test {
                     state.tag_ping(when, tag.clone());
 
                     assert_eq!(
-                        state.state().tags.get(&when).map(|l| l.value()),
+                        state.state().tags.get(&when).map(Lww::value),
                         ref_state.tags.get(&when),
                     );
                 }
