@@ -20,9 +20,6 @@ pub mod gset;
 /// A Hybrid Logical clock (HLC)
 pub mod hlc;
 
-/// Initially-unknown values that can only become more known.
-pub mod known;
-
 /// A Last-Write-Wins (LWW) register.
 pub mod lww;
 
