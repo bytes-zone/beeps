@@ -1,5 +1,4 @@
 use crate::hlc::Hlc;
-use crate::lww::Lww;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
 use crate::state::State;
@@ -30,7 +29,7 @@ impl Replica {
     #[must_use]
     fn next_clock(&mut self) -> Hlc {
         self.clock.increment();
-        self.clock.clone()
+        self.clock
     }
 
     /// Read the current state.
@@ -41,19 +40,19 @@ impl Replica {
     /// Set the average number of minutes between pings.
     pub fn set_minutes_per_ping(&mut self, new: u16) {
         let clock = self.next_clock();
-        self.state.minutes_per_ping.set(new, clock);
+        self.state.set_minutes_per_ping(new, clock);
     }
 
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
-        self.state.pings.insert(when);
+        self.state.add_ping(when);
     }
 
-    /// Tag an existing ping (although there are no guards against tagging a
-    /// ping that does not exist!)
-    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
+    /// Tag an existing ping (returns false if the ping cannot be tagged because
+    /// it does not exist.)
+    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) -> bool {
         let clock = self.next_clock();
-        self.state.tags.upsert(when, Lww::new(tag, clock));
+        self.state.tag_ping(when, tag, clock)
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
@@ -90,43 +89,6 @@ impl Replica {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::lww::Lww;
-    use proptest::prelude::*;
-    use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
-    use std::collections::{HashMap, HashSet};
-
-    #[test]
-    fn minutes_per_ping() {
-        let node_id = NodeId::random();
-        let mut doc = Replica::new(node_id);
-
-        doc.set_minutes_per_ping(60);
-        assert_eq!(*doc.state().minutes_per_ping.value(), 60);
-    }
-
-    #[test]
-    fn add_ping() {
-        let node_id = NodeId::random();
-        let mut doc = Replica::new(node_id);
-
-        let when = Utc::now();
-        doc.add_ping(when);
-        assert!(doc.state().pings.contains(&when));
-    }
-
-    #[test]
-    fn set_ping() {
-        let node_id = NodeId::random();
-        let mut doc = Replica::new(node_id);
-
-        let when = Utc::now();
-        doc.add_ping(when);
-        doc.tag_ping(when, "test".to_string());
-        assert_eq!(
-            doc.state().tags.get(&when).map(Lww::value),
-            Some(&"test".to_string())
-        );
-    }
 
     mod schedule_pings {
         use super::*;
@@ -185,145 +147,106 @@ mod test {
         }
     }
 
-    // Big ol' property test for system properties
-    #[derive(Debug, Clone)]
-    enum Transition {
-        SetMinutesPerPing(u16),
-        AddPing(chrono::DateTime<Utc>),
-        TagPing(chrono::DateTime<Utc>, String),
-    }
+    mod state_machine {
+        use super::*;
+        use proptest::prelude::*;
+        use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
 
-    #[derive(Debug, Clone)]
-    struct RefState {
-        minutes_per_ping: u16,
-        pings: HashSet<DateTime<Utc>>,
-        tags: HashMap<DateTime<Utc>, String>,
-    }
-
-    impl ReferenceStateMachine for RefState {
-        type State = RefState;
-
-        type Transition = Transition;
-
-        fn init_state() -> BoxedStrategy<Self::State> {
-            Just(RefState {
-                minutes_per_ping: 45,
-                pings: HashSet::new(),
-                tags: HashMap::new(),
-            })
-            .boxed()
+        #[derive(Debug, Clone)]
+        enum Transition {
+            SetMinutesPerPing(u16),
+            AddPing(chrono::DateTime<Utc>),
+            TagPing(chrono::DateTime<Utc>, String),
         }
 
-        fn transitions(_: &Self::State) -> BoxedStrategy<Self::Transition> {
-            prop_oneof![
-                1 => (1..=4u16).prop_map(|i| Transition::SetMinutesPerPing(i * 15)),
-                10 => crate::test::timestamp_range(0..=2i64).prop_map(Transition::AddPing),
-                10 =>
-                    (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
-                        .prop_map(|(ts, tag)| Transition::TagPing(ts, tag)),
-            ]
-            .boxed()
-        }
+        #[derive(Debug, Clone)]
+        struct RefState {}
 
-        fn apply(mut state: Self::State, transition: &Self::Transition) -> Self::State {
-            match transition {
-                Transition::SetMinutesPerPing(new) => {
-                    state.minutes_per_ping = *new;
-                }
-                Transition::AddPing(when) => {
-                    state.pings.insert(*when);
-                }
-                Transition::TagPing(when, tag) => {
-                    state.tags.insert(*when, tag.clone());
-                }
+        impl ReferenceStateMachine for RefState {
+            type State = RefState;
+
+            type Transition = Transition;
+
+            fn init_state() -> BoxedStrategy<Self::State> {
+                Just(RefState {}).boxed()
             }
 
-            state
-        }
-
-        fn preconditions(state: &Self::State, transition: &Self::Transition) -> bool {
-            match transition {
-                Transition::SetMinutesPerPing(_) => true,
-                Transition::AddPing(when) => !state.pings.contains(when),
-                Transition::TagPing(when, _) => state.pings.contains(when),
-            }
-        }
-    }
-
-    struct ReplicaStateMachine {}
-
-    impl StateMachineTest for ReplicaStateMachine {
-        type SystemUnderTest = Replica;
-
-        type Reference = RefState;
-
-        fn init_test(
-            _: &<Self::Reference as proptest_state_machine::ReferenceStateMachine>::State,
-        ) -> Self::SystemUnderTest {
-            Replica::new(NodeId::random())
-        }
-
-        fn apply(
-            mut state: Self::SystemUnderTest,
-            ref_state: &<Self::Reference as proptest_state_machine::ReferenceStateMachine>::State,
-            transition: <Self::Reference as proptest_state_machine::ReferenceStateMachine>::Transition,
-        ) -> Self::SystemUnderTest {
-            match transition {
-                Transition::SetMinutesPerPing(new) => {
-                    state.set_minutes_per_ping(new);
-
-                    assert_eq!(
-                        state.state().minutes_per_ping.value(),
-                        &ref_state.minutes_per_ping
-                    );
-                }
-                Transition::AddPing(when) => {
-                    state.add_ping(when);
-
-                    assert_eq!(
-                        state.state().pings.contains(&when),
-                        ref_state.pings.contains(&when)
-                    );
-                }
-                Transition::TagPing(when, tag) => {
-                    state.tag_ping(when, tag.clone());
-
-                    assert_eq!(
-                        state.state().tags.get(&when).map(Lww::value),
-                        ref_state.tags.get(&when),
-                    );
-                }
+            fn transitions(_: &Self::State) -> BoxedStrategy<Self::Transition> {
+                prop_oneof![
+                    1 => (1..=4u16).prop_map(|i| Transition::SetMinutesPerPing(i * 15)),
+                    10 => crate::test::timestamp_range(0..=2i64).prop_map(Transition::AddPing),
+                    10 =>
+                        (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
+                            .prop_map(|(ts, tag)| Transition::TagPing(ts, tag)),
+                ]
+                .boxed()
             }
 
-            state
+            fn apply(state: Self::State, _: &Self::Transition) -> Self::State {
+                state
+            }
         }
 
-        fn check_invariants(
-            state: &Self::SystemUnderTest,
-            _: &<Self::Reference as ReferenceStateMachine>::State,
-        ) {
-            // safety property for when we're using more than one CRDT here. Doing
-            // this gives us a way to reason about which update happened first, as
-            // well as letting us overcome clock drift.
-            debug_assert!(
-                &state.clock >= state.state.minutes_per_ping.clock(),
-                "{} < {}",
-                state.clock,
-                state.state.minutes_per_ping.clock()
-            );
-            for (_, lww) in &state.state.tags {
+        struct ReplicaStateMachine {}
+
+        impl StateMachineTest for ReplicaStateMachine {
+            type SystemUnderTest = Replica;
+
+            type Reference = RefState;
+
+            fn init_test(
+                _: &<Self::Reference as proptest_state_machine::ReferenceStateMachine>::State,
+            ) -> Self::SystemUnderTest {
+                Replica::new(NodeId::random())
+            }
+
+            fn apply(
+                mut state: Self::SystemUnderTest,
+                _: &<Self::Reference as proptest_state_machine::ReferenceStateMachine>::State,
+                transition: <Self::Reference as proptest_state_machine::ReferenceStateMachine>::Transition,
+            ) -> Self::SystemUnderTest {
+                match transition {
+                    Transition::SetMinutesPerPing(new) => {
+                        state.set_minutes_per_ping(new);
+                    }
+                    Transition::AddPing(when) => {
+                        state.add_ping(when);
+                    }
+                    Transition::TagPing(when, tag) => {
+                        state.tag_ping(when, tag.clone());
+                    }
+                }
+
+                state
+            }
+
+            fn check_invariants(
+                state: &Self::SystemUnderTest,
+                _: &<Self::Reference as ReferenceStateMachine>::State,
+            ) {
+                // safety property for when we're using more than one CRDT here. Doing
+                // this gives us a way to reason about which update happened first, as
+                // well as letting us overcome clock drift.
                 debug_assert!(
-                    &state.clock >= lww.clock(),
+                    &state.clock >= state.state.minutes_per_ping.clock(),
                     "{} < {}",
                     state.clock,
                     state.state.minutes_per_ping.clock()
                 );
+                for (_, lww) in &state.state.tags {
+                    debug_assert!(
+                        &state.clock >= lww.clock(),
+                        "{} < {}",
+                        state.clock,
+                        state.state.minutes_per_ping.clock()
+                    );
+                }
             }
         }
-    }
 
-    prop_state_machine! {
-        #[test]
-        fn state_machine(sequential 1..20 => ReplicaStateMachine);
+        prop_state_machine! {
+            #[test]
+            fn state_machine(sequential 1..20 => ReplicaStateMachine);
+        }
     }
 }
