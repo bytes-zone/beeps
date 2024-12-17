@@ -36,6 +36,27 @@ impl State {
     pub fn latest_ping(&self) -> Option<&DateTime<Utc>> {
         self.pings.iter().max()
     }
+
+    /// Set the average number of minutes between pings.
+    pub fn set_minutes_per_ping(&mut self, new: u16, clock: Hlc) {
+        self.minutes_per_ping.set(new, clock);
+    }
+
+    /// Add a ping, likely in coordination with a `Scheduler`.
+    pub fn add_ping(&mut self, when: DateTime<Utc>) {
+        self.pings.insert(when);
+    }
+
+    /// Tag an existing ping (returns false if the ping cannot be tagged because
+    /// it does not exist.)
+    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String, clock: Hlc) -> bool {
+        if !self.pings.contains(&when) {
+            return false;
+        }
+
+        self.tags.upsert(when, Lww::new(tag, clock));
+        true
+    }
 }
 
 impl Default for State {

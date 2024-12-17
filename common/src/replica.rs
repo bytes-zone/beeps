@@ -1,5 +1,4 @@
 use crate::hlc::Hlc;
-use crate::lww::Lww;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
 use crate::state::State;
@@ -41,19 +40,19 @@ impl Replica {
     /// Set the average number of minutes between pings.
     pub fn set_minutes_per_ping(&mut self, new: u16) {
         let clock = self.next_clock();
-        self.state.minutes_per_ping.set(new, clock);
+        self.state.set_minutes_per_ping(new, clock);
     }
 
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
-        self.state.pings.insert(when);
+        self.state.add_ping(when);
     }
 
-    /// Tag an existing ping (although there are no guards against tagging a
-    /// ping that does not exist!)
-    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) {
+    /// Tag an existing ping (returns false if the ping cannot be tagged because
+    /// it does not exist.)
+    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) -> bool {
         let clock = self.next_clock();
-        self.state.tags.upsert(when, Lww::new(tag, clock));
+        self.state.tag_ping(when, tag, clock)
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
