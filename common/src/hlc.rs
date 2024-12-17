@@ -77,7 +77,7 @@ impl Hlc {
     /// TODO: might be better to be private.
     #[must_use]
     pub fn next_at(&self, now: DateTime<Utc>) -> Self {
-        let mut next = self.clone();
+        let mut next = *self;
         next.increment_at(now);
         next
     }
@@ -122,7 +122,7 @@ impl Hlc {
     /// TODO: might be better to be private.
     #[must_use]
     pub fn receive_at(&self, other: &Self, now: DateTime<Utc>) -> Self {
-        let mut next = self.clone();
+        let mut next = *self;
         next.mut_receive_at(other, now);
         next
     }

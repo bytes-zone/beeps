@@ -70,7 +70,7 @@ mod test {
     fn overwrites_if_clock_is_newer() {
         let first_clock = Hlc::zero();
 
-        let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock.next()));
+        let lww = Lww::new(1, first_clock).merge(Lww::new(2, first_clock.next()));
 
         assert_eq!(lww.value, 2);
     }
@@ -79,7 +79,7 @@ mod test {
     fn rejects_if_clock_is_equal() {
         let first_clock = Hlc::zero();
 
-        let lww = Lww::new(1, first_clock.clone()).merge(Lww::new(2, first_clock));
+        let lww = Lww::new(1, first_clock).merge(Lww::new(2, first_clock));
 
         assert_eq!(lww.value, 1);
     }

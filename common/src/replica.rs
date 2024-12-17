@@ -29,7 +29,7 @@ impl Replica {
     #[must_use]
     fn next_clock(&mut self) -> Hlc {
         self.clock.increment();
-        self.clock.clone()
+        self.clock
     }
 
     /// Read the current state.
