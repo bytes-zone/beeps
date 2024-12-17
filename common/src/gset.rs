@@ -38,11 +38,7 @@ impl<T: Eq + Hash> GSet<T> {
     }
 
     /// Returns true if the set contains the value.
-    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
-    where
-        T: std::borrow::Borrow<Q>,
-        Q: Hash + Eq,
-    {
+    pub fn contains(&self, value: &T) -> bool {
         self.items.contains(value)
     }
 
