@@ -44,6 +44,11 @@ impl<T: Eq + Hash> GSet<T> {
     pub fn len(&self) -> usize {
         self.items.len()
     }
+
+    /// Returns `true` if the set contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
 }
 
 impl<T: Eq + Hash> Merge for GSet<T> {
