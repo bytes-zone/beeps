@@ -1,3 +1,12 @@
+#![warn(
+    clippy::pedantic,
+    clippy::allow_attributes,
+    clippy::absolute_paths,
+    clippy::alloc_instead_of_core,
+    clippy::decimal_literal_representation
+)]
+#![allow(clippy::must_use_candidate)]
+
 use std::io;
 
 use ratatui::{
