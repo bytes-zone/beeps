@@ -11,9 +11,11 @@ pub struct State {
     /// The average number of minutes between each ping.
     pub minutes_per_ping: Lww<u16>,
 
+    /// The pings that have been filled into this struct.
     #[cfg_attr(test, proptest(strategy = "pings()"))]
     pub pings: GSet<DateTime<Utc>>,
 
+    /// The tag (if any) set for each ping.
     #[cfg_attr(test, proptest(strategy = "tags()"))]
     pub tags: GMap<DateTime<Utc>, Lww<String>>,
 }

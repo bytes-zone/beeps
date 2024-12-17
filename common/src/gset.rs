@@ -13,20 +13,25 @@ pub struct GSet<T: Eq + Hash> {
 }
 
 impl<T: Eq + Hash> GSet<T> {
+    /// Creates an empty GSet
     pub fn new() -> Self {
         Self {
             items: HashSet::new(),
         }
     }
 
+    /// An iterator visiting all elements in arbitrary order.
     pub fn iter(&self) -> hash_set::Iter<'_, T> {
         self.items.iter()
     }
 
+    /// Adds a value to the set. Returns whether or not the value was newly
+    /// inserted.
     pub fn insert(&mut self, value: T) -> bool {
         self.items.insert(value)
     }
 
+    /// Returns true if the set contains the value.
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
         T: std::borrow::Borrow<Q>,
@@ -35,6 +40,7 @@ impl<T: Eq + Hash> GSet<T> {
         self.items.contains(value)
     }
 
+    /// Returns the number of elements in the set.
     pub fn len(&self) -> usize {
         self.items.len()
     }

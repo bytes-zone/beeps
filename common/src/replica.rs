@@ -1,5 +1,4 @@
 use crate::hlc::Hlc;
-use crate::known::Known;
 use crate::lww::Lww;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
