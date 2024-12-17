@@ -1,27 +1,25 @@
 use crate::merge::Merge;
 use core::fmt;
-use std::collections::{hash_set, HashSet};
-use std::hash::Hash;
-use std::iter::Extend;
+use std::collections::{btree_set, BTreeSet};
 
 /// A Grow-Only Set (G-Set) CRDT.
 #[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct GSet<T: Eq + Hash> {
+pub struct GSet<T: Ord> {
     /// The items in the set. Should only be added to while in use.
-    pub(crate) items: HashSet<T>,
+    pub(crate) items: BTreeSet<T>,
 }
 
-impl<T: Eq + Hash> GSet<T> {
+impl<T: Ord> GSet<T> {
     /// Creates an empty `GSet`
     pub fn new() -> Self {
         Self {
-            items: HashSet::new(),
+            items: BTreeSet::new(),
         }
     }
 
     /// An iterator visiting all elements in arbitrary order.
-    pub fn iter(&self) -> hash_set::Iter<'_, T> {
+    pub fn iter(&self) -> btree_set::Iter<'_, T> {
         self.items.iter()
     }
 
@@ -47,9 +45,9 @@ impl<T: Eq + Hash> GSet<T> {
     }
 }
 
-impl<T: Eq + Hash> Merge for GSet<T> {
+impl<T: Ord> Merge for GSet<T> {
     fn merge(mut self, mut other: Self) -> Self {
-        self.items.extend(other.items.drain());
+        self.items.append(&mut other.items);
 
         self
     }
@@ -57,21 +55,21 @@ impl<T: Eq + Hash> Merge for GSet<T> {
 
 impl<T> fmt::Debug for GSet<T>
 where
-    T: Eq + Hash + fmt::Debug,
+    T: Ord + fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GSet").field("items", &self.items).finish()
     }
 }
 
-impl<T: Eq + Hash> Default for GSet<T> {
+impl<T: Ord> Default for GSet<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, T: Eq + Hash> IntoIterator for &'a GSet<T> {
-    type IntoIter = hash_set::Iter<'a, T>;
+impl<'a, T: Ord> IntoIterator for &'a GSet<T> {
+    type IntoIter = btree_set::Iter<'a, T>;
     type Item = &'a T;
 
     fn into_iter(self) -> Self::IntoIter {

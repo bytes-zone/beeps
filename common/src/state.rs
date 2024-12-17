@@ -25,7 +25,7 @@ proptest::prop_compose! {
     // TODO: we're going to all this hassle just to be able to use the timestamp
     // as a key. I'm not the happiest about that. Is there any way to make this
     // more succinct?
-    fn pings()(items in proptest::collection::hash_set(crate::test::timestamp(), 1..5)) -> GSet<DateTime<Utc>> {
+    fn pings()(items in proptest::collection::btree_set(crate::test::timestamp(), 1..5)) -> GSet<DateTime<Utc>> {
         GSet { items }
     }
 }
