@@ -114,4 +114,148 @@ mod test {
             crate::merge::test_associative(a, b, c);
         }
     }
+
+    mod state_machine {
+        use super::*;
+        use crate::NodeId;
+        use proptest_state_machine::*;
+        use std::collections::{HashMap, HashSet};
+
+        #[derive(Debug, Clone)]
+        enum Transition {
+            SetMinutesPerPing(u16, Hlc),
+            AddPing(chrono::DateTime<Utc>),
+            TagPing(chrono::DateTime<Utc>, String, Hlc),
+        }
+
+        #[derive(Debug, Clone)]
+        struct RefState {
+            node_id: NodeId,
+
+            minutes_per_ping: u16,
+            pings: HashSet<DateTime<Utc>>,
+            tags: HashMap<DateTime<Utc>, String>,
+        }
+
+        impl ReferenceStateMachine for RefState {
+            type State = RefState;
+
+            type Transition = Transition;
+
+            fn init_state() -> BoxedStrategy<Self::State> {
+                any::<NodeId>()
+                    .prop_map(|node_id| RefState {
+                        node_id,
+
+                        minutes_per_ping: 45,
+                        pings: HashSet::new(),
+                        tags: HashMap::new(),
+                    })
+                    .boxed()
+            }
+
+            fn transitions(state: &Self::State) -> BoxedStrategy<Self::Transition> {
+                let node_id = state.node_id;
+
+                prop_oneof![
+                    1 => (1..=4u16).prop_map(move |i| Transition::SetMinutesPerPing(i * 15, Hlc::new(node_id))),
+                    10 => crate::test::timestamp_range(0..=2i64).prop_map(Transition::AddPing),
+                    10 =>
+                        (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
+                            .prop_map(move |(ts, tag)| Transition::TagPing(ts, tag, Hlc::new(node_id))),
+                ]
+                .boxed()
+            }
+
+            fn apply(mut state: Self::State, transition: &Self::Transition) -> Self::State {
+                match transition {
+                    Transition::SetMinutesPerPing(new, _) => {
+                        state.minutes_per_ping = *new;
+                    }
+                    Transition::AddPing(when) => {
+                        state.pings.insert(*when);
+                    }
+                    Transition::TagPing(when, tag, _) => {
+                        state.tags.insert(*when, tag.clone());
+                    }
+                }
+
+                state
+            }
+        }
+
+        struct StateStateMachine {}
+
+        impl StateMachineTest for StateStateMachine {
+            type SystemUnderTest = State;
+
+            type Reference = RefState;
+
+            fn init_test(
+                _: &<Self::Reference as proptest_state_machine::ReferenceStateMachine>::State,
+            ) -> Self::SystemUnderTest {
+                State::new()
+            }
+
+            fn apply(
+                mut state: Self::SystemUnderTest,
+                ref_state: &<Self::Reference as proptest_state_machine::ReferenceStateMachine>::State,
+                transition: <Self::Reference as proptest_state_machine::ReferenceStateMachine>::Transition,
+            ) -> Self::SystemUnderTest {
+                match transition {
+                    Transition::SetMinutesPerPing(new, clock) => {
+                        state.set_minutes_per_ping(new, clock);
+
+                        let actual = state.minutes_per_ping.value();
+                        let reference = ref_state.minutes_per_ping;
+
+                        assert_eq!(
+                            actual, &reference,
+                            "minutes_per_ping was not the same. Actual: `{actual}`, reference: `{reference}`"
+                        );
+                    }
+                    Transition::AddPing(when) => {
+                        state.add_ping(when);
+
+                        let actual = state.pings.contains(&when);
+                        let reference = ref_state.pings.contains(&when);
+
+                        assert_eq!(actual, reference, "inconsistent ping {when}. Actual: `{actual}`, reference: `{reference}`");
+                    }
+                    Transition::TagPing(when, tag, clock) => {
+                        if state.tag_ping(when, tag.clone(), clock) {
+                            let actual = state.tags.get(&when).map(Lww::value);
+                            let reference = ref_state.tags.get(&when);
+
+                            assert_eq!(
+                                actual,
+                                reference,
+                                "inconsistent tag for {when}. Actual: `{actual:?}`, reference: `{reference:?}`"
+                            );
+                        }
+                    }
+                }
+
+                state
+            }
+
+            fn check_invariants(
+                state: &Self::SystemUnderTest,
+                _: &<Self::Reference as ReferenceStateMachine>::State,
+            ) {
+                // consistency property: if a ping is tagged, it must exist in the pings set as well
+                for ping in state.tags.keys() {
+                    assert!(
+                        state.pings.contains(ping),
+                        "tagged ping {ping} does not exist in pings set"
+                    );
+                }
+            }
+        }
+
+        prop_state_machine! {
+            #[test]
+            fn state_machine(sequential 1..20 => StateStateMachine);
+        }
+    }
 }
