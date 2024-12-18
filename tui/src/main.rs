@@ -1,3 +1,6 @@
+//! A simple TUI app to collect pings on the command line
+
+/// The "functional core" to the main module's "imperative shell"
 mod app;
 use app::App;
 
@@ -5,7 +8,7 @@ use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
 use ratatui::DefaultTerminal;
 use std::{io, process::ExitCode};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 #[tokio::main]
 async fn main() -> io::Result<ExitCode> {
@@ -16,6 +19,7 @@ async fn main() -> io::Result<ExitCode> {
     res
 }
 
+/// Handle a single effect from `App`, sending the result back to the app
 async fn handle_effect(tx: UnboundedSender<app::Action>, eff: app::Effect) {
     match eff {
         app::Effect::None => {}
@@ -26,10 +30,11 @@ async fn handle_effect(tx: UnboundedSender<app::Action>, eff: app::Effect) {
     }
 }
 
+/// Manage the lifecycle of the app
 async fn run(mut terminal: DefaultTerminal) -> io::Result<ExitCode> {
     let mut app = App::new();
 
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let (tx, mut rx) = unbounded_channel();
 
     let event_tx = tx.clone();
     tokio::spawn(async move {
@@ -39,7 +44,7 @@ async fn run(mut terminal: DefaultTerminal) -> io::Result<ExitCode> {
             match stream.next().await {
                 Some(Err(err)) => {
                     // TODO: what's actually the right thing to do here?
-                    eprintln!("error reading event: {:?}", err);
+                    eprintln!("error reading event: {err:?}");
                 }
                 Some(Ok(Event::Key(key_event))) => {
                     // TODO: log if we can't send at a trace level
@@ -59,7 +64,7 @@ async fn run(mut terminal: DefaultTerminal) -> io::Result<ExitCode> {
         match rx.recv().await {
             None => return Ok(ExitCode::SUCCESS),
             Some(action) => {
-                tokio::spawn(handle_effect(tx.clone(), app.handle(action)));
+                tokio::spawn(handle_effect(tx.clone(), app.handle(&action)));
             }
         }
 
