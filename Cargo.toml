@@ -4,3 +4,15 @@ members = ["common", "browser", "tui"]
 
 [profile.release.package.browser]
 opt-level = "s"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+pedantic = "warn"
+must_use_candidate = "allow"
+allow_attributes = "warn"
+absolute_paths = "warn"
+alloc_instead_of_core = "warn"
+decimal_literal_representation = "warn"
+missing_docs_in_private_items = "warn"
