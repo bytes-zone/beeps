@@ -11,7 +11,7 @@ use std::io;
 
 use ratatui::{
     crossterm::event::{self, KeyCode, KeyEventKind},
-    style::Stylize,
+    prelude::*,
     widgets::Paragraph,
     DefaultTerminal,
 };
