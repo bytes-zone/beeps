@@ -1,7 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
-use std::process::ExitCode;
-use tokio::task::JoinHandle;
+use std::{error::Error, process::ExitCode};
 
 /// The "functional core" of the app.
 pub struct App {
@@ -41,12 +40,12 @@ impl App {
 
     /// Produce any side effects as needed to initialize the app.
     #[expect(clippy::unused_self)]
-    pub fn init(&mut self) -> Effect {
-        Effect::None
+    pub fn init(&mut self) -> Option<Effect> {
+        Some(Effect::Load)
     }
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
-    pub fn handle(&mut self, action: &Action) -> Effect {
+    pub fn handle(&mut self, action: &Action) -> Option<Effect> {
         match action {
             Action::Key(key)
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') =>
@@ -56,9 +55,12 @@ impl App {
             Action::Key(key) => {
                 self.status_line = Some(format!("Unknown key {key:?}"));
             }
+            Action::Problem(problem) => {
+                self.status_line = Some(problem.clone());
+            }
         }
 
-        Effect::None
+        None
     }
 
     /// Let the TUI manager know whether we're all wrapped up and can exit.
@@ -71,14 +73,21 @@ impl App {
 pub enum Action {
     /// The user did something on the keyboard
     Key(KeyEvent),
+
+    /// Something bad happened; display it to the user
+    Problem(String),
 }
 
 /// Things that can happen as a result of user input. Side effects!
 pub enum Effect {
-    /// Nothing happened
-    None,
+    /// Load replica state from disk
+    Load,
+}
 
-    /// We spawned some task (e.g. an HTTP request)
-    #[expect(dead_code)]
-    Await(JoinHandle<Action>),
+impl Effect {
+    pub async fn run(&self) -> Action {
+        match self {
+            Self::Load => Action::Problem("Load is unimplemented".to_string()),
+        }
+    }
 }

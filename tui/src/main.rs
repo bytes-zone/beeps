@@ -8,7 +8,7 @@ use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
 use ratatui::DefaultTerminal;
 use std::{io, process::ExitCode};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::main]
 async fn main() -> io::Result<ExitCode> {
@@ -17,17 +17,6 @@ async fn main() -> io::Result<ExitCode> {
     let res = run(terminal).await;
     ratatui::restore();
     res
-}
-
-/// Handle a single effect from `App`, sending the result back to the app
-async fn handle_effect(tx: UnboundedSender<app::Action>, eff: app::Effect) {
-    match eff {
-        app::Effect::None => {}
-        app::Effect::Await(handle) => {
-            tx.send(handle.await.expect("should not have panicked"))
-                .expect("should not have blocked on unbounded channel");
-        }
-    }
 }
 
 /// Manage the lifecycle of the app
@@ -56,7 +45,13 @@ async fn run(mut terminal: DefaultTerminal) -> io::Result<ExitCode> {
         }
     });
 
-    tokio::spawn(handle_effect(tx.clone(), app.init()));
+    if let Some(effect) = app.init() {
+        let init_result = tx.clone();
+        tokio::spawn(async move {
+            // TODO: what do we do if the channel is closed?
+            let _ = init_result.send(effect.run().await);
+        });
+    }
 
     loop {
         terminal.draw(|frame| app.render(frame))?;
@@ -64,7 +59,13 @@ async fn run(mut terminal: DefaultTerminal) -> io::Result<ExitCode> {
         match rx.recv().await {
             None => return Ok(ExitCode::SUCCESS),
             Some(action) => {
-                tokio::spawn(handle_effect(tx.clone(), app.handle(&action)));
+                if let Some(effect) = app.handle(&action) {
+                    let effect_result = tx.clone();
+                    tokio::spawn(async move {
+                        // TODO: what do we do if the channel is closed?
+                        let _ = effect_result.send(effect.run().await);
+                    });
+                }
             }
         }
 
