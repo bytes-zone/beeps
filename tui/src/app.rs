@@ -5,18 +5,32 @@ use tokio::task::JoinHandle;
 
 pub struct App {
     pub exit: Option<ExitCode>,
+    pub status_line: Option<String>,
 }
 
 impl App {
     pub fn new() -> Self {
-        Self { exit: None }
+        Self {
+            exit: None,
+            status_line: None,
+        }
     }
 
     pub fn render(&self, frame: &mut Frame) {
+        let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
+        let [body_area, status_area] = vertical.areas(frame.area());
+
         let greeting = Paragraph::new("Hello Ratatui! (press 'q' to quit)")
             .white()
             .on_blue();
-        frame.render_widget(greeting, frame.area());
+
+        let status = Paragraph::new(match &self.status_line {
+            Some(line) => line,
+            None => "All good!",
+        });
+
+        frame.render_widget(greeting, body_area);
+        frame.render_widget(status, status_area);
     }
 
     pub fn init(&mut self) -> Effect {
@@ -31,7 +45,7 @@ impl App {
                 self.exit = Some(ExitCode::SUCCESS);
             }
             Action::Key(key) => {
-                eprintln!("key pressed: {key:#?}");
+                self.status_line = Some(format!("Unknown key {:?}", key));
             }
         }
 
