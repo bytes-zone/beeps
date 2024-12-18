@@ -16,7 +16,8 @@ use ratatui::{
     DefaultTerminal,
 };
 
-fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
     terminal.clear()?;
     let res = run(terminal);
