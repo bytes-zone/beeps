@@ -130,6 +130,8 @@ pub enum Effect {
 }
 
 impl Effect {
+    /// Perform the side-effectful portions of this effect, returning the next
+    /// `Action` the application needs to handle
     pub async fn run(&self, config: Arc<Config>) -> Action {
         match self.run_inner(config).await {
             Ok(action) => action,
@@ -137,6 +139,8 @@ impl Effect {
         }
     }
 
+    /// The actual implmentation of `run`, but with a `Result` wrapper to make
+    /// it more ergonomic to write.
     async fn run_inner(&self, config: Arc<Config>) -> Result<Action, io::Error> {
         match self {
             Self::Load => {
