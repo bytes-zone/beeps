@@ -41,8 +41,8 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
 
     // Initialize the app, spawn a task to handle side effects, and render the
     // first frame. We could render before spawning for a slightly faster draw,
-    // but save it afterwards so that anything taken care of in `app.init` will
-    // reflect in the first draw.
+    // but defer it so that anything taken care of in `app.init` will reflect in
+    // the first draw.
     outstanding_effects.push(spawn_effect_task(
         effect_tx.clone(),
         Arc::clone(&config),
