@@ -51,7 +51,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
         }
     });
 
-    handle_effect(&tx, app.init(), config.clone());
+    handle_effect(&tx, Some(app.init()), config.clone());
 
     loop {
         terminal.draw(|frame| app.render(frame))?;
