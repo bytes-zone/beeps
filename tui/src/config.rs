@@ -10,6 +10,9 @@ pub struct Config {
 }
 
 impl Config {
+    /// Get either the configured or a default data directory. If no data
+    /// directory can be found (e.g. because `$HOME` is unset) we will use the
+    /// current directory.
     fn data_dir(&self) -> PathBuf {
         self.data_dir
             .clone()

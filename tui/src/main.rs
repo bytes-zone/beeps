@@ -69,6 +69,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
     }
 }
 
+/// Spawn a new task to run an effect, and report it back to the stream.
 fn handle_effect(
     tx: &UnboundedSender<app::Action>,
     effect_opt: Option<app::Effect>,
