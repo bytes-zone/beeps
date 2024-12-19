@@ -59,7 +59,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
         match rx.recv().await {
             None => return Ok(ExitCode::SUCCESS),
             Some(action) => {
-                handle_effect(&tx, app.handle(&action), config.clone());
+                handle_effect(&tx, app.handle(action), config.clone());
             }
         }
 

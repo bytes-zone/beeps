@@ -1,24 +1,39 @@
+use common::{NodeId, Replica};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
-use std::{process::ExitCode, sync::Arc};
+use std::{io, process::ExitCode, sync::Arc};
+use tokio::fs;
 
 use crate::config::Config;
 
 /// The "functional core" of the app.
 pub struct App {
     /// Status to display (visible at the bottom of the screen)
-    pub status_line: Option<String>,
+    status_line: Option<String>,
 
-    /// Exit code to return to the shell when we're done. If this is `Some`, we'll exit.
-    pub exit: Option<ExitCode>,
+    /// Where the app is in its lifecycle
+    state: AppState,
+}
+
+/// App lifecycle
+#[derive(Debug)]
+enum AppState {
+    /// We haven't loaded anything yet
+    Unloaded,
+
+    /// We have loaded a replica from disk
+    Loaded(Replica),
+
+    /// We're done and want the following exit code after final effects
+    Exiting(ExitCode),
 }
 
 impl App {
     /// Create a new instance of the app
     pub fn new() -> Self {
         Self {
-            exit: None,
             status_line: None,
+            state: AppState::Unloaded,
         }
     }
 
@@ -27,7 +42,7 @@ impl App {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
 
-        let greeting = Paragraph::new("Hello Ratatui! (press 'q' to quit)")
+        let greeting = Paragraph::new(format!("{:#?}", self.state))
             .white()
             .on_blue();
 
@@ -47,32 +62,49 @@ impl App {
     }
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
-    pub fn handle(&mut self, action: &Action) -> Option<Effect> {
+    pub fn handle(&mut self, action: Action) -> Option<Effect> {
         match action {
+            Action::LoadedReplica(replica) => {
+                self.state = AppState::Loaded(replica);
+                self.status_line = Some("Loaded replica".to_owned());
+
+                None
+            }
             Action::Key(key)
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') =>
             {
-                self.exit = Some(ExitCode::SUCCESS);
+                self.state = AppState::Exiting(ExitCode::SUCCESS);
+
+                None
             }
             Action::Key(key) => {
                 self.status_line = Some(format!("Unknown key {key:?}"));
+
+                None
             }
             Action::Problem(problem) => {
                 self.status_line = Some(problem.clone());
+
+                None
             }
         }
-
-        None
     }
 
     /// Let the TUI manager know whether we're all wrapped up and can exit.
     pub fn exit(&self) -> Option<ExitCode> {
-        self.exit
+        if let AppState::Exiting(code) = &self.state {
+            Some(*code)
+        } else {
+            None
+        }
     }
 }
 
 /// Things that can happen to this app
 pub enum Action {
+    /// We loaded replica data from disk
+    LoadedReplica(Replica),
+
     /// The user did something on the keyboard
     Key(KeyEvent),
 
@@ -88,8 +120,32 @@ pub enum Effect {
 
 impl Effect {
     pub async fn run(&self, config: Arc<Config>) -> Action {
+        match self.run_inner(config).await {
+            Ok(action) => action,
+            Err(problem) => Action::Problem(problem.to_string()),
+        }
+    }
+
+    async fn run_inner(&self, config: Arc<Config>) -> Result<Action, io::Error> {
         match self {
-            Self::Load => Action::Problem("Load is unimplemented".to_string()),
+            Self::Load => {
+                let base = config.data_dir();
+
+                if !fs::try_exists(&base).await? {
+                    fs::create_dir_all(&base).await?;
+                }
+
+                let store = base.join("store.json");
+
+                if fs::try_exists(&store).await? {
+                    let data = fs::read(&store).await?;
+                    let replica: Replica = serde_json::from_slice(&data)?;
+
+                    Ok(Action::LoadedReplica(replica))
+                } else {
+                    Ok(Action::LoadedReplica(Replica::new(NodeId::random())))
+                }
+            }
         }
     }
 }
