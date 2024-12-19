@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
-use std::{error::Error, process::ExitCode, sync::Arc};
+use std::{process::ExitCode, sync::Arc};
 
 use crate::config::Config;
 
