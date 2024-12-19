@@ -81,7 +81,9 @@ fn handle_effect(
         tokio::spawn(async move {
             let next_action = effect.run(config).await;
 
-            // TODO: what do we do if the channel is closed?
+            // TODO: what do we do if the channel is closed? It probably means
+            // we're shutting down and it's OK to drop messages, but we still
+            // get the error.
             let _ = init_result.send(next_action);
         });
     }
