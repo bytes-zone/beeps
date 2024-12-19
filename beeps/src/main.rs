@@ -91,6 +91,8 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
             ));
         }
 
+        // Now that we handle the event, we re-render to display any changes the
+        // app cares about.
         terminal.draw(|frame| app.render(frame))?;
 
         // If the message we just handled was from an outstanding effect, we
