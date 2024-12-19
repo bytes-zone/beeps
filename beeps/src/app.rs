@@ -89,9 +89,13 @@ impl App {
             Action::Key(key)
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') =>
             {
-                self.state = AppState::Exiting(ExitCode::SUCCESS);
+                let pre_quit_state =
+                    std::mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
 
-                None
+                match pre_quit_state {
+                    AppState::Loaded(Loaded { replica }) => Some(Effect::Save(replica)),
+                    _ => None,
+                }
             }
             Action::Key(key) => {
                 self.status_line = Some(format!("Unknown key {key:?}"));
