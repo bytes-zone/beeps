@@ -1,21 +1,10 @@
-#![warn(
-    missing_docs,
-    clippy::pedantic,
-    clippy::allow_attributes,
-    clippy::absolute_paths,
-    clippy::alloc_instead_of_core,
-    clippy::decimal_literal_representation,
-    clippy::missing_docs_in_private_items
-)]
-#![allow(clippy::must_use_candidate)]
-
 //! Browser interface for beeps storage, compiled to WASM.
 
 #[expect(clippy::missing_docs_in_private_items)]
 mod utils;
 
+use beeps_core::{Lww, NodeId, Replica};
 use chrono::Utc;
-use common::{Lww, NodeId, Replica};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

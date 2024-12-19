@@ -1,14 +1,3 @@
-#![warn(
-    missing_docs,
-    clippy::pedantic,
-    clippy::allow_attributes,
-    clippy::absolute_paths,
-    clippy::alloc_instead_of_core,
-    clippy::decimal_literal_representation,
-    clippy::missing_docs_in_private_items
-)]
-#![allow(clippy::must_use_candidate)]
-
 //! Common code across all beeps clients (TUI, WASM in the browser)
 
 /// A grow-only map (G-Map.) Values must be mergeable.
