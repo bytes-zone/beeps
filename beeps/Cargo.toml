@@ -1,5 +1,5 @@
 [package]
-name = "tui"
+name = "beeps"
 version = "0.1.0"
 edition = "2021"
 
