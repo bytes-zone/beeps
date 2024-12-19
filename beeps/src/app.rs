@@ -68,7 +68,7 @@ impl App {
 
     /// Produce any side effects as needed to initialize the app.
     #[expect(clippy::unused_self)]
-    pub fn init(&mut self) -> Effect {
+    pub fn init(&self) -> Effect {
         Effect::Load
     }
 
