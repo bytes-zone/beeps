@@ -111,7 +111,7 @@ impl App {
     }
 
     /// Let the TUI manager know whether we're all wrapped up and can exit.
-    pub fn exit(&self) -> Option<ExitCode> {
+    pub fn should_exit(&self) -> Option<ExitCode> {
         if let AppState::Exiting(code) = &self.state {
             Some(*code)
         } else {
