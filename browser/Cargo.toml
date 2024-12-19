@@ -9,8 +9,11 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["console_error_panic_hook"]
 
+[lints]
+workspace = true
+
 [dependencies]
-common = { path = "../common" }
+beeps_core = { path = "../beeps_core" }
 wasm-bindgen = "0.2.84"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by

@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 
 /// The local state of a replica ("who am I" and "what do I know"). Reading the
 /// state should be fairly straightforward.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Replica {
     /// The clock used to write. Should always be higher than any clock in state.
     clock: Hlc,
