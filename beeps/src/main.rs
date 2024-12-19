@@ -12,7 +12,10 @@ use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
 use ratatui::DefaultTerminal;
 use std::{io, process::ExitCode, sync::Arc};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedSender},
+    task::JoinHandle,
+};
 
 #[tokio::main]
 async fn main() -> io::Result<ExitCode> {
@@ -29,62 +32,73 @@ async fn main() -> io::Result<ExitCode> {
 async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::Result<ExitCode> {
     let mut app = App::new();
 
-    let (tx, mut rx) = unbounded_channel();
+    let (effect_tx, mut effect_rx) = unbounded_channel();
+    let mut outstanding_effects = Vec::with_capacity(1);
 
-    let event_tx = tx.clone();
-    tokio::spawn(async move {
-        let mut stream = EventStream::new();
+    // Initialize the app
+    outstanding_effects.push(handle_effect(
+        effect_tx.clone(),
+        Arc::clone(&config),
+        app.init(),
+    ));
 
-        loop {
-            match stream.next().await {
-                Some(Err(err)) => {
-                    // TODO: log if we can't send at a trace level
-                    let _ = event_tx.send(app::Action::Problem(err.to_string()));
-                }
-                Some(Ok(Event::Key(key_event))) => {
-                    // TODO: log if we can't send at a trace level
-                    let _ = event_tx.send(app::Action::Key(key_event));
-                }
-                Some(Ok(_)) => continue,
-                None => break,
-            }
-        }
-    });
-
-    handle_effect(&tx, Some(app.init()), config.clone());
+    let mut event_stream = EventStream::new();
 
     loop {
         terminal.draw(|frame| app.render(frame))?;
 
-        match rx.recv().await {
-            None => return Ok(ExitCode::SUCCESS),
-            Some(action) => {
-                handle_effect(&tx, app.handle(action), config.clone());
+        let next_action_opt = tokio::select! {
+            event_opt = event_stream.next() => {
+                match event_opt {
+                    Some(Ok(Event::Key(key_event))) => {
+                        Some(app::Action::Key(key_event))
+                    }
+                    Some(Err(err)) => {
+                        Some(app::Action::Problem(err.to_string()))
+                    }
+                    _ => None,
+                }
+            },
+
+            effect_opt = effect_rx.recv() => {
+                effect_opt
             }
+        };
+
+        if let Some(effect) = next_action_opt.and_then(|action| app.handle(action)) {
+            outstanding_effects.push(handle_effect(
+                effect_tx.clone(),
+                Arc::clone(&config),
+                effect,
+            ));
         }
 
+        // clear out any finished effects
+        outstanding_effects.retain(|handle| !handle.is_finished());
+
         if let Some(code) = app.exit() {
+            for effect in outstanding_effects.drain(..) {
+                // we should do something with the results here. No need to
+                // ignore failures just because we're exiting.
+                let _ = effect.await;
+            }
+
             return Ok(code);
         }
     }
 }
 
-/// Spawn a new task to run an effect, and report it back to the stream.
 fn handle_effect(
-    tx: &UnboundedSender<app::Action>,
-    effect_opt: Option<app::Effect>,
+    effect_tx: UnboundedSender<app::Action>,
     config: Arc<config::Config>,
-) {
-    if let Some(effect) = effect_opt {
-        let init_result = tx.clone();
+    effect: app::Effect,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let next_action = effect.run(config).await;
 
-        tokio::spawn(async move {
-            let next_action = effect.run(config).await;
-
-            // TODO: what do we do if the channel is closed? It probably means
-            // we're shutting down and it's OK to drop messages, but we still
-            // get the error.
-            let _ = init_result.send(next_action);
-        });
-    }
+        // TODO: what do we do if the channel is closed? It probably means
+        // we're shutting down and it's OK to drop messages, but we still
+        // get the error.
+        let _ = effect_tx.send(next_action);
+    })
 }
