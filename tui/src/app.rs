@@ -52,7 +52,7 @@ impl App {
         let body = match &self.state {
             AppState::Unloaded => Paragraph::new("Loading…"),
             AppState::Loaded(Loaded { replica }) => {
-                Paragraph::new(format!("{:#?}", replica)).white().on_blue()
+                Paragraph::new(format!("{replica:#?}")).white().on_blue()
             }
             AppState::Exiting(_) => Paragraph::new("Exiting…"),
         };
