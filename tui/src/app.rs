@@ -1,6 +1,8 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
-use std::{error::Error, process::ExitCode};
+use std::{error::Error, process::ExitCode, sync::Arc};
+
+use crate::config::Config;
 
 /// The "functional core" of the app.
 pub struct App {
@@ -85,7 +87,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub async fn run(&self) -> Action {
+    pub async fn run(&self, config: Arc<Config>) -> Action {
         match self {
             Self::Load => Action::Problem("Load is unimplemented".to_string()),
         }
