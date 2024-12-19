@@ -38,8 +38,8 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
         loop {
             match stream.next().await {
                 Some(Err(err)) => {
-                    // TODO: what's actually the right thing to do here?
-                    eprintln!("error reading event: {err:?}");
+                    // TODO: log if we can't send at a trace level
+                    let _ = event_tx.send(app::Action::Problem(err.to_string()));
                 }
                 Some(Ok(Event::Key(key_event))) => {
                     // TODO: log if we can't send at a trace level
