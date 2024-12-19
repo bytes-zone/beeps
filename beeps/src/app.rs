@@ -81,6 +81,11 @@ impl App {
 
                 None
             }
+            Action::Saved => {
+                self.status_line = Some("Saved replica".to_owned());
+
+                None
+            }
             Action::Key(key)
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') =>
             {
@@ -116,6 +121,9 @@ pub enum Action {
     /// We loaded replica data from disk
     LoadedReplica(Replica),
 
+    /// We successfully saved the replica
+    Saved,
+
     /// The user did something on the keyboard
     Key(KeyEvent),
 
@@ -127,6 +135,9 @@ pub enum Action {
 pub enum Effect {
     /// Load replica state from disk
     Load,
+
+    /// Save replica to disk
+    Save(Replica),
 }
 
 impl Effect {
@@ -154,6 +165,18 @@ impl Effect {
                 } else {
                     Ok(Action::LoadedReplica(Replica::new(NodeId::random())))
                 }
+            }
+
+            Self::Save(replica) => {
+                let base = config.data_dir();
+                fs::create_dir_all(&base).await?;
+
+                let store = base.join("store.json");
+
+                let data = serde_json::to_vec(replica)?;
+                fs::write(&store, &data).await?;
+
+                Ok(Action::Saved)
             }
         }
     }
