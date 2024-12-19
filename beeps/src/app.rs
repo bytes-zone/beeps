@@ -1,4 +1,4 @@
-use common::{NodeId, Replica};
+use beeps_core::{NodeId, Replica};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
 use std::{io, process::ExitCode, sync::Arc};

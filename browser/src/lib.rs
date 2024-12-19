@@ -3,8 +3,8 @@
 #[expect(clippy::missing_docs_in_private_items)]
 mod utils;
 
+use beeps_core::{Lww, NodeId, Replica};
 use chrono::Utc;
-use common::{Lww, NodeId, Replica};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
