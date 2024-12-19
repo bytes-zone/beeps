@@ -1,7 +1,7 @@
 use beeps_core::{NodeId, Replica};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
-use std::{io, process::ExitCode, sync::Arc};
+use std::{io, mem, process::ExitCode, sync::Arc};
 use tokio::fs;
 
 use crate::config::Config;
@@ -90,7 +90,7 @@ impl App {
                 if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') =>
             {
                 let pre_quit_state =
-                    std::mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
+                    mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
 
                 match pre_quit_state {
                     AppState::Loaded(Loaded { replica }) => Some(Effect::Save(replica)),
