@@ -139,7 +139,7 @@ impl Effect {
         }
     }
 
-    /// The actual implmentation of `run`, but with a `Result` wrapper to make
+    /// The actual implementation of `run`, but with a `Result` wrapper to make
     /// it more ergonomic to write.
     async fn run_inner(&self, config: Arc<Config>) -> Result<Action, io::Error> {
         match self {
