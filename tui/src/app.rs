@@ -22,10 +22,17 @@ enum AppState {
     Unloaded,
 
     /// We have loaded a replica from disk
-    Loaded(Replica),
+    Loaded(Loaded),
 
     /// We're done and want the following exit code after final effects
     Exiting(ExitCode),
+}
+
+/// State when we have successfully loaded and are running
+#[derive(Debug)]
+struct Loaded {
+    /// The replica we're working with
+    replica: Replica,
 }
 
 impl App {
@@ -42,16 +49,20 @@ impl App {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
 
-        let greeting = Paragraph::new(format!("{:#?}", self.state))
-            .white()
-            .on_blue();
+        let body = match &self.state {
+            AppState::Unloaded => Paragraph::new("Loading…"),
+            AppState::Loaded(Loaded { replica }) => {
+                Paragraph::new(format!("{:#?}", replica)).white().on_blue()
+            }
+            AppState::Exiting(_) => Paragraph::new("Exiting…"),
+        };
 
         let status = Paragraph::new(match &self.status_line {
             Some(line) => line,
             None => "All good!",
         });
 
-        frame.render_widget(greeting, body_area);
+        frame.render_widget(body, body_area);
         frame.render_widget(status, status_area);
     }
 
@@ -65,7 +76,7 @@ impl App {
     pub fn handle(&mut self, action: Action) -> Option<Effect> {
         match action {
             Action::LoadedReplica(replica) => {
-                self.state = AppState::Loaded(replica);
+                self.state = AppState::Loaded(Loaded { replica });
                 self.status_line = Some("Loaded replica".to_owned());
 
                 None
