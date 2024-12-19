@@ -121,6 +121,7 @@ impl App {
 }
 
 /// Things that can happen to this app
+#[derive(Debug)]
 pub enum Action {
     /// We loaded replica data from disk
     LoadedReplica(Replica),
@@ -136,6 +137,7 @@ pub enum Action {
 }
 
 /// Things that can happen as a result of user input. Side effects!
+#[derive(Debug)]
 pub enum Effect {
     /// Load replica state from disk
     Load,
