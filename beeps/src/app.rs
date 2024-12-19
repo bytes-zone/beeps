@@ -144,13 +144,7 @@ impl Effect {
     async fn run_inner(&self, config: Arc<Config>) -> Result<Action, io::Error> {
         match self {
             Self::Load => {
-                let base = config.data_dir();
-
-                if !fs::try_exists(&base).await? {
-                    fs::create_dir_all(&base).await?;
-                }
-
-                let store = base.join("store.json");
+                let store = config.data_dir().join("store.json");
 
                 if fs::try_exists(&store).await? {
                     let data = fs::read(&store).await?;
