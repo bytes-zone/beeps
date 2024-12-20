@@ -121,7 +121,7 @@ impl App {
             }
             Action::TimePassed => self
                 .state
-                .mut_loaded(|loaded| {
+                .map_loaded_mut(|loaded| {
                     if loaded.replica.schedule_pings() {
                         Some(Effect::Save(loaded.replica.clone()))
                     } else {
@@ -163,7 +163,8 @@ struct Loaded {
 }
 
 impl AppState {
-    fn mut_loaded<T>(&mut self, edit: fn(&mut Loaded) -> T) -> Option<T> {
+    /// Do something to the inner loaded state, if the app is indeed in that state.
+    fn map_loaded_mut<T>(&mut self, edit: fn(&mut Loaded) -> T) -> Option<T> {
         if let Self::Loaded(loaded) = self {
             Some(edit(loaded))
         } else {
