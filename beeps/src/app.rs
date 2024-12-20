@@ -1,5 +1,5 @@
 use beeps_core::{Lww, NodeId, Replica};
-use chrono::{Local, Utc};
+use chrono::{DateTime, Local, Utc};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
 use ratatui::{
@@ -37,18 +37,11 @@ impl App {
 
         match &mut self.state {
             AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
-            AppState::Loaded(Loaded {
-                replica,
-                ref mut table_state,
-            }) => {
-                let state = replica.state();
+            AppState::Loaded(loaded) => {
+                let state = loaded.replica.state();
 
-                let now = Utc::now();
-
-                let rows: Vec<Row> = state
-                    .pings
-                    .iter()
-                    .filter(|ping| **ping <= now)
+                let rows: Vec<Row> = loaded
+                    .current_pings()
                     .map(|ping| {
                         Row::new(vec![
                             ping.with_timezone(&Local).to_rfc2822(),
@@ -70,7 +63,8 @@ impl App {
                     .highlight_symbol("* ")
                     .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
                     .flex(Flex::Legacy);
-                frame.render_stateful_widget(table, body_area, table_state);
+
+                frame.render_stateful_widget(table, body_area, &mut loaded.table_state);
             }
             AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
         };
@@ -183,6 +177,17 @@ enum AppState {
     Exiting(ExitCode),
 }
 
+impl AppState {
+    /// Do something to the inner loaded state, if the app is indeed in that state.
+    fn map_loaded_mut<T>(&mut self, edit: fn(&mut Loaded) -> T) -> Option<T> {
+        if let Self::Loaded(loaded) = self {
+            Some(edit(loaded))
+        } else {
+            None
+        }
+    }
+}
+
 /// State when we have successfully loaded and are running
 #[derive(Debug)]
 struct Loaded {
@@ -193,14 +198,16 @@ struct Loaded {
     table_state: TableState,
 }
 
-impl AppState {
-    /// Do something to the inner loaded state, if the app is indeed in that state.
-    fn map_loaded_mut<T>(&mut self, edit: fn(&mut Loaded) -> T) -> Option<T> {
-        if let Self::Loaded(loaded) = self {
-            Some(edit(loaded))
-        } else {
-            None
-        }
+impl Loaded {
+    fn current_pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
+        let now = Utc::now();
+
+        self.replica
+            .state()
+            .pings
+            .iter()
+            .rev()
+            .filter(move |ping| **ping <= now)
     }
 }
 
