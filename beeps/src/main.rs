@@ -15,6 +15,7 @@ use std::{io, process::ExitCode, sync::Arc};
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedSender},
     task::JoinHandle,
+    time,
 };
 
 #[tokio::main]
@@ -52,6 +53,8 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
 
     let mut event_stream = EventStream::new();
 
+    let mut ticks = time::interval(time::Duration::from_secs(10));
+
     // Start our event loop!
     loop {
         // First thing we do is wait for an event. This can be either external
@@ -69,6 +72,10 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
                     }
                     _ => None,
                 }
+            },
+
+            _ = ticks.tick() => {
+                Some(app::Action::TimePassed)
             },
 
             effect_opt = effect_rx.recv() => {

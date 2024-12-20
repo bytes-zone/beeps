@@ -1,4 +1,5 @@
 use beeps_core::{NodeId, Replica};
+use chrono::Utc;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
 use std::{io, mem, process::ExitCode, sync::Arc};
@@ -107,6 +108,11 @@ impl App {
 
                 None
             }
+            Action::TimePassed => {
+                self.status_line = Some(Utc::now().to_rfc3339());
+
+                None
+            }
         }
     }
 
@@ -134,6 +140,9 @@ pub enum Action {
 
     /// Something bad happened; display it to the user
     Problem(String),
+
+    /// Some amount of time passed and we should do clock things
+    TimePassed,
 }
 
 /// Things that can happen as a result of user input. Side effects!
