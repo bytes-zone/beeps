@@ -81,7 +81,7 @@ proptest::prop_compose! {
     // as a key. I'm not the happiest about that. Is there any way to make this
     // more succinct?
     fn pings()(items in proptest::collection::btree_set(crate::test::timestamp(), 1..5)) -> GSet<DateTime<Utc>> {
-        GSet { items }
+        GSet(items)
     }
 }
 
