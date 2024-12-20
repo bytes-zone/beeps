@@ -1,6 +1,7 @@
 use beeps_core::{Lww, NodeId, Replica};
 use chrono::{Local, Utc};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use layout::Flex;
 use ratatui::{
     prelude::*,
     widgets::{Paragraph, Row, Table},
@@ -62,7 +63,8 @@ impl App {
                             .bg(Color::DarkGray)
                             .fg(Color::White),
                     )
-                    .column_spacing(1);
+                    .column_spacing(2)
+                    .flex(Flex::Legacy);
                 frame.render_widget(table, body_area);
             }
             AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
