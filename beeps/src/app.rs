@@ -98,21 +98,27 @@ impl App {
 
                 None
             }
-            Action::Key(key)
-                if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') =>
-            {
-                let pre_quit_state =
-                    mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
-
-                match pre_quit_state {
-                    AppState::Loaded(Loaded { replica }) => Some(Effect::Save(replica)),
-                    _ => None,
-                }
-            }
             Action::Key(key) => {
-                self.status_line = Some(format!("Unknown key {key:?}"));
+                if key.kind != KeyEventKind::Press {
+                    return None;
+                }
 
-                None
+                match key.code {
+                    KeyCode::Char('q') => {
+                        let pre_quit_state =
+                            mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
+
+                        match pre_quit_state {
+                            AppState::Loaded(Loaded { replica, .. }) => Some(Effect::Save(replica)),
+                            _ => None,
+                        }
+                    }
+                    _ => {
+                        self.status_line = Some(format!("Unknown key {key:?}"));
+
+                        None
+                    }
+                }
             }
             Action::Problem(problem) => {
                 self.status_line = Some(problem.clone());
