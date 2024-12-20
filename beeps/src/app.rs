@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
 use ratatui::{
     prelude::*,
-    widgets::{Paragraph, Row, Scrollbar, ScrollbarState, Table, TableState},
+    widgets::{Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState},
     Frame,
 };
 use std::{io, mem, process::ExitCode, sync::Arc};
@@ -66,7 +66,7 @@ impl App {
                     .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
                     .flex(Flex::Legacy);
 
-                let scroll = Scrollbar::new(ratatui::widgets::ScrollbarOrientation::VerticalRight)
+                let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight)
                     .begin_symbol(None)
                     .end_symbol(None)
                     .thumb_symbol("┃")
@@ -216,6 +216,7 @@ struct Loaded {
 }
 
 impl Loaded {
+    /// Get the pings that we can display currently
     fn current_pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
         let now = Utc::now();
 
