@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
 use ratatui::{
     prelude::*,
-    widgets::{Paragraph, Row, Table, TableState},
+    widgets::{Paragraph, Row, Scrollbar, ScrollbarState, Table, TableState},
     Frame,
 };
 use std::{io, mem, process::ExitCode, sync::Arc};
@@ -53,6 +53,8 @@ impl App {
                     })
                     .collect();
 
+                let num_rows = rows.len();
+
                 let table = Table::new(rows, [Constraint::Min(31), Constraint::Min(9)])
                     .header(
                         Row::new(["Ping", "Tag"])
@@ -64,7 +66,22 @@ impl App {
                     .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
                     .flex(Flex::Legacy);
 
+                let scroll = Scrollbar::new(ratatui::widgets::ScrollbarOrientation::VerticalRight)
+                    .begin_symbol(None)
+                    .end_symbol(None)
+                    .thumb_symbol("┃")
+                    .thumb_style(Style::new().fg(Color::White))
+                    .track_symbol(Some("┆"))
+                    .track_style(Style::new().fg(Color::Gray));
+                let mut scroll_state = ScrollbarState::new(num_rows)
+                    .position(loaded.table_state.selected().unwrap_or(0));
+
                 frame.render_stateful_widget(table, body_area, &mut loaded.table_state);
+                frame.render_stateful_widget(
+                    scroll,
+                    body_area.inner(Margin::new(1, 1)),
+                    &mut scroll_state,
+                );
             }
             AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
         };
