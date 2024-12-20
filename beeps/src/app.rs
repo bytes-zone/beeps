@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
 use ratatui::{
     prelude::*,
-    widgets::{Paragraph, Row, Table},
+    widgets::{Paragraph, Row, Table, TableState},
     Frame,
 };
 use std::{io, mem, process::ExitCode, sync::Arc};
@@ -31,13 +31,16 @@ impl App {
     }
 
     /// Render the app's UI to the screen
-    pub fn render(&self, frame: &mut Frame) {
+    pub fn render(&mut self, frame: &mut Frame) {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
 
-        match &self.state {
+        match &mut self.state {
             AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
-            AppState::Loaded(Loaded { replica }) => {
+            AppState::Loaded(Loaded {
+                replica,
+                ref mut table_state,
+            }) => {
                 let state = replica.state();
 
                 let now = Utc::now();
@@ -64,8 +67,10 @@ impl App {
                             .fg(Color::White),
                     )
                     .column_spacing(2)
+                    .highlight_symbol("* ")
+                    .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
                     .flex(Flex::Legacy);
-                frame.render_widget(table, body_area);
+                frame.render_stateful_widget(table, body_area, table_state);
             }
             AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
         };
@@ -88,7 +93,10 @@ impl App {
     pub fn handle(&mut self, action: Action) -> Option<Effect> {
         match action {
             Action::LoadedReplica(replica) => {
-                self.state = AppState::Loaded(Loaded { replica });
+                self.state = AppState::Loaded(Loaded {
+                    replica,
+                    table_state: TableState::new().with_selected(0),
+                });
                 self.status_line = Some("Loaded replica".to_owned());
 
                 None
@@ -112,6 +120,20 @@ impl App {
                             AppState::Loaded(Loaded { replica, .. }) => Some(Effect::Save(replica)),
                             _ => None,
                         }
+                    }
+                    KeyCode::Char('j') => {
+                        self.state.map_loaded_mut(|loaded| {
+                            loaded.table_state.select_next();
+                        });
+
+                        None
+                    }
+                    KeyCode::Char('k') => {
+                        self.state.map_loaded_mut(|loaded| {
+                            loaded.table_state.select_previous();
+                        });
+
+                        None
                     }
                     _ => {
                         self.status_line = Some(format!("Unknown key {key:?}"));
@@ -166,6 +188,9 @@ enum AppState {
 struct Loaded {
     /// The replica we're working with
     replica: Replica,
+
+    /// State of the pings table
+    table_state: TableState,
 }
 
 impl AppState {
