@@ -58,7 +58,7 @@ impl App {
 
                 let table = Table::new(rows, [Constraint::Min(31), Constraint::Min(9)])
                     .header(
-                        Row::new(vec!["Ping".to_string(), "Tag".to_string()])
+                        Row::new(["Ping", "Tag"])
                             .bg(Color::DarkGray)
                             .fg(Color::White),
                     )
