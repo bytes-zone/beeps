@@ -1,6 +1,11 @@
-use beeps_core::{NodeId, Replica};
+use beeps_core::{Lww, NodeId, Replica};
+use chrono::{Local, Utc};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
-use ratatui::{prelude::*, widgets::Paragraph, Frame};
+use ratatui::{
+    prelude::*,
+    widgets::{Paragraph, Row, Table},
+    Frame,
+};
 use std::{io, mem, process::ExitCode, sync::Arc};
 use tokio::fs;
 
@@ -29,12 +34,38 @@ impl App {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
 
-        let body = match &self.state {
-            AppState::Unloaded => Paragraph::new("Loading…"),
+        match &self.state {
+            AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
             AppState::Loaded(Loaded { replica }) => {
-                Paragraph::new(format!("{replica:#?}")).white().on_blue()
+                let state = replica.state();
+
+                let now = Utc::now();
+
+                let rows: Vec<Row> = state
+                    .pings
+                    .iter()
+                    .filter(|ping| **ping <= now)
+                    .map(|ping| {
+                        Row::new(vec![
+                            ping.with_timezone(&Local).to_rfc2822(),
+                            match state.tags.get(ping).map(Lww::value) {
+                                Some(tag) => tag.clone(),
+                                _ => "<unknown>".to_string(),
+                            },
+                        ])
+                    })
+                    .collect();
+
+                let table = Table::new(rows, [Constraint::Min(31), Constraint::Min(9)])
+                    .header(
+                        Row::new(vec!["Ping".to_string(), "Tag".to_string()])
+                            .bg(Color::DarkGray)
+                            .fg(Color::White),
+                    )
+                    .column_spacing(1);
+                frame.render_widget(table, body_area);
             }
-            AppState::Exiting(_) => Paragraph::new("Exiting…"),
+            AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
         };
 
         let status = Paragraph::new(match &self.status_line {
@@ -42,7 +73,6 @@ impl App {
             None => "All good!",
         });
 
-        frame.render_widget(body, body_area);
         frame.render_widget(status, status_area);
     }
 
