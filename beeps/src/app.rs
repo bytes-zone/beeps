@@ -1,5 +1,4 @@
 use beeps_core::{NodeId, Replica};
-use chrono::Utc;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{prelude::*, widgets::Paragraph, Frame};
 use std::{io, mem, process::ExitCode, sync::Arc};
@@ -14,26 +13,6 @@ pub struct App {
 
     /// Where the app is in its lifecycle
     state: AppState,
-}
-
-/// App lifecycle
-#[derive(Debug)]
-enum AppState {
-    /// We haven't loaded anything yet
-    Unloaded,
-
-    /// We have loaded a replica from disk
-    Loaded(Loaded),
-
-    /// We're done and want the following exit code after final effects
-    Exiting(ExitCode),
-}
-
-/// State when we have successfully loaded and are running
-#[derive(Debug)]
-struct Loaded {
-    /// The replica we're working with
-    replica: Replica,
 }
 
 impl App {
@@ -108,11 +87,16 @@ impl App {
 
                 None
             }
-            Action::TimePassed => {
-                self.status_line = Some(Utc::now().to_rfc3339());
-
-                None
-            }
+            Action::TimePassed => self
+                .state
+                .mut_loaded(|loaded| {
+                    if loaded.replica.schedule_pings() {
+                        Some(Effect::Save(loaded.replica.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .flatten(),
         }
     }
 
@@ -120,6 +104,36 @@ impl App {
     pub fn should_exit(&self) -> Option<ExitCode> {
         if let AppState::Exiting(code) = &self.state {
             Some(*code)
+        } else {
+            None
+        }
+    }
+}
+
+/// App lifecycle
+#[derive(Debug)]
+enum AppState {
+    /// We haven't loaded anything yet
+    Unloaded,
+
+    /// We have loaded a replica from disk
+    Loaded(Loaded),
+
+    /// We're done and want the following exit code after final effects
+    Exiting(ExitCode),
+}
+
+/// State when we have successfully loaded and are running
+#[derive(Debug)]
+struct Loaded {
+    /// The replica we're working with
+    replica: Replica,
+}
+
+impl AppState {
+    fn mut_loaded<T>(&mut self, edit: fn(&mut Loaded) -> T) -> Option<T> {
+        if let Self::Loaded(loaded) = self {
+            Some(edit(loaded))
         } else {
             None
         }
