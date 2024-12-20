@@ -60,7 +60,7 @@ impl App {
                             .fg(Color::White),
                     )
                     .column_spacing(2)
-                    .highlight_symbol("* ")
+                    .highlight_symbol("● ")
                     .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
                     .flex(Flex::Legacy);
 
