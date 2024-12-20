@@ -57,33 +57,47 @@ impl Replica {
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
-    fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) {
+    /// Returns `true` if any new pings were scheduled.
+    fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) -> bool {
+        let mut any_scheduled = false;
+
         let latest_ping = if let Some(ping) = self.state.latest_ping().copied() {
             ping
         } else {
             let now = Utc::now();
             self.state.pings.insert(now);
+            any_scheduled = true;
 
             now
         };
+
+        // Early check: if we already have a ping past the cutoff, we don't need
+        // to do any more work.
+        if latest_ping > cutoff {
+            return any_scheduled;
+        }
 
         let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
 
         for next in scheduler {
             self.state.pings.insert(next);
+            any_scheduled = true;
 
             // accepting one past the cutoff gets us into the future
             if next > cutoff {
                 break;
             }
         }
+
+        any_scheduled
     }
 
     /// Schedule pings into the future. We don't just schedule *up to* the given
     /// time, but go one past that. That means that if the given time is the
-    /// current time, we end up with the time we should next notify at.
-    pub fn schedule_pings(&mut self) {
-        self.schedule_pings_with_cutoff(Utc::now());
+    /// current time, we end up with the time we should next notify at. Returns
+    /// `true` if any new pings were scheduled.
+    pub fn schedule_pings(&mut self) -> bool {
+        self.schedule_pings_with_cutoff(Utc::now())
     }
 }
 
@@ -145,6 +159,19 @@ mod test {
             for date in scheduled {
                 assert!(doc.state().pings.contains(&date));
             }
+        }
+
+        #[test]
+        fn returns_true_if_any_pings_were_scheduled() {
+            let mut doc = Replica::new(NodeId::random());
+
+            let now = Utc::now();
+
+            // Our first call is going to schedule some pings, so we should get `true`.
+            assert!(doc.schedule_pings_with_cutoff(now));
+
+            // A second call won't schedule anything new, so we should now get `false`.
+            assert!(!doc.schedule_pings_with_cutoff(now));
         }
     }
 
