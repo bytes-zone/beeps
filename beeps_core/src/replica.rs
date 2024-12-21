@@ -107,7 +107,7 @@ impl Replica {
     }
 
     /// Get all the pings that have been scheduled.
-    pub fn pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
+    pub fn pings(&self) -> impl DoubleEndedIterator<Item = &DateTime<Utc>> {
         self.state.pings.iter()
     }
 }
