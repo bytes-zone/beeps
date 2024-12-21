@@ -2,6 +2,7 @@ use crate::hlc::Hlc;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
 use crate::state::State;
+use crate::Lww;
 use chrono::{DateTime, Utc};
 
 /// The local state of a replica ("who am I" and "what do I know"). Reading the
@@ -98,6 +99,11 @@ impl Replica {
     /// `true` if any new pings were scheduled.
     pub fn schedule_pings(&mut self) -> bool {
         self.schedule_pings_with_cutoff(Utc::now())
+    }
+
+    /// Get the current value of the given ping.
+    pub fn get_tag(&self, ping: &DateTime<Utc>) -> Option<&String> {
+        self.state.tags.get(ping).map(Lww::value)
     }
 }
 
