@@ -35,6 +35,7 @@ impl App {
     }
 
     /// Render the app's UI to the screen
+    #[expect(clippy::cast_possible_truncation)]
     pub fn render(&mut self, frame: &mut Frame) {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
@@ -136,6 +137,7 @@ impl App {
     }
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
+    #[expect(clippy::too_many_lines)]
     pub fn handle(&mut self, action: Action) -> Option<Effect> {
         match action {
             Action::LoadedReplica(replica) => {
@@ -166,7 +168,7 @@ impl App {
                                     let (ping, tag_input) = editing;
                                     loaded
                                         .replica
-                                        .tag_ping(ping.clone(), tag_input.value().to_string());
+                                        .tag_ping(*ping, tag_input.value().to_string());
 
                                     loaded.editing = None;
 
@@ -228,7 +230,7 @@ impl App {
                                                     .replica
                                                     .get_tag(ping)
                                                     .cloned()
-                                                    .unwrap_or_else(|| String::default()),
+                                                    .unwrap_or_default(),
                                             ),
                                         )
                                     });
