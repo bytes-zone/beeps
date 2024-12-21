@@ -40,14 +40,12 @@ impl App {
         match &mut self.state {
             AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
             AppState::Loaded(loaded) => {
-                let state = loaded.replica.state();
-
                 let rows: Vec<Row> = loaded
                     .current_pings()
                     .map(|ping| {
                         Row::new(vec![
                             Cell::new(ping.with_timezone(&Local).to_rfc2822()),
-                            match state.tags.get(ping).map(Lww::value) {
+                            match loaded.replica.get_tag(ping) {
                                 Some(tag) => Cell::new(tag.clone()),
                                 _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
                             },
