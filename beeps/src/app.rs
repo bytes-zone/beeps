@@ -109,6 +109,7 @@ impl App {
                 self.state = AppState::Loaded(Loaded {
                     replica,
                     table_state: TableState::new().with_selected(0),
+                    editing: None,
                 });
                 self.status_line = Some("Loaded replica".to_owned());
 
@@ -124,34 +125,60 @@ impl App {
                     return None;
                 }
 
-                match key.code {
-                    KeyCode::Char('q') => {
-                        let pre_quit_state =
-                            mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
+                if self.state.is_editing() {
+                    todo!()
+                } else {
+                    match key.code {
+                        KeyCode::Char('q') => {
+                            let pre_quit_state =
+                                mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
 
-                        match pre_quit_state {
-                            AppState::Loaded(Loaded { replica, .. }) => Some(Effect::Save(replica)),
-                            _ => None,
+                            match pre_quit_state {
+                                AppState::Loaded(Loaded { replica, .. }) => {
+                                    Some(Effect::Save(replica))
+                                }
+                                _ => None,
+                            }
                         }
-                    }
-                    KeyCode::Char('j') => {
-                        self.state.map_loaded_mut(|loaded| {
-                            loaded.table_state.select_next();
-                        });
+                        KeyCode::Char('j') => {
+                            self.state.map_loaded_mut(|loaded| {
+                                loaded.table_state.select_next();
+                            });
 
-                        None
-                    }
-                    KeyCode::Char('k') => {
-                        self.state.map_loaded_mut(|loaded| {
-                            loaded.table_state.select_previous();
-                        });
+                            None
+                        }
+                        KeyCode::Char('k') => {
+                            self.state.map_loaded_mut(|loaded| {
+                                loaded.table_state.select_previous();
+                            });
 
-                        None
-                    }
-                    _ => {
-                        self.status_line = Some(format!("Unknown key {key:?}"));
+                            None
+                        }
+                        KeyCode::Enter | KeyCode::Char('e') => {
+                            self.state.map_loaded_mut(|loaded| {
+                                loaded.editing = loaded
+                                    .table_state
+                                    .selected()
+                                    .and_then(|idx| loaded.current_pings().nth(idx))
+                                    .map(|ping| {
+                                        (
+                                            *ping,
+                                            loaded
+                                                .replica
+                                                .get_tag(ping)
+                                                .cloned()
+                                                .unwrap_or_else(|| String::default()),
+                                        )
+                                    });
+                            });
 
-                        None
+                            None
+                        }
+                        _ => {
+                            self.status_line = Some(format!("Unknown key {key:?}"));
+
+                            None
+                        }
                     }
                 }
             }
@@ -205,6 +232,15 @@ impl AppState {
             None
         }
     }
+
+    /// Convenience method to check if we're editing text
+    fn is_editing(&self) -> bool {
+        if let Self::Loaded(loaded) = self {
+            loaded.editing.is_some()
+        } else {
+            false
+        }
+    }
 }
 
 /// State when we have successfully loaded and are running
@@ -215,6 +251,9 @@ struct Loaded {
 
     /// State of the pings table
     table_state: TableState,
+
+    /// What we're editing, and the current value.
+    editing: Option<(DateTime<Utc>, String)>,
 }
 
 impl Loaded {
