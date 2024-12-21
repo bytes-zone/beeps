@@ -1,14 +1,18 @@
-use beeps_core::{Lww, NodeId, Replica};
+use beeps_core::{NodeId, Replica};
 use chrono::{DateTime, Local, Utc};
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
 use ratatui::{
     prelude::*,
-    widgets::{Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState},
+    widgets::{
+        Block, Borders, Cell, Clear, Paragraph, Row, Scrollbar, ScrollbarOrientation,
+        ScrollbarState, Table, TableState,
+    },
     Frame,
 };
 use std::{io, mem, process::ExitCode, sync::Arc};
 use tokio::fs;
+use tui_input::{backend::crossterm::EventHandler, Input};
 
 use crate::config::Config;
 
@@ -31,6 +35,7 @@ impl App {
     }
 
     /// Render the app's UI to the screen
+    #[expect(clippy::cast_possible_truncation)]
     pub fn render(&mut self, frame: &mut Frame) {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
@@ -38,16 +43,14 @@ impl App {
         match &mut self.state {
             AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
             AppState::Loaded(loaded) => {
-                let state = loaded.replica.state();
-
                 let rows: Vec<Row> = loaded
                     .current_pings()
                     .map(|ping| {
                         Row::new(vec![
-                            ping.with_timezone(&Local).to_rfc2822(),
-                            match state.tags.get(ping).map(Lww::value) {
-                                Some(tag) => tag.clone(),
-                                _ => "<unknown>".to_string(),
+                            Cell::new(ping.with_timezone(&Local).to_rfc2822()),
+                            match loaded.replica.get_tag(ping) {
+                                Some(tag) => Cell::new(tag.clone()),
+                                _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
                             },
                         ])
                     })
@@ -82,6 +85,39 @@ impl App {
                     body_area.inner(Margin::new(1, 1)),
                     &mut scroll_state,
                 );
+
+                // Editing popover
+                if let Some((ping, tag_input)) = &loaded.editing {
+                    let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
+                    let popup_horiz =
+                        Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
+
+                    let [popup_area] = popup_vert.areas(body_area);
+                    let [popup_area] = popup_horiz.areas(popup_area);
+
+                    let width = popup_area.width - 2 - 1; // -2 for the border, -1 for the cursor
+
+                    let input_scroll = tag_input.visual_scroll(width as usize);
+
+                    let popup = Paragraph::new(tag_input.value())
+                        .scroll((0, input_scroll as u16))
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .title(format!("Edit tag for {}", ping.to_rfc2822())),
+                        )
+                        .style(Style::default().fg(Color::Blue));
+
+                    frame.render_widget(Clear, popup_area);
+                    frame.render_widget(popup, popup_area);
+
+                    frame.set_cursor_position((
+                        popup_area.x
+                            + (tag_input.visual_cursor().max(input_scroll) - input_scroll) as u16 // current end of text
+                            + 1, // just past the end of the text
+                        popup_area.y + 1, // +1 row for the border/title
+                    ));
+                }
             }
             AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
         };
@@ -101,12 +137,14 @@ impl App {
     }
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
+    #[expect(clippy::too_many_lines)]
     pub fn handle(&mut self, action: Action) -> Option<Effect> {
         match action {
             Action::LoadedReplica(replica) => {
                 self.state = AppState::Loaded(Loaded {
                     replica,
                     table_state: TableState::new().with_selected(0),
+                    editing: None,
                 });
                 self.status_line = Some("Loaded replica".to_owned());
 
@@ -122,34 +160,89 @@ impl App {
                     return None;
                 }
 
-                match key.code {
-                    KeyCode::Char('q') => {
-                        let pre_quit_state =
-                            mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
+                if self.state.is_editing() {
+                    self.state
+                        .map_loaded_mut(|loaded| match loaded.editing {
+                            Some(ref mut editing) => match key.code {
+                                KeyCode::Enter => {
+                                    let (ping, tag_input) = editing;
+                                    loaded
+                                        .replica
+                                        .tag_ping(*ping, tag_input.value().to_string());
 
-                        match pre_quit_state {
-                            AppState::Loaded(Loaded { replica, .. }) => Some(Effect::Save(replica)),
-                            _ => None,
+                                    loaded.editing = None;
+
+                                    Some(Effect::Save(loaded.replica.clone()))
+                                }
+                                KeyCode::Esc => {
+                                    loaded.editing = None;
+
+                                    None
+                                }
+                                _ => {
+                                    editing.1.handle_event(&Event::Key(key));
+
+                                    None
+                                }
+                            },
+
+                            None => None,
+                        })
+                        .flatten()
+                } else {
+                    match key.code {
+                        KeyCode::Char('q') => {
+                            let pre_quit_state =
+                                mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
+
+                            match pre_quit_state {
+                                AppState::Loaded(Loaded { replica, .. }) => {
+                                    Some(Effect::Save(replica))
+                                }
+                                _ => None,
+                            }
                         }
-                    }
-                    KeyCode::Char('j') => {
-                        self.state.map_loaded_mut(|loaded| {
-                            loaded.table_state.select_next();
-                        });
+                        KeyCode::Char('j') => {
+                            self.state.map_loaded_mut(|loaded| {
+                                loaded.table_state.select_next();
+                            });
 
-                        None
-                    }
-                    KeyCode::Char('k') => {
-                        self.state.map_loaded_mut(|loaded| {
-                            loaded.table_state.select_previous();
-                        });
+                            None
+                        }
+                        KeyCode::Char('k') => {
+                            self.state.map_loaded_mut(|loaded| {
+                                loaded.table_state.select_previous();
+                            });
 
-                        None
-                    }
-                    _ => {
-                        self.status_line = Some(format!("Unknown key {key:?}"));
+                            None
+                        }
+                        KeyCode::Enter | KeyCode::Char('e') => {
+                            self.state.map_loaded_mut(|loaded| {
+                                loaded.editing = loaded
+                                    .table_state
+                                    .selected()
+                                    .and_then(|idx| loaded.current_pings().nth(idx))
+                                    .map(|ping| {
+                                        (
+                                            *ping,
+                                            Input::new(
+                                                loaded
+                                                    .replica
+                                                    .get_tag(ping)
+                                                    .cloned()
+                                                    .unwrap_or_default(),
+                                            ),
+                                        )
+                                    });
+                            });
 
-                        None
+                            None
+                        }
+                        _ => {
+                            self.status_line = Some(format!("Unknown key {key:?}"));
+
+                            None
+                        }
                     }
                 }
             }
@@ -196,11 +289,20 @@ enum AppState {
 
 impl AppState {
     /// Do something to the inner loaded state, if the app is indeed in that state.
-    fn map_loaded_mut<T>(&mut self, edit: fn(&mut Loaded) -> T) -> Option<T> {
+    fn map_loaded_mut<T>(&mut self, edit: impl Fn(&mut Loaded) -> T) -> Option<T> {
         if let Self::Loaded(loaded) = self {
             Some(edit(loaded))
         } else {
             None
+        }
+    }
+
+    /// Convenience method to check if we're editing text
+    fn is_editing(&self) -> bool {
+        if let Self::Loaded(loaded) = self {
+            loaded.editing.is_some()
+        } else {
+            false
         }
     }
 }
@@ -213,6 +315,9 @@ struct Loaded {
 
     /// State of the pings table
     table_state: TableState,
+
+    /// What we're editing, and the current value.
+    editing: Option<(DateTime<Utc>, Input)>,
 }
 
 impl Loaded {
@@ -220,12 +325,7 @@ impl Loaded {
     fn current_pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
         let now = Utc::now();
 
-        self.replica
-            .state()
-            .pings
-            .iter()
-            .rev()
-            .filter(move |ping| **ping <= now)
+        self.replica.pings().rev().filter(move |ping| **ping <= now)
     }
 }
 
