@@ -4,7 +4,9 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
 use ratatui::{
     prelude::*,
-    widgets::{Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState},
+    widgets::{
+        Cell, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState,
+    },
     Frame,
 };
 use std::{io, mem, process::ExitCode, sync::Arc};
@@ -44,10 +46,10 @@ impl App {
                     .current_pings()
                     .map(|ping| {
                         Row::new(vec![
-                            ping.with_timezone(&Local).to_rfc2822(),
+                            Cell::new(ping.with_timezone(&Local).to_rfc2822()),
                             match state.tags.get(ping).map(Lww::value) {
-                                Some(tag) => tag.clone(),
-                                _ => "<unknown>".to_string(),
+                                Some(tag) => Cell::new(tag.clone()),
+                                _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
                             },
                         ])
                     })
