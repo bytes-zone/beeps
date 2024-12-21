@@ -105,6 +105,11 @@ impl Replica {
     pub fn get_tag(&self, ping: &DateTime<Utc>) -> Option<&String> {
         self.state.tags.get(ping).map(Lww::value)
     }
+
+    /// Get all the pings that have been scheduled.
+    pub fn pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
+        self.state.pings.iter()
+    }
 }
 
 #[cfg(test)]

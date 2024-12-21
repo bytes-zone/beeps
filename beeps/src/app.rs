@@ -222,12 +222,7 @@ impl Loaded {
     fn current_pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
         let now = Utc::now();
 
-        self.replica
-            .state()
-            .pings
-            .iter()
-            .rev()
-            .filter(move |ping| **ping <= now)
+        self.replica.pings().rev().filter(move |ping| **ping <= now)
     }
 }
 
