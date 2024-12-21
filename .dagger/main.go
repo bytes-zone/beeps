@@ -104,7 +104,7 @@ func (m *Beeps) All(
 	ctx context.Context,
 	// +optional
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 ) (string, error) {
 	eg, ctx := errgroup.WithContext(ctx)
@@ -169,7 +169,7 @@ func (m *Beeps) Build(
 	ctx context.Context,
 	// +optional
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 	// +optional
 	release bool,
@@ -188,7 +188,7 @@ func (m *Beeps) Build(
 func (m *Beeps) Test(
 	ctx context.Context,
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("test").
@@ -212,7 +212,7 @@ func (m *Beeps) Db(
 func (m *Beeps) Clippy(
 	ctx context.Context,
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("clippy").
@@ -225,7 +225,7 @@ func (m *Beeps) Clippy(
 func (m *Beeps) Typos(
 	ctx context.Context,
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("typos").
@@ -238,7 +238,7 @@ func (m *Beeps) Typos(
 func (m *Beeps) Fmt(
 	ctx context.Context,
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("fmt").
@@ -251,7 +251,7 @@ func (m *Beeps) Fmt(
 func (m *Beeps) Machete(
 	ctx context.Context,
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("machete").
@@ -264,7 +264,7 @@ func (m *Beeps) Machete(
 func (m *Beeps) WasmBuild(
 	ctx context.Context,
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 	// +default="browser"
 	crate string,
@@ -283,7 +283,7 @@ func (m *Beeps) WasmBuild(
 func (m *Beeps) WasmSize(
 	ctx context.Context,
 	// +defaultPath=.
-	// +ignore=["target"]
+	// +ignore=["target", ".git", ".dagger"]
 	source *dagger.Directory,
 	// +default="browser"
 	crate string,
