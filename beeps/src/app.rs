@@ -2,6 +2,7 @@ use beeps_core::{NodeId, Replica};
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
+use notify_rust::Notification;
 use ratatui::{
     prelude::*,
     widgets::{
@@ -255,7 +256,10 @@ impl App {
                 .state
                 .map_loaded_mut(|loaded| {
                     if loaded.replica.schedule_pings() {
-                        vec![Effect::Save(loaded.replica.clone())]
+                        vec![
+                            Effect::NotifyAboutNewPing,
+                            Effect::Save(loaded.replica.clone()),
+                        ]
                     } else {
                         vec![]
                     }
@@ -356,21 +360,24 @@ pub enum Effect {
 
     /// Save replica to disk
     Save(Replica),
+
+    /// Notify that a new ping is available
+    NotifyAboutNewPing,
 }
 
 impl Effect {
     /// Perform the side-effectful portions of this effect, returning the next
     /// `Action` the application needs to handle
-    pub async fn run(&self, config: Arc<Config>) -> Action {
+    pub async fn run(&self, config: Arc<Config>) -> Option<Action> {
         match self.run_inner(config).await {
             Ok(action) => action,
-            Err(problem) => Action::Problem(problem.to_string()),
+            Err(problem) => Some(Action::Problem(problem.to_string())),
         }
     }
 
     /// The actual implementation of `run`, but with a `Result` wrapper to make
     /// it more ergonomic to write.
-    async fn run_inner(&self, config: Arc<Config>) -> Result<Action, io::Error> {
+    async fn run_inner(&self, config: Arc<Config>) -> Result<Option<Action>, io::Error> {
         match self {
             Self::Load => {
                 let store = config.data_dir().join("store.json");
@@ -379,9 +386,9 @@ impl Effect {
                     let data = fs::read(&store).await?;
                     let replica: Replica = serde_json::from_slice(&data)?;
 
-                    Ok(Action::LoadedReplica(replica))
+                    Ok(Some(Action::LoadedReplica(replica)))
                 } else {
-                    Ok(Action::LoadedReplica(Replica::new(NodeId::random())))
+                    Ok(Some(Action::LoadedReplica(Replica::new(NodeId::random()))))
                 }
             }
 
@@ -394,7 +401,17 @@ impl Effect {
                 let data = serde_json::to_vec(replica)?;
                 fs::write(&store, &data).await?;
 
-                Ok(Action::Saved)
+                Ok(Some(Action::Saved))
+            }
+
+            Self::NotifyAboutNewPing => {
+                // We don't care if the notification failed to show.
+                let _ = Notification::new()
+                    .summary("New ping!")
+                    .body("What are you up to? Tag it!")
+                    .show();
+
+                Ok(None)
             }
         }
     }
