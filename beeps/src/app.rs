@@ -36,96 +36,11 @@ impl App {
     }
 
     /// Render the app's UI to the screen
-    #[expect(clippy::cast_possible_truncation)]
     pub fn render(&mut self, frame: &mut Frame) {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
 
-        match &mut self.state {
-            AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
-            AppState::Loaded(loaded) => {
-                let rows: Vec<Row> = loaded
-                    .current_pings()
-                    .map(|ping| {
-                        Row::new(vec![
-                            Cell::new(
-                                ping.with_timezone(&Local)
-                                    .format("%a, %b %-d, %-I:%M %p")
-                                    .to_string(),
-                            ),
-                            match loaded.replica.get_tag(ping) {
-                                Some(tag) => Cell::new(tag.clone()),
-                                _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
-                            },
-                        ])
-                    })
-                    .collect();
-
-                let num_rows = rows.len();
-
-                let table = Table::new(rows, [Constraint::Min(21), Constraint::Min(9)])
-                    .header(
-                        Row::new(["Ping", "Tag"])
-                            .bg(Color::DarkGray)
-                            .fg(Color::White),
-                    )
-                    .column_spacing(2)
-                    .highlight_symbol("● ")
-                    .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
-                    .flex(Flex::Legacy);
-
-                let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-                    .begin_symbol(None)
-                    .end_symbol(None)
-                    .thumb_symbol("┃")
-                    .thumb_style(Style::new().fg(Color::White))
-                    .track_symbol(Some("┆"))
-                    .track_style(Style::new().fg(Color::Gray));
-                let mut scroll_state = ScrollbarState::new(num_rows)
-                    .position(loaded.table_state.selected().unwrap_or(0));
-
-                frame.render_stateful_widget(table, body_area, &mut loaded.table_state);
-                frame.render_stateful_widget(
-                    scroll,
-                    body_area.inner(Margin::new(1, 1)),
-                    &mut scroll_state,
-                );
-
-                // Editing popover
-                if let Some((ping, tag_input)) = &loaded.editing {
-                    let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
-                    let popup_horiz =
-                        Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
-
-                    let [popup_area] = popup_vert.areas(body_area);
-                    let [popup_area] = popup_horiz.areas(popup_area);
-
-                    let width = popup_area.width - 2 - 1; // -2 for the border, -1 for the cursor
-
-                    let input_scroll = tag_input.visual_scroll(width as usize);
-
-                    let popup = Paragraph::new(tag_input.value())
-                        .scroll((0, input_scroll as u16))
-                        .block(
-                            Block::default()
-                                .borders(Borders::ALL)
-                                .title(format!("Edit tag for {}", ping.to_rfc2822())),
-                        )
-                        .style(Style::default().fg(Color::Blue));
-
-                    frame.render_widget(Clear, popup_area);
-                    frame.render_widget(popup, popup_area);
-
-                    frame.set_cursor_position((
-                        popup_area.x
-                            + (tag_input.visual_cursor().max(input_scroll) - input_scroll) as u16 // current end of text
-                            + 1, // just past the end of the text
-                        popup_area.y + 1, // +1 row for the border/title
-                    ));
-                }
-            }
-            AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
-        };
+        self.state.render(body_area, frame);
 
         let status = Paragraph::new(match &self.status_line {
             Some(line) => line,
@@ -241,6 +156,15 @@ impl AppState {
             _ => vec![],
         }
     }
+
+    /// Render the app state
+    fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
+        match self {
+            AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
+            AppState::Loaded(loaded) => loaded.render(body_area, frame),
+            AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
+        };
+    }
 }
 
 /// State when we have successfully loaded and are running
@@ -319,6 +243,90 @@ impl Loaded {
             ]
         } else {
             vec![]
+        }
+    }
+
+    /// Render the table and editing popover
+    #[expect(clippy::cast_possible_truncation)]
+    fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
+        let rows: Vec<Row> = self
+            .current_pings()
+            .map(|ping| {
+                Row::new(vec![
+                    Cell::new(
+                        ping.with_timezone(&Local)
+                            .format("%a, %b %-d, %-I:%M %p")
+                            .to_string(),
+                    ),
+                    match self.replica.get_tag(ping) {
+                        Some(tag) => Cell::new(tag.clone()),
+                        _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
+                    },
+                ])
+            })
+            .collect();
+
+        let num_rows = rows.len();
+
+        let table = Table::new(rows, [Constraint::Min(21), Constraint::Min(9)])
+            .header(
+                Row::new(["Ping", "Tag"])
+                    .bg(Color::DarkGray)
+                    .fg(Color::White),
+            )
+            .column_spacing(2)
+            .highlight_symbol("● ")
+            .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
+            .flex(Flex::Legacy);
+
+        let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None)
+            .thumb_symbol("┃")
+            .thumb_style(Style::new().fg(Color::White))
+            .track_symbol(Some("┆"))
+            .track_style(Style::new().fg(Color::Gray));
+
+        let mut scroll_state =
+            ScrollbarState::new(num_rows).position(self.table_state.selected().unwrap_or(0));
+
+        frame.render_stateful_widget(table, body_area, &mut self.table_state);
+        frame.render_stateful_widget(
+            scroll,
+            body_area.inner(Margin::new(1, 1)),
+            &mut scroll_state,
+        );
+
+        // Editing popover
+        if let Some((ping, tag_input)) = &self.editing {
+            let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
+            let popup_horiz = Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
+
+            let [popup_area] = popup_vert.areas(body_area);
+            let [popup_area] = popup_horiz.areas(popup_area);
+
+            let width = popup_area.width - 2 - 1; // -2 for the border, -1 for the cursor
+
+            let input_scroll = tag_input.visual_scroll(width as usize);
+
+            let popup = Paragraph::new(tag_input.value())
+                .scroll((0, input_scroll as u16))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(format!("Edit tag for {}", ping.to_rfc2822())),
+                )
+                .style(Style::default().fg(Color::Blue));
+
+            frame.render_widget(Clear, popup_area);
+            frame.render_widget(popup, popup_area);
+
+            frame.set_cursor_position((
+                popup_area.x
+                            + (tag_input.visual_cursor().max(input_scroll) - input_scroll) as u16 // current end of text
+                            + 1, // just past the end of the text
+                popup_area.y + 1, // +1 row for the border/title
+            ));
         }
     }
 }
