@@ -138,7 +138,6 @@ impl App {
     }
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
-    #[expect(clippy::too_many_lines)]
     pub fn handle(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::LoadedReplica(replica) => {
@@ -161,91 +160,7 @@ impl App {
                     return vec![];
                 }
 
-                if self.state.is_editing() {
-                    self.state
-                        .map_loaded_mut(|loaded| match loaded.editing {
-                            Some(ref mut editing) => match key.code {
-                                KeyCode::Enter => {
-                                    let (ping, tag_input) = editing;
-                                    loaded
-                                        .replica
-                                        .tag_ping(*ping, tag_input.value().to_string());
-
-                                    loaded.editing = None;
-
-                                    vec![Effect::Save(loaded.replica.clone())]
-                                }
-                                KeyCode::Esc => {
-                                    loaded.editing = None;
-
-                                    vec![]
-                                }
-                                _ => {
-                                    editing.1.handle_event(&Event::Key(key));
-
-                                    vec![]
-                                }
-                            },
-
-                            None => vec![],
-                        })
-                        .unwrap_or_default()
-                } else {
-                    match key.code {
-                        KeyCode::Char('q') => {
-                            let pre_quit_state =
-                                mem::replace(&mut self.state, AppState::Exiting(ExitCode::SUCCESS));
-
-                            match pre_quit_state {
-                                AppState::Loaded(Loaded { replica, .. }) => {
-                                    vec![Effect::Save(replica)]
-                                }
-                                _ => vec![],
-                            }
-                        }
-                        KeyCode::Char('j') => {
-                            self.state.map_loaded_mut(|loaded| {
-                                loaded.table_state.select_next();
-                            });
-
-                            vec![]
-                        }
-                        KeyCode::Char('k') => {
-                            self.state.map_loaded_mut(|loaded| {
-                                loaded.table_state.select_previous();
-                            });
-
-                            vec![]
-                        }
-                        KeyCode::Enter | KeyCode::Char('e') => {
-                            self.state.map_loaded_mut(|loaded| {
-                                loaded.editing = loaded
-                                    .table_state
-                                    .selected()
-                                    .and_then(|idx| loaded.current_pings().nth(idx))
-                                    .map(|ping| {
-                                        (
-                                            *ping,
-                                            Input::new(
-                                                loaded
-                                                    .replica
-                                                    .get_tag(ping)
-                                                    .cloned()
-                                                    .unwrap_or_default(),
-                                            ),
-                                        )
-                                    });
-                            });
-
-                            vec![]
-                        }
-                        _ => {
-                            self.status_line = Some(format!("Unknown key {key:?}"));
-
-                            vec![]
-                        }
-                    }
-                }
+                self.state.handle_key(key)
             }
             Action::Problem(problem) => {
                 self.status_line = Some(problem.clone());
@@ -264,7 +179,7 @@ impl App {
                         vec![]
                     }
                 })
-                .unwrap_or_default(),
+                .unwrap_or_else(Vec::new),
         }
     }
 
@@ -301,12 +216,35 @@ impl AppState {
         }
     }
 
-    /// Convenience method to check if we're editing text
-    fn is_editing(&self) -> bool {
-        if let Self::Loaded(loaded) = self {
-            loaded.editing.is_some()
+    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        match self {
+            Self::Unloaded => self.handle_key_unloaded(key),
+            Self::Loaded(loaded) => {
+                let (effects, exit_code) = loaded.handle_key(key);
+                exit_code.map(|code| self.quit(code));
+
+                effects
+            }
+            Self::Exiting(_) => vec![],
+        }
+    }
+
+    fn handle_key_unloaded(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if key.code == KeyCode::Char('q') {
+            self.quit(ExitCode::SUCCESS)
         } else {
-            false
+            vec![]
+        }
+    }
+
+    fn quit(&mut self, exit_code: ExitCode) -> Vec<Effect> {
+        let pre_quit_state = mem::replace(self, Self::Exiting(exit_code));
+
+        match pre_quit_state {
+            AppState::Loaded(Loaded { replica, .. }) => {
+                vec![Effect::Save(replica)]
+            }
+            _ => vec![],
         }
     }
 }
@@ -330,6 +268,53 @@ impl Loaded {
         let now = Utc::now();
 
         self.replica.pings().rev().filter(move |ping| **ping <= now)
+    }
+
+    fn handle_key(&mut self, key: KeyEvent) -> (Vec<Effect>, Option<ExitCode>) {
+        let mut effects = Vec::new();
+        let mut exit_code = None;
+
+        match &mut self.editing {
+            None => {
+                match key.code {
+                    KeyCode::Char('q') => exit_code = Some(ExitCode::SUCCESS),
+                    KeyCode::Char('j') => self.table_state.select_next(),
+                    KeyCode::Char('k') => self.table_state.select_previous(),
+                    KeyCode::Enter | KeyCode::Char('e') => {
+                        self.editing = self
+                            .table_state
+                            .selected()
+                            .and_then(|idx| self.current_pings().nth(idx))
+                            .map(|ping| {
+                                (
+                                    *ping,
+                                    Input::new(
+                                        self.replica.get_tag(ping).cloned().unwrap_or_default(),
+                                    ),
+                                )
+                            });
+                    }
+
+                    // KeyCode::Char('n') => return vec![Effect::NotifyAboutNewPing],
+                    _ => (),
+                };
+            }
+            Some(editing) => match key.code {
+                KeyCode::Enter => {
+                    let (ping, tag_input) = editing;
+                    self.replica.tag_ping(*ping, tag_input.value().to_string());
+
+                    self.editing = None;
+                    effects.push(Effect::Save(self.replica.clone()))
+                }
+                KeyCode::Esc => self.editing = None,
+                _ => {
+                    editing.1.handle_event(&Event::Key(key));
+                }
+            },
+        }
+
+        (effects, exit_code)
     }
 }
 
