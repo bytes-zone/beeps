@@ -213,6 +213,14 @@ impl Loaded {
                                 )
                             });
                     }
+                    KeyCode::Backspace | KeyCode::Delete => {
+                        if let Some(idx) = self.table_state.selected() {
+                            let ping = self.current_pings().nth(idx).unwrap();
+                            self.replica.untag_ping(*ping);
+
+                            effects.push(Effect::Save(self.replica.clone()));
+                        }
+                    }
                     _ => (),
                 };
             }
