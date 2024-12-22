@@ -289,8 +289,6 @@ impl Loaded {
                                 )
                             });
                     }
-
-                    // KeyCode::Char('n') => return vec![Effect::NotifyAboutNewPing],
                     _ => (),
                 };
             }
