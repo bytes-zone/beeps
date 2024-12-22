@@ -266,7 +266,7 @@ impl Loaded {
                     KeyCode::Char('q') => exit_code = Some(ExitCode::SUCCESS),
                     KeyCode::Char('j') => self.table_state.select_next(),
                     KeyCode::Char('k') => self.table_state.select_previous(),
-                    KeyCode::Enter | KeyCode::Char('e') => {
+                    KeyCode::Char('e') | KeyCode::Enter => {
                         self.editing = self
                             .table_state
                             .selected()
