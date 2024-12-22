@@ -226,7 +226,7 @@ mod test {
                             .prop_map(|(ts, tag)| Transition::TagPing(ts, tag)),
                     5 =>
                         crate::test::timestamp_range(0..=2i64)
-                            .prop_map(|ts| Transition::UntagPing(ts)),
+                            .prop_map(Transition::UntagPing),
                 ]
                 .boxed()
             }

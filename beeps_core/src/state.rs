@@ -72,7 +72,7 @@ impl State {
 
     /// Get the tag (if any) for a given ping.
     pub fn get_tag(&self, ping: &DateTime<Utc>) -> Option<&String> {
-        self.tags.get(ping).map(|l| l.value().as_ref()).flatten()
+        self.tags.get(ping).and_then(|l| l.value().as_ref())
     }
 }
 
