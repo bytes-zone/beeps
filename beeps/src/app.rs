@@ -298,6 +298,11 @@ impl Loaded {
         );
 
         // Editing popover
+        self.render_editing_popover(body_area, frame);
+    }
+
+    /// Render the editing popover
+    fn render_editing_popover(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         if let Some((ping, tag_input)) = &self.editing {
             let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
             let popup_horiz = Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
