@@ -48,7 +48,11 @@ impl App {
                     .current_pings()
                     .map(|ping| {
                         Row::new(vec![
-                            Cell::new(ping.with_timezone(&Local).to_rfc2822()),
+                            Cell::new(
+                                ping.with_timezone(&Local)
+                                    .format("%a, %b %-d, %-I:%M %p")
+                                    .to_string(),
+                            ),
                             match loaded.replica.get_tag(ping) {
                                 Some(tag) => Cell::new(tag.clone()),
                                 _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
@@ -59,7 +63,7 @@ impl App {
 
                 let num_rows = rows.len();
 
-                let table = Table::new(rows, [Constraint::Min(31), Constraint::Min(9)])
+                let table = Table::new(rows, [Constraint::Min(21), Constraint::Min(9)])
                     .header(
                         Row::new(["Ping", "Tag"])
                             .bg(Color::DarkGray)
