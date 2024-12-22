@@ -2,6 +2,7 @@ use beeps_core::{NodeId, Replica};
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
+use notify_rust::Notification;
 use ratatui::{
     prelude::*,
     widgets::{
@@ -138,7 +139,7 @@ impl App {
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
     #[expect(clippy::too_many_lines)]
-    pub fn handle(&mut self, action: Action) -> Option<Effect> {
+    pub fn handle(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::LoadedReplica(replica) => {
                 self.state = AppState::Loaded(Loaded {
@@ -148,16 +149,16 @@ impl App {
                 });
                 self.status_line = Some("Loaded replica".to_owned());
 
-                None
+                vec![]
             }
             Action::Saved => {
                 self.status_line = Some("Saved replica".to_owned());
 
-                None
+                vec![]
             }
             Action::Key(key) => {
                 if key.kind != KeyEventKind::Press {
-                    return None;
+                    return vec![];
                 }
 
                 if self.state.is_editing() {
@@ -172,23 +173,23 @@ impl App {
 
                                     loaded.editing = None;
 
-                                    Some(Effect::Save(loaded.replica.clone()))
+                                    vec![Effect::Save(loaded.replica.clone())]
                                 }
                                 KeyCode::Esc => {
                                     loaded.editing = None;
 
-                                    None
+                                    vec![]
                                 }
                                 _ => {
                                     editing.1.handle_event(&Event::Key(key));
 
-                                    None
+                                    vec![]
                                 }
                             },
 
-                            None => None,
+                            None => vec![],
                         })
-                        .flatten()
+                        .unwrap_or_default()
                 } else {
                     match key.code {
                         KeyCode::Char('q') => {
@@ -197,9 +198,9 @@ impl App {
 
                             match pre_quit_state {
                                 AppState::Loaded(Loaded { replica, .. }) => {
-                                    Some(Effect::Save(replica))
+                                    vec![Effect::Save(replica)]
                                 }
-                                _ => None,
+                                _ => vec![],
                             }
                         }
                         KeyCode::Char('j') => {
@@ -207,14 +208,14 @@ impl App {
                                 loaded.table_state.select_next();
                             });
 
-                            None
+                            vec![]
                         }
                         KeyCode::Char('k') => {
                             self.state.map_loaded_mut(|loaded| {
                                 loaded.table_state.select_previous();
                             });
 
-                            None
+                            vec![]
                         }
                         KeyCode::Enter | KeyCode::Char('e') => {
                             self.state.map_loaded_mut(|loaded| {
@@ -236,12 +237,12 @@ impl App {
                                     });
                             });
 
-                            None
+                            vec![]
                         }
                         _ => {
                             self.status_line = Some(format!("Unknown key {key:?}"));
 
-                            None
+                            vec![]
                         }
                     }
                 }
@@ -249,18 +250,21 @@ impl App {
             Action::Problem(problem) => {
                 self.status_line = Some(problem.clone());
 
-                None
+                vec![]
             }
             Action::TimePassed => self
                 .state
                 .map_loaded_mut(|loaded| {
                     if loaded.replica.schedule_pings() {
-                        Some(Effect::Save(loaded.replica.clone()))
+                        vec![
+                            Effect::NotifyAboutNewPing,
+                            Effect::Save(loaded.replica.clone()),
+                        ]
                     } else {
-                        None
+                        vec![]
                     }
                 })
-                .flatten(),
+                .unwrap_or_default(),
         }
     }
 
@@ -356,21 +360,24 @@ pub enum Effect {
 
     /// Save replica to disk
     Save(Replica),
+
+    /// Notify that a new ping is available
+    NotifyAboutNewPing,
 }
 
 impl Effect {
     /// Perform the side-effectful portions of this effect, returning the next
     /// `Action` the application needs to handle
-    pub async fn run(&self, config: Arc<Config>) -> Action {
+    pub async fn run(&self, config: Arc<Config>) -> Option<Action> {
         match self.run_inner(config).await {
             Ok(action) => action,
-            Err(problem) => Action::Problem(problem.to_string()),
+            Err(problem) => Some(Action::Problem(problem.to_string())),
         }
     }
 
     /// The actual implementation of `run`, but with a `Result` wrapper to make
     /// it more ergonomic to write.
-    async fn run_inner(&self, config: Arc<Config>) -> Result<Action, io::Error> {
+    async fn run_inner(&self, config: Arc<Config>) -> Result<Option<Action>, io::Error> {
         match self {
             Self::Load => {
                 let store = config.data_dir().join("store.json");
@@ -379,9 +386,9 @@ impl Effect {
                     let data = fs::read(&store).await?;
                     let replica: Replica = serde_json::from_slice(&data)?;
 
-                    Ok(Action::LoadedReplica(replica))
+                    Ok(Some(Action::LoadedReplica(replica)))
                 } else {
-                    Ok(Action::LoadedReplica(Replica::new(NodeId::random())))
+                    Ok(Some(Action::LoadedReplica(Replica::new(NodeId::random()))))
                 }
             }
 
@@ -394,7 +401,17 @@ impl Effect {
                 let data = serde_json::to_vec(replica)?;
                 fs::write(&store, &data).await?;
 
-                Ok(Action::Saved)
+                Ok(Some(Action::Saved))
+            }
+
+            Self::NotifyAboutNewPing => {
+                // We don't care if the notification failed to show.
+                let _ = Notification::new()
+                    .summary("New ping!")
+                    .body("What are you up to? Tag it!")
+                    .show();
+
+                Ok(None)
             }
         }
     }

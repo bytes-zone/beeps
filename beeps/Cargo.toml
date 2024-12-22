@@ -23,3 +23,4 @@ tokio = { version = "1.42.0", features = [
 ] }
 chrono = "0.4.39"
 tui-input = "0.11.1"
+notify-rust = "4.11.3"
