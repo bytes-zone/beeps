@@ -255,7 +255,6 @@ impl Loaded {
     }
 
     /// Render the table and editing popover
-    #[expect(clippy::cast_possible_truncation)]
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         self.render_table(frame, body_area);
         self.render_editing_popover(body_area, frame);
@@ -313,6 +312,7 @@ impl Loaded {
     }
 
     /// Render the editing popover
+    #[expect(clippy::cast_possible_truncation)]
     fn render_editing_popover(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         if let Some((ping, tag_input)) = &self.editing {
             let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
