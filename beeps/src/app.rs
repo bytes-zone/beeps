@@ -138,7 +138,7 @@ impl App {
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
     #[expect(clippy::too_many_lines)]
-    pub fn handle(&mut self, action: Action) -> Option<Effect> {
+    pub fn handle(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::LoadedReplica(replica) => {
                 self.state = AppState::Loaded(Loaded {
@@ -148,16 +148,16 @@ impl App {
                 });
                 self.status_line = Some("Loaded replica".to_owned());
 
-                None
+                vec![]
             }
             Action::Saved => {
                 self.status_line = Some("Saved replica".to_owned());
 
-                None
+                vec![]
             }
             Action::Key(key) => {
                 if key.kind != KeyEventKind::Press {
-                    return None;
+                    return vec![];
                 }
 
                 if self.state.is_editing() {
@@ -172,23 +172,23 @@ impl App {
 
                                     loaded.editing = None;
 
-                                    Some(Effect::Save(loaded.replica.clone()))
+                                    vec![Effect::Save(loaded.replica.clone())]
                                 }
                                 KeyCode::Esc => {
                                     loaded.editing = None;
 
-                                    None
+                                    vec![]
                                 }
                                 _ => {
                                     editing.1.handle_event(&Event::Key(key));
 
-                                    None
+                                    vec![]
                                 }
                             },
 
-                            None => None,
+                            None => vec![],
                         })
-                        .flatten()
+                        .unwrap_or_else(Vec::new)
                 } else {
                     match key.code {
                         KeyCode::Char('q') => {
@@ -197,9 +197,9 @@ impl App {
 
                             match pre_quit_state {
                                 AppState::Loaded(Loaded { replica, .. }) => {
-                                    Some(Effect::Save(replica))
+                                    vec![Effect::Save(replica)]
                                 }
-                                _ => None,
+                                _ => vec![],
                             }
                         }
                         KeyCode::Char('j') => {
@@ -207,14 +207,14 @@ impl App {
                                 loaded.table_state.select_next();
                             });
 
-                            None
+                            vec![]
                         }
                         KeyCode::Char('k') => {
                             self.state.map_loaded_mut(|loaded| {
                                 loaded.table_state.select_previous();
                             });
 
-                            None
+                            vec![]
                         }
                         KeyCode::Enter | KeyCode::Char('e') => {
                             self.state.map_loaded_mut(|loaded| {
@@ -236,12 +236,12 @@ impl App {
                                     });
                             });
 
-                            None
+                            vec![]
                         }
                         _ => {
                             self.status_line = Some(format!("Unknown key {key:?}"));
 
-                            None
+                            vec![]
                         }
                     }
                 }
@@ -249,18 +249,18 @@ impl App {
             Action::Problem(problem) => {
                 self.status_line = Some(problem.clone());
 
-                None
+                vec![]
             }
             Action::TimePassed => self
                 .state
                 .map_loaded_mut(|loaded| {
                     if loaded.replica.schedule_pings() {
-                        Some(Effect::Save(loaded.replica.clone()))
+                        vec![Effect::Save(loaded.replica.clone())]
                     } else {
-                        None
+                        vec![]
                     }
                 })
-                .flatten(),
+                .unwrap_or_else(Vec::new),
         }
     }
 

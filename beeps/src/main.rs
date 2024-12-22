@@ -86,16 +86,17 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
         // Once we have an action, we send it to `app.handle` to get any next
         // effects. (n.b. it feels slightly strange to use `and_then` for this
         // since it's mutating `app`, but it's way more compact!)
-        let next_effect_opt = next_action_opt.and_then(|action| app.handle(action));
-
-        // If we have an effect, we handle it the same way we handled init. As
-        // before, we keep track of any effects we get this way in a list.
-        if let Some(effect) = next_effect_opt {
-            outstanding_effects.push(spawn_effect_task(
-                effect_tx.clone(),
-                Arc::clone(&config),
-                effect,
-            ));
+        if let Some(action) = next_action_opt {
+            for effect in app.handle(action) {
+                // If we have an effect, we handle it the same way we handled
+                // init. As before, we keep track of any effects we get this way
+                // in a list.
+                outstanding_effects.push(spawn_effect_task(
+                    effect_tx.clone(),
+                    Arc::clone(&config),
+                    effect,
+                ));
+            }
         }
 
         // Now that we handle the event, we re-render to display any changes the
