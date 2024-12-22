@@ -3,7 +3,7 @@
 #[expect(clippy::missing_docs_in_private_items)]
 mod utils;
 
-use beeps_core::{Lww, NodeId, Replica};
+use beeps_core::{NodeId, Replica};
 use chrono::Utc;
 use wasm_bindgen::prelude::*;
 
@@ -34,5 +34,5 @@ pub fn main() {
     replica.tag_ping(now, "HI!".to_string());
 
     alert(&replica.state().pings.contains(&now).to_string());
-    alert(replica.state().tags.get(&now).map(Lww::value).unwrap());
+    alert(replica.state().get_tag(&now).unwrap());
 }

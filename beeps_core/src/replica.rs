@@ -2,7 +2,6 @@ use crate::hlc::Hlc;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
 use crate::state::State;
-use crate::Lww;
 use chrono::{DateTime, Utc};
 
 /// The local state of a replica ("who am I" and "what do I know"). Reading the
@@ -57,6 +56,13 @@ impl Replica {
         self.state.tag_ping(when, tag, clock)
     }
 
+    /// Untag an existing ping (returns false if the ping cannot be tagged
+    /// because it does not exist.)
+    pub fn untag_ping(&mut self, when: DateTime<Utc>) -> bool {
+        let clock = self.next_clock();
+        self.state.untag_ping(when, clock)
+    }
+
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
     /// Returns `true` if any new pings were scheduled.
     fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) -> bool {
@@ -103,7 +109,7 @@ impl Replica {
 
     /// Get the current value of the given ping.
     pub fn get_tag(&self, ping: &DateTime<Utc>) -> Option<&String> {
-        self.state.tags.get(ping).map(Lww::value)
+        self.state.get_tag(ping)
     }
 
     /// Get all the pings that have been scheduled.
@@ -196,6 +202,7 @@ mod test {
             SetMinutesPerPing(u16),
             AddPing(chrono::DateTime<Utc>),
             TagPing(chrono::DateTime<Utc>, String),
+            UntagPing(chrono::DateTime<Utc>),
         }
 
         #[derive(Debug, Clone)]
@@ -217,6 +224,9 @@ mod test {
                     10 =>
                         (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
                             .prop_map(|(ts, tag)| Transition::TagPing(ts, tag)),
+                    5 =>
+                        crate::test::timestamp_range(0..=2i64)
+                            .prop_map(Transition::UntagPing),
                 ]
                 .boxed()
             }
@@ -253,6 +263,9 @@ mod test {
                     }
                     Transition::TagPing(when, tag) => {
                         state.tag_ping(when, tag.clone());
+                    }
+                    Transition::UntagPing(when) => {
+                        state.untag_ping(when);
                     }
                 }
 
