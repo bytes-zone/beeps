@@ -273,8 +273,8 @@ impl Loaded {
             None => {
                 match key.code {
                     KeyCode::Char('q') => exit_code = Some(ExitCode::SUCCESS),
-                    KeyCode::Char('j') => self.table_state.select_next(),
-                    KeyCode::Char('k') => self.table_state.select_previous(),
+                    KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
+                    KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
                     KeyCode::Char('e') | KeyCode::Enter => {
                         self.editing = self
                             .table_state
