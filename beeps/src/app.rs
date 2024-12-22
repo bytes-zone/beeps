@@ -249,6 +249,12 @@ impl Loaded {
     /// Render the table and editing popover
     #[expect(clippy::cast_possible_truncation)]
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
+        self.render_table(frame, body_area);
+        self.render_editing_popover(body_area, frame);
+    }
+
+    /// Render the table of pings
+    fn render_table(&mut self, frame: &mut Frame<'_>, body_area: Rect) {
         let rows: Vec<Row> = self
             .current_pings()
             .map(|ping| {
@@ -296,9 +302,6 @@ impl Loaded {
             body_area.inner(Margin::new(1, 1)),
             &mut scroll_state,
         );
-
-        // Editing popover
-        self.render_editing_popover(body_area, frame);
     }
 
     /// Render the editing popover
