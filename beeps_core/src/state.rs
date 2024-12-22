@@ -50,12 +50,23 @@ impl State {
     /// Tag an existing ping. Only allows you to tag pings that you know exist.
     /// If you need to get more pings, schedule them with `Scheduler` and
     /// `add_ping` first. `Replica` provides an easy way to coordinate this.
-    pub fn tag_ping(&mut self, ping: DateTime<Utc>, tag: Option<String>, clock: Hlc) -> bool {
+    pub fn tag_ping(&mut self, ping: DateTime<Utc>, tag: String, clock: Hlc) -> bool {
         if !self.pings.contains(&ping) {
             return false;
         }
 
-        self.tags.upsert(ping, Lww::new(tag, clock));
+        self.tags.upsert(ping, Lww::new(Some(tag), clock));
+        true
+    }
+
+    /// Untag an existing ping. Like `tag_ping`, only allows you to untag pings
+    /// that you know exist.
+    pub fn untag_ping(&mut self, ping: DateTime<Utc>, clock: Hlc) -> bool {
+        if !self.pings.contains(&ping) {
+            return false;
+        }
+
+        self.tags.upsert(ping, Lww::new(None, clock));
         true
     }
 
@@ -160,7 +171,7 @@ mod test {
             let when = Utc::now();
             state.add_ping(when);
             assert!(
-                state.tag_ping(when, Some("test".to_string()), Hlc::zero()),
+                state.tag_ping(when, "test".to_string(), Hlc::zero()),
                 "tagging did not succeed, but should have (ping existed)"
             );
 
@@ -172,7 +183,7 @@ mod test {
             let mut state = State::new();
 
             assert!(
-                !state.tag_ping(Utc::now(), Some("test".to_string()), Hlc::zero()),
+                !state.tag_ping(Utc::now(), "test".to_string(), Hlc::zero()),
                 "tagging succeeded, but should not have (ping did not exist)"
             );
         }
@@ -182,7 +193,6 @@ mod test {
         use super::*;
         use crate::NodeId;
         use proptest_state_machine::*;
-        use rand::distributions::WeightedIndex;
         use std::collections::{HashMap, HashSet};
 
         #[derive(Debug, Clone)]
@@ -294,7 +304,7 @@ mod test {
                         assert_eq!(actual, reference, "inconsistent ping {when}. Actual: `{actual}`, reference: `{reference}`");
                     }
                     Transition::TagPing(when, tag, clock) => {
-                        if state.tag_ping(when, Some(tag.clone()), clock) {
+                        if state.tag_ping(when, tag.clone(), clock) {
                             let actual = state.get_tag(&when);
                             let reference = ref_state.tags.get(&when);
 
@@ -306,7 +316,7 @@ mod test {
                         }
                     }
                     Transition::UntagPing(when, clock) => {
-                        if state.tag_ping(when, None, clock) {
+                        if state.untag_ping(when, clock) {
                             let actual = state.get_tag(&when);
                             let reference = ref_state.tags.get(&when);
 

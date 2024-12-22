@@ -31,7 +31,7 @@ pub fn main() {
 
     let now = Utc::now();
     replica.add_ping(now);
-    replica.tag_ping(now, Some("HI!".to_string()));
+    replica.tag_ping(now, "HI!".to_string());
 
     alert(&replica.state().pings.contains(&now).to_string());
     alert(replica.state().get_tag(&now).unwrap());

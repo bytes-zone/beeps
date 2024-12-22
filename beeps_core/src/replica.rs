@@ -51,9 +51,16 @@ impl Replica {
 
     /// Tag an existing ping (returns false if the ping cannot be tagged because
     /// it does not exist.)
-    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: Option<String>) -> bool {
+    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) -> bool {
         let clock = self.next_clock();
         self.state.tag_ping(when, tag, clock)
+    }
+
+    /// Untag an existing ping (returns false if the ping cannot be tagged
+    /// because it does not exist.)
+    pub fn untag_ping(&mut self, when: DateTime<Utc>) -> bool {
+        let clock = self.next_clock();
+        self.state.untag_ping(when, clock)
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
@@ -195,6 +202,7 @@ mod test {
             SetMinutesPerPing(u16),
             AddPing(chrono::DateTime<Utc>),
             TagPing(chrono::DateTime<Utc>, String),
+            UntagPing(chrono::DateTime<Utc>),
         }
 
         #[derive(Debug, Clone)]
@@ -216,6 +224,9 @@ mod test {
                     10 =>
                         (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
                             .prop_map(|(ts, tag)| Transition::TagPing(ts, tag)),
+                    5 =>
+                        crate::test::timestamp_range(0..=2i64)
+                            .prop_map(|ts| Transition::UntagPing(ts)),
                 ]
                 .boxed()
             }
@@ -251,7 +262,10 @@ mod test {
                         state.add_ping(when);
                     }
                     Transition::TagPing(when, tag) => {
-                        state.tag_ping(when, Some(tag.clone()));
+                        state.tag_ping(when, tag.clone());
+                    }
+                    Transition::UntagPing(when) => {
+                        state.untag_ping(when);
                     }
                 }
 

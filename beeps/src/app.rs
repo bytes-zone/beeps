@@ -219,8 +219,7 @@ impl Loaded {
             Some(editing) => match key.code {
                 KeyCode::Enter => {
                     let (ping, tag_input) = editing;
-                    self.replica
-                        .tag_ping(*ping, Some(tag_input.value().to_string()));
+                    self.replica.tag_ping(*ping, tag_input.value().to_string());
 
                     self.editing = None;
                     effects.push(Effect::Save(self.replica.clone()));
