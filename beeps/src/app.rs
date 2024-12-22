@@ -195,6 +195,7 @@ enum AppState {
 }
 
 impl AppState {
+    /// Handle a key press
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match self {
             Self::Unloaded => self.handle_key_unloaded(key),
@@ -208,6 +209,7 @@ impl AppState {
         }
     }
 
+    /// Handle a key press when we're in the unloaded state
     fn handle_key_unloaded(&mut self, key: KeyEvent) -> Vec<Effect> {
         if key.code == KeyCode::Char('q') {
             self.quit(ExitCode::SUCCESS)
@@ -216,6 +218,15 @@ impl AppState {
         }
     }
 
+    /// Handle time passing
+    fn handle_time_passed(&mut self) -> Vec<Effect> {
+        match self {
+            AppState::Loaded(loaded) => loaded.handle_time_passed(),
+            _ => vec![],
+        }
+    }
+
+    /// Start cleaning up and move into the exiting state.
     fn quit(&mut self, exit_code: ExitCode) -> Vec<Effect> {
         let pre_quit_state = mem::replace(self, Self::Exiting(exit_code));
 
@@ -223,13 +234,6 @@ impl AppState {
             AppState::Loaded(Loaded { replica, .. }) => {
                 vec![Effect::Save(replica)]
             }
-            _ => vec![],
-        }
-    }
-
-    fn handle_time_passed(&mut self) -> Vec<Effect> {
-        match self {
-            AppState::Loaded(loaded) => loaded.handle_time_passed(),
             _ => vec![],
         }
     }
@@ -256,6 +260,7 @@ impl Loaded {
         self.replica.pings().rev().filter(move |ping| **ping <= now)
     }
 
+    /// Handle a key press
     fn handle_key(&mut self, key: KeyEvent) -> (Vec<Effect>, Option<ExitCode>) {
         let mut effects = Vec::new();
         let mut exit_code = None;
@@ -291,7 +296,7 @@ impl Loaded {
                     self.replica.tag_ping(*ping, tag_input.value().to_string());
 
                     self.editing = None;
-                    effects.push(Effect::Save(self.replica.clone()))
+                    effects.push(Effect::Save(self.replica.clone()));
                 }
                 KeyCode::Esc => self.editing = None,
                 _ => {
@@ -303,6 +308,7 @@ impl Loaded {
         (effects, exit_code)
     }
 
+    /// Handle time passing
     fn handle_time_passed(&mut self) -> Vec<Effect> {
         if self.replica.schedule_pings() {
             vec![
