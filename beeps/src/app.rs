@@ -189,7 +189,7 @@ impl App {
 
                             None => vec![],
                         })
-                        .unwrap_or_else(Vec::new)
+                        .unwrap_or_default()
                 } else {
                     match key.code {
                         KeyCode::Char('q') => {
@@ -264,7 +264,7 @@ impl App {
                         vec![]
                     }
                 })
-                .unwrap_or_else(Vec::new),
+                .unwrap_or_default(),
         }
     }
 
