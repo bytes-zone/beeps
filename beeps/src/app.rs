@@ -167,19 +167,7 @@ impl App {
 
                 vec![]
             }
-            Action::TimePassed => self
-                .state
-                .map_loaded_mut(|loaded| {
-                    if loaded.replica.schedule_pings() {
-                        vec![
-                            Effect::NotifyAboutNewPing,
-                            Effect::Save(loaded.replica.clone()),
-                        ]
-                    } else {
-                        vec![]
-                    }
-                })
-                .unwrap_or_else(Vec::new),
+            Action::TimePassed => self.state.handle_time_passed(),
         }
     }
 
@@ -207,15 +195,6 @@ enum AppState {
 }
 
 impl AppState {
-    /// Do something to the inner loaded state, if the app is indeed in that state.
-    fn map_loaded_mut<T>(&mut self, edit: impl Fn(&mut Loaded) -> T) -> Option<T> {
-        if let Self::Loaded(loaded) = self {
-            Some(edit(loaded))
-        } else {
-            None
-        }
-    }
-
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match self {
             Self::Unloaded => self.handle_key_unloaded(key),
@@ -244,6 +223,13 @@ impl AppState {
             AppState::Loaded(Loaded { replica, .. }) => {
                 vec![Effect::Save(replica)]
             }
+            _ => vec![],
+        }
+    }
+
+    fn handle_time_passed(&mut self) -> Vec<Effect> {
+        match self {
+            AppState::Loaded(loaded) => loaded.handle_time_passed(),
             _ => vec![],
         }
     }
@@ -315,6 +301,17 @@ impl Loaded {
         }
 
         (effects, exit_code)
+    }
+
+    fn handle_time_passed(&mut self) -> Vec<Effect> {
+        if self.replica.schedule_pings() {
+            vec![
+                Effect::NotifyAboutNewPing,
+                Effect::Save(self.replica.clone()),
+            ]
+        } else {
+            vec![]
+        }
     }
 }
 
