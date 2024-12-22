@@ -17,7 +17,7 @@ pub struct State {
 
     /// The tag (if any) set for each ping.
     #[cfg_attr(test, proptest(strategy = "tags()"))]
-    pub tags: GMap<DateTime<Utc>, Lww<String>>,
+    pub tags: GMap<DateTime<Utc>, Lww<Option<String>>>,
 }
 
 impl State {
@@ -50,13 +50,18 @@ impl State {
     /// Tag an existing ping. Only allows you to tag pings that you know exist.
     /// If you need to get more pings, schedule them with `Scheduler` and
     /// `add_ping` first. `Replica` provides an easy way to coordinate this.
-    pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String, clock: Hlc) -> bool {
-        if !self.pings.contains(&when) {
+    pub fn tag_ping(&mut self, ping: DateTime<Utc>, tag: Option<String>, clock: Hlc) -> bool {
+        if !self.pings.contains(&ping) {
             return false;
         }
 
-        self.tags.upsert(when, Lww::new(tag, clock));
+        self.tags.upsert(ping, Lww::new(tag, clock));
         true
+    }
+
+    /// Get the tag (if any) for a given ping.
+    pub fn get_tag(&self, ping: &DateTime<Utc>) -> Option<&String> {
+        self.tags.get(ping).map(|l| l.value().as_ref()).flatten()
     }
 }
 
@@ -88,7 +93,7 @@ proptest::prop_compose! {
 #[cfg(test)]
 proptest::prop_compose! {
     // Same here
-    fn tags()(items in proptest::collection::hash_map(crate::test::timestamp(), proptest::prelude::any::<Lww<String>>(), 1..5)) -> GMap<DateTime<Utc>, Lww<String>> {
+    fn tags()(items in proptest::collection::hash_map(crate::test::timestamp(), proptest::prelude::any::<Lww<Option<String>>>(), 1..5)) -> GMap<DateTime<Utc>, Lww<Option<String>>> {
         GMap(items)
     }
 }
@@ -155,14 +160,11 @@ mod test {
             let when = Utc::now();
             state.add_ping(when);
             assert!(
-                state.tag_ping(when, "test".to_string(), Hlc::zero()),
+                state.tag_ping(when, Some("test".to_string()), Hlc::zero()),
                 "tagging did not succeed, but should have (ping existed)"
             );
 
-            assert_eq!(
-                state.tags.get(&when).map(Lww::value),
-                Some(&"test".to_string())
-            );
+            assert_eq!(state.get_tag(&when), Some(&"test".to_string()));
         }
 
         #[test]
@@ -170,7 +172,7 @@ mod test {
             let mut state = State::new();
 
             assert!(
-                !state.tag_ping(Utc::now(), "test".to_string(), Hlc::zero()),
+                !state.tag_ping(Utc::now(), Some("test".to_string()), Hlc::zero()),
                 "tagging succeeded, but should not have (ping did not exist)"
             );
         }
@@ -180,6 +182,7 @@ mod test {
         use super::*;
         use crate::NodeId;
         use proptest_state_machine::*;
+        use rand::distributions::WeightedIndex;
         use std::collections::{HashMap, HashSet};
 
         #[derive(Debug, Clone)]
@@ -187,6 +190,7 @@ mod test {
             SetMinutesPerPing(u16, Hlc),
             AddPing(chrono::DateTime<Utc>),
             TagPing(chrono::DateTime<Utc>, String, Hlc),
+            UntagPing(chrono::DateTime<Utc>, Hlc),
         }
 
         #[derive(Debug, Clone)]
@@ -224,6 +228,9 @@ mod test {
                     10 =>
                         (crate::test::timestamp_range(0..=2i64), "(a|b|c)")
                             .prop_map(move |(ts, tag)| Transition::TagPing(ts, tag, Hlc::new(node_id))),
+                    5 =>
+                        crate::test::timestamp_range(0..=2i64)
+                            .prop_map(move |ts| Transition::UntagPing(ts, Hlc::new(node_id))),
                 ]
                 .boxed()
             }
@@ -238,6 +245,9 @@ mod test {
                     }
                     Transition::TagPing(when, tag, _) => {
                         state.tags.insert(*when, tag.clone());
+                    }
+                    Transition::UntagPing(when, _) => {
+                        state.tags.remove(when);
                     }
                 }
 
@@ -284,8 +294,20 @@ mod test {
                         assert_eq!(actual, reference, "inconsistent ping {when}. Actual: `{actual}`, reference: `{reference}`");
                     }
                     Transition::TagPing(when, tag, clock) => {
-                        if state.tag_ping(when, tag.clone(), clock) {
-                            let actual = state.tags.get(&when).map(Lww::value);
+                        if state.tag_ping(when, Some(tag.clone()), clock) {
+                            let actual = state.get_tag(&when);
+                            let reference = ref_state.tags.get(&when);
+
+                            assert_eq!(
+                                actual,
+                                reference,
+                                "inconsistent tag for {when}. Actual: `{actual:?}`, reference: `{reference:?}`"
+                            );
+                        }
+                    }
+                    Transition::UntagPing(when, clock) => {
+                        if state.tag_ping(when, None, clock) {
+                            let actual = state.get_tag(&when);
                             let reference = ref_state.tags.get(&when);
 
                             assert_eq!(
