@@ -3,6 +3,7 @@
 ## 0.3.0 (Unreleased)
 
 - `beeps-server` is now available for syncing.
+- You can now copy/paste tags with the `c`/`v` keys.
 
 ## 0.2.0 (2024-12-21)
 
