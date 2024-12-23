@@ -2,13 +2,15 @@
 
 use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
 use clap::Parser;
-use std::{iter::once, time::Duration};
+use std::{iter::once, num::ParseIntError, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, decompression, limit, sensitive_headers, timeout, trace};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
+/// Configuration for the server
 #[derive(Debug, Parser)]
 struct Config {
+    /// On what interface and port to listen
     #[clap(long, env, default_value = "127.0.0.1:3000")]
     address: String,
 
@@ -20,14 +22,17 @@ struct Config {
     #[clap(long, env, default_value = "5", value_parser = duration_parser)]
     request_timeout: Duration,
 
+    /// Secret to use to sign JWTs
     #[clap(long, env)]
     jwt_secret: String,
 
+    /// Password to use for logging in
     #[clap(long, env)]
     login_password: String,
 }
 
-fn duration_parser(s: &str) -> Result<Duration, std::num::ParseIntError> {
+/// Parse a duration from a string
+fn duration_parser(s: &str) -> Result<Duration, ParseIntError> {
     s.parse().map(Duration::from_secs)
 }
 
@@ -37,8 +42,8 @@ async fn main() {
 
     // TODO: opentelemetry
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env())
-        .with(tracing_subscriber::fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .with(fmt::layer())
         .init();
 
     let app = Router::new()
@@ -61,6 +66,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+/// Just standing in for a real handler during setup
 async fn handler() -> impl IntoResponse {
     "Hello, World!"
 }
