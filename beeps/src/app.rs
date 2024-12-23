@@ -208,14 +208,13 @@ impl Loaded {
                             .selected_ping()
                             .and_then(|ping| self.replica.get_tag(ping).cloned());
                     }
-                    KeyCode::Char('v') => match (self.selected_ping(), &self.copied) {
-                        (Some(ping), Some(tag)) => {
+                    KeyCode::Char('v') => {
+                        if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
                             self.replica.tag_ping(*ping, tag.clone());
 
                             effects.push(Effect::Save(self.replica.clone()));
                         }
-                        _ => (),
-                    },
+                    }
                     KeyCode::Char('e') | KeyCode::Enter => {
                         self.editing = self.selected_ping().map(|ping| {
                             (
