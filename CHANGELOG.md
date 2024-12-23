@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 (Unreleased)
+
+- `beeps-server` is now available for syncing.
+
 ## 0.2.0 (2024-12-21)
 
 - You can now navigate through the table with the arrow keys.
