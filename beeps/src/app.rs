@@ -204,9 +204,9 @@ impl Loaded {
                     KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
                     KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
                     KeyCode::Char('c') => {
-                        if let Some(ping) = self.selected_ping() {
-                            self.copied = self.replica.get_tag(&ping).cloned();
-                        }
+                        self.copied = self
+                            .selected_ping()
+                            .and_then(|ping| self.replica.get_tag(ping).cloned());
                     }
                     KeyCode::Char('v') => match (self.selected_ping(), &self.copied) {
                         (Some(ping), Some(tag)) => {
