@@ -5,6 +5,7 @@ use clap::Parser;
 use std::{iter::once, num::ParseIntError, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, decompression, limit, sensitive_headers, timeout, trace};
+use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// Configuration for the server
@@ -42,11 +43,21 @@ async fn main() {
 
     // TODO: opentelemetry
     tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .with_env_var("BEEPS_LOG")
+                .from_env_lossy(),
+        )
         .with(fmt::layer())
         .init();
 
     let app = Router::new()
+        // ROUTES
+        .route("/", get(handler))
+        // STATE
+        // .with_state(state);
+        // MIDDLEWARE
         .layer(trace::TraceLayer::new_for_http())
         .layer(compression::CompressionLayer::new())
         .layer(decompression::DecompressionLayer::new())
@@ -54,11 +65,7 @@ async fn main() {
         .layer(sensitive_headers::SetSensitiveHeadersLayer::new(once(
             AUTHORIZATION,
         )))
-        .layer(timeout::TimeoutLayer::new(options.request_timeout))
-        // ROUTES
-        .route("/", get(handler));
-    // STATE
-    // .with_state(state);
+        .layer(timeout::TimeoutLayer::new(options.request_timeout));
 
     let listener = TcpListener::bind(options.address).await.unwrap();
     tracing::info!(address = ?listener.local_addr(), "listening");
