@@ -10,6 +10,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 
 /// Configuration for the server
 #[derive(Debug, Parser)]
+#[clap(version)]
 struct Config {
     /// On what interface and port to listen
     #[clap(long, env, default_value = "127.0.0.1:3000")]
