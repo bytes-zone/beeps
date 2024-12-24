@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (Unreleased)
+## 0.3.0 (2024-12-24)
 
 - You can now copy/paste tags with the `c`/`v` keys.
 

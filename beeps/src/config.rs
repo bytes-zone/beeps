@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 /// A TUI for collecting and tagging pings
 #[derive(Parser)]
+#[clap(version)]
 pub struct Config {
     /// Where should we store data?
     #[clap(long)]
