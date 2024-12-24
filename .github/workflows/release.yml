@@ -27,7 +27,7 @@ jobs:
       matrix:
         bin:
           - beeps
-          # - beeps-server
+          - beeps-server
         target:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest

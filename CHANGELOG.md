@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 (Unreleased)
+
+- You can now copy/paste tags with the `c`/`v` keys.
+
 ## 0.2.0 (2024-12-21)
 
 - You can now navigate through the table with the arrow keys.

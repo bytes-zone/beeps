@@ -64,6 +64,7 @@ impl App {
                     replica,
                     table_state: TableState::new().with_selected(0),
                     editing: None,
+                    copied: None,
                 });
                 self.status_line = Some("Loaded replica".to_owned());
 
@@ -178,6 +179,9 @@ struct Loaded {
 
     /// What we're editing, and the current value.
     editing: Option<(DateTime<Utc>, Input)>,
+
+    /// The value that's currently copied, for copy/paste.
+    copied: Option<String>,
 }
 
 impl Loaded {
@@ -199,19 +203,25 @@ impl Loaded {
                     KeyCode::Char('q') => exit_code = Some(ExitCode::SUCCESS),
                     KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
                     KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
+                    KeyCode::Char('c') => {
+                        self.copied = self
+                            .selected_ping()
+                            .and_then(|ping| self.replica.get_tag(ping).cloned());
+                    }
+                    KeyCode::Char('v') => {
+                        if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
+                            self.replica.tag_ping(*ping, tag.clone());
+
+                            effects.push(Effect::Save(self.replica.clone()));
+                        }
+                    }
                     KeyCode::Char('e') | KeyCode::Enter => {
-                        self.editing = self
-                            .table_state
-                            .selected()
-                            .and_then(|idx| self.current_pings().nth(idx))
-                            .map(|ping| {
-                                (
-                                    *ping,
-                                    Input::new(
-                                        self.replica.get_tag(ping).cloned().unwrap_or_default(),
-                                    ),
-                                )
-                            });
+                        self.editing = self.selected_ping().map(|ping| {
+                            (
+                                *ping,
+                                Input::new(self.replica.get_tag(ping).cloned().unwrap_or_default()),
+                            )
+                        });
                     }
                     KeyCode::Backspace | KeyCode::Delete => {
                         if let Some(idx) = self.table_state.selected() {
@@ -240,6 +250,13 @@ impl Loaded {
         }
 
         (effects, exit_code)
+    }
+
+    /// Get the currently-selected ping, if any
+    fn selected_ping(&self) -> Option<&DateTime<Utc>> {
+        self.table_state
+            .selected()
+            .and_then(|idx| self.current_pings().nth(idx))
     }
 
     /// Handle time passing
