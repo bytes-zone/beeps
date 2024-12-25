@@ -14,12 +14,9 @@ pub trait Split<Part>: Merge {
     /// Implementations of this method should follow two principles:
     ///
     /// 1. `to_parts` should return the smallest possible parts.
-    /// 2. `to_parts` should be the inverse of `merge_parts` (given an empty
-    ///    data structure to start.)
-    /// 3. For implementors that also implement `Merge`, `merge_parts` should
-    ///    give the equivalent of `merge`.
-    ///
-    /// (Property test helpers for both of these are provided in the module.)
+    /// 2. `empty.merge_parts(a.to_parts())` should result in a value equal to
+    ///    the original `a`.
+    /// 3. `a.merge_parts(b.split())` should be the same as `a.merge(b)`.
     fn split(self) -> Vec<Part>;
 
     /// Build a data structure from the given parts. (For example, this is used
