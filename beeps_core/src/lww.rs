@@ -1,4 +1,6 @@
-use crate::{hlc::Hlc, merge::Merge};
+use crate::hlc::Hlc;
+use crate::merge::Merge;
+use crate::split::Split;
 use core::fmt::{self, Debug, Formatter};
 
 /// A last-write-wins register. Values can be anything you like. We decide which
@@ -48,6 +50,23 @@ where
             other
         } else {
             self
+        }
+    }
+}
+
+impl<T> Split<Lww<T>> for Lww<T>
+where
+    T: Clone,
+{
+    type Part = Lww<T>;
+
+    fn split(self) -> Vec<Lww<T>> {
+        vec![self.clone()]
+    }
+
+    fn merge_parts(&mut self, parts: Vec<Lww<T>>) {
+        for part in parts {
+            self.set(part.value, part.clock);
         }
     }
 }
@@ -107,6 +126,13 @@ mod test {
         #[test]
         fn merge_idempotent(a: Lww<bool>) {
             crate::merge::test_idempotent(a);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn merge_or_merge_parts(a: Lww<bool>, b: Lww<bool>) {
+            crate::split::test_merge_or_merge_parts(a, b);
         }
     }
 }
