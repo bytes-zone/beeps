@@ -76,7 +76,7 @@ impl<'a, T: Ord> IntoIterator for &'a GSet<T> {
 mod test {
     use super::*;
 
-    mod test {
+    mod merge {
         use super::*;
         use proptest::prelude::*;
 
