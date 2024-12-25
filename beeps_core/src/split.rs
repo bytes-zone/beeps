@@ -1,6 +1,6 @@
 /// Split a data structure into parts (for storage and syncing) and
 /// merge them back together later.
-pub trait Parts<Part> {
+pub trait Split<Part> {
     /// The "parts" that we split this data structure into. These can be
     /// whatever you like, but should generally be the smallest parts possible.
     type Part;
@@ -18,7 +18,7 @@ pub trait Parts<Part> {
     ///    give the equivalent of `merge`.
     ///
     /// (Property test helpers for both of these are provided in the module.)
-    fn to_parts(self) -> Vec<Part>;
+    fn split(self) -> Vec<Part>;
 
     /// Build a data structure from the given parts. (For example, this is used
     /// when load data from the database.)
@@ -43,12 +43,12 @@ pub trait Parts<Part> {
 #[cfg(test)]
 pub fn test_merge_or_merge_parts<T, Part>(a: T, b: T)
 where
-    T: crate::merge::Merge + Parts<Part> + Clone + PartialEq + std::fmt::Debug,
+    T: crate::merge::Merge + Split<Part> + Clone + PartialEq + std::fmt::Debug,
 {
     let merged = a.clone().merge(b.clone());
 
     let mut from_parts = a;
-    from_parts.merge_parts(b.to_parts());
+    from_parts.merge_parts(b.split());
 
     assert_eq!(from_parts, merged);
 }
@@ -57,8 +57,8 @@ where
 #[cfg(test)]
 pub fn test_split_merge_parts<T, Part>(mut empty: T, orig: T)
 where
-    T: Parts<Part> + Clone + PartialEq + std::fmt::Debug,
+    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
 {
-    empty.merge_parts(orig.clone().to_parts());
+    empty.merge_parts(orig.clone().split());
     assert_eq!(empty, orig);
 }
