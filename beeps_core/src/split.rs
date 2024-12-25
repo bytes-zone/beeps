@@ -1,6 +1,8 @@
+use crate::merge::Merge;
+
 /// Split a data structure into parts (for storage and syncing) and
 /// merge them back together later.
-pub trait Split<Part> {
+pub trait Split<Part>: Merge {
     /// The "parts" that we split this data structure into. These can be
     /// whatever you like, but should generally be the smallest parts possible.
     type Part;
@@ -43,7 +45,7 @@ pub trait Split<Part> {
 #[cfg(test)]
 pub fn test_merge_or_merge_parts<T, Part>(a: T, b: T)
 where
-    T: crate::merge::Merge + Split<Part> + Clone + PartialEq + std::fmt::Debug,
+    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
 {
     let merged = a.clone().merge(b.clone());
 
@@ -51,14 +53,4 @@ where
     from_parts.merge_parts(b.split());
 
     assert_eq!(from_parts, merged);
-}
-
-/// Test that `split` returns parts that can later be `merge`d back together.
-#[cfg(test)]
-pub fn test_split_merge_parts<T, Part>(mut empty: T, orig: T)
-where
-    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
-{
-    empty.merge_parts(orig.clone().split());
-    assert_eq!(empty, orig);
 }
