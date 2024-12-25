@@ -1,12 +1,10 @@
 use crate::merge::Merge;
-use std::hash::Hash;
-use std::{
-    collections::{
-        hash_map::{Drain, Entry, Iter},
-        HashMap,
-    },
-    fmt,
+use std::collections::{
+    hash_map::{Drain, Entry, Iter},
+    HashMap,
 };
+use std::fmt;
+use std::hash::Hash;
 
 /// A grow-only map (G-Map.) Allows any hashable type as a key, but values must
 /// implement `Merge`.
