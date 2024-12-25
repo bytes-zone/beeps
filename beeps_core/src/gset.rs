@@ -1,4 +1,5 @@
 use crate::merge::Merge;
+use crate::split::Split;
 use core::fmt;
 use std::collections::{btree_set, BTreeSet};
 
@@ -72,6 +73,23 @@ impl<'a, T: Ord> IntoIterator for &'a GSet<T> {
     }
 }
 
+impl<T> Split<T> for GSet<T>
+where
+    T: Ord,
+{
+    type Part = T;
+
+    fn split(self) -> Vec<T> {
+        self.0.into_iter().collect()
+    }
+
+    fn merge_parts(&mut self, parts: Vec<T>) {
+        for part in parts {
+            self.insert(part);
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -94,6 +112,18 @@ mod test {
             #[test]
             fn test_associative(a: GSet<u8>, b: GSet<u8>, c: GSet<u8>) {
                 crate::merge::test_associative(a, b, c);
+            }
+        }
+    }
+
+    mod split {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn merge_or_merge_parts(a: GSet<u8>, b: GSet<u8>) {
+                crate::split::test_merge_or_merge_parts(a, b);
             }
         }
     }
