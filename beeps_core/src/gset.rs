@@ -1,5 +1,4 @@
 use crate::merge::Merge;
-use crate::split::Split;
 use core::fmt;
 use std::collections::{btree_set, BTreeSet};
 
@@ -41,7 +40,20 @@ impl<T: Ord> GSet<T> {
     }
 }
 
-impl<T: Ord> Merge for GSet<T> {
+impl<T> Merge for GSet<T>
+where
+    T: Ord,
+{
+    type Part = T;
+
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        self.0.into_iter()
+    }
+
+    fn merge_part(&mut self, part: Self::Part) {
+        self.insert(part);
+    }
+
     fn merge(mut self, mut other: Self) -> Self {
         self.0.append(&mut other.0);
 
@@ -70,21 +82,6 @@ impl<'a, T: Ord> IntoIterator for &'a GSet<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
-    }
-}
-
-impl<T> Split for GSet<T>
-where
-    T: Ord,
-{
-    type Part = T;
-
-    fn split(self) -> impl Iterator<Item = Self::Part> {
-        self.0.into_iter()
-    }
-
-    fn merge_part(&mut self, part: Self::Part) {
-        self.insert(part);
     }
 }
 
@@ -121,7 +118,7 @@ mod test {
         proptest! {
             #[test]
             fn merge_or_merge_parts(a: GSet<u8>, b: GSet<u8>) {
-                crate::split::test_merge_or_merge_parts(a, b);
+                crate::merge::test_merge_or_merge_parts(a, b);
             }
         }
     }

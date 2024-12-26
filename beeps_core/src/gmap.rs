@@ -1,5 +1,4 @@
 use crate::merge::Merge;
-use crate::split::Split;
 use std::collections::{
     hash_map::{Drain, Entry, Iter},
     HashMap,
@@ -80,20 +79,6 @@ where
     K: Eq + Hash,
     V: Merge,
 {
-    fn merge(mut self, mut other: Self) -> Self {
-        for (k, v) in other.drain() {
-            self.upsert(k, v);
-        }
-
-        self
-    }
-}
-
-impl<K, V> Split for GMap<K, V>
-where
-    K: Eq + Hash,
-    V: Merge,
-{
     type Part = (K, V);
 
     fn split(self) -> impl Iterator<Item = Self::Part> {
@@ -101,7 +86,15 @@ where
     }
 
     fn merge_part(&mut self, (key, value): Self::Part) {
-        self.upsert(key, value)
+        self.upsert(key, value);
+    }
+
+    fn merge(mut self, mut other: Self) -> Self {
+        for (k, v) in other.drain() {
+            self.upsert(k, v);
+        }
+
+        self
     }
 }
 

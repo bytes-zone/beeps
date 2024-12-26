@@ -27,9 +27,6 @@ pub use node_id::NodeId;
 pub mod replica;
 pub use replica::Replica;
 
-/// Split a CRDT into separate parts for delta-based sync and storage.
-pub mod split;
-
 /// The state that gets synced between nodes.
 pub mod state;
 pub use state::State;

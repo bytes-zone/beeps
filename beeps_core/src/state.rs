@@ -3,7 +3,6 @@ use crate::gset::GSet;
 use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::merge::Merge;
-use crate::split::Split;
 use chrono::{DateTime, Utc};
 
 /// The state that gets synced between replicas.
@@ -84,16 +83,6 @@ impl Default for State {
     }
 }
 
-impl Merge for State {
-    fn merge(mut self, other: Self) -> Self {
-        self.minutes_per_ping = Merge::merge(self.minutes_per_ping, other.minutes_per_ping);
-        self.pings = Merge::merge(self.pings, other.pings);
-        self.tags = Merge::merge(self.tags, other.tags);
-
-        self
-    }
-}
-
 /// Parts of the `State` that can be split and merged independently.
 pub enum Part {
     /// A part to be applied to `minutes_per_ping`
@@ -106,7 +95,7 @@ pub enum Part {
     Tag((DateTime<Utc>, Lww<Option<String>>)),
 }
 
-impl Split for State {
+impl Merge for State {
     type Part = Part;
 
     fn split(self) -> impl Iterator<Item = Self::Part> {

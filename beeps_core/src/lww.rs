@@ -1,7 +1,7 @@
 use crate::hlc::Hlc;
 use crate::merge::Merge;
-use crate::split::Split;
 use core::fmt::{self, Debug, Formatter};
+use std::iter;
 
 /// A last-write-wins register. Values can be anything you like. We decide which
 /// writes "win" when merging with a hybrid logical clock.
@@ -45,27 +45,22 @@ impl<T> Merge for Lww<T>
 where
     T: Clone,
 {
+    type Part = Lww<T>;
+
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        iter::once(self)
+    }
+
+    fn merge_part(&mut self, part: Self::Part) {
+        self.set(part.value, part.clock);
+    }
+
     fn merge(self, other: Self) -> Self {
         if other.clock > self.clock {
             other
         } else {
             self
         }
-    }
-}
-
-impl<T> Split for Lww<T>
-where
-    T: Clone,
-{
-    type Part = Lww<T>;
-
-    fn split(self) -> impl Iterator<Item = Self::Part> {
-        std::iter::once(self)
-    }
-
-    fn merge_part(&mut self, part: Self::Part) {
-        self.set(part.value, part.clock);
     }
 }
 
@@ -130,7 +125,7 @@ mod test {
     proptest! {
         #[test]
         fn merge_or_merge_parts(a: Lww<bool>, b: Lww<bool>) {
-            crate::split::test_merge_or_merge_parts(a, b);
+            crate::merge::test_merge_or_merge_parts(a, b);
         }
     }
 }
