@@ -86,8 +86,9 @@ impl Default for State {
 
 impl Merge for State {
     fn merge(mut self, other: Self) -> Self {
-        self.minutes_per_ping = self.minutes_per_ping.merge(other.minutes_per_ping);
-        self.pings = self.pings.merge(other.pings);
+        self.minutes_per_ping = Merge::merge(self.minutes_per_ping, other.minutes_per_ping);
+        self.pings = Merge::merge(self.pings, other.pings);
+        self.tags = Merge::merge(self.tags, other.tags);
 
         self
     }

@@ -194,7 +194,7 @@ mod test {
 
                 let result = map.get(&"test").unwrap();
 
-                prop_assert_eq!(result, &lww1.merge(lww2));
+                prop_assert_eq!(result, &Merge::merge(lww1, lww2));
             }
         }
     }
@@ -209,7 +209,7 @@ mod test {
             let map1 = GMap::<&str, Lww<i32>>::new();
             let map2 = GMap::<&str, Lww<i32>>::new();
 
-            let merged = map1.merge(map2);
+            let merged = Merge::merge(map1, map2);
 
             assert_eq!(merged.len(), 0);
         }
@@ -222,7 +222,7 @@ mod test {
             let mut map2 = GMap::<&str, Lww<u8>>::new();
             map2.upsert("bar", Lww::new(2, Hlc::zero()));
 
-            let merged = map1.merge(map2);
+            let merged = Merge::merge(map1, map2);
 
             assert_eq!(merged.get(&"foo").unwrap().value(), &1);
             assert_eq!(merged.get(&"bar").unwrap().value(), &2);
@@ -240,8 +240,8 @@ mod test {
                 let mut map2 = GMap::<&str, Lww<u8>>::new();
                 map2.upsert("test", lww2.clone());
 
-                let merged_lww = lww1.merge(lww2);
-                let merged_map = map1.merge(map2);
+                let merged_lww = Merge::merge(lww1, lww2);
+                let merged_map = Merge::merge(map1, map2);
 
                 let result = merged_map.get(&"test").unwrap();
 

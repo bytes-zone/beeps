@@ -87,7 +87,7 @@ mod test {
     fn overwrites_if_clock_is_newer() {
         let first_clock = Hlc::zero();
 
-        let lww = Lww::new(1, first_clock).merge(Lww::new(2, first_clock.next()));
+        let lww = Merge::merge(Lww::new(1, first_clock), Lww::new(2, first_clock.next()));
 
         assert_eq!(lww.value, 2);
     }
@@ -96,7 +96,7 @@ mod test {
     fn rejects_if_clock_is_equal() {
         let first_clock = Hlc::zero();
 
-        let lww = Lww::new(1, first_clock).merge(Lww::new(2, first_clock));
+        let lww = Merge::merge(Lww::new(1, first_clock), Lww::new(2, first_clock));
 
         assert_eq!(lww.value, 1);
     }
@@ -105,7 +105,7 @@ mod test {
     fn rejects_if_clock_is_older() {
         let first_clock = Hlc::zero();
 
-        let merged = Lww::new(1, first_clock.next()).merge(Lww::new(2, first_clock));
+        let merged = Merge::merge(Lww::new(1, first_clock.next()), Lww::new(2, first_clock));
 
         assert_eq!(merged.value, 1);
     }

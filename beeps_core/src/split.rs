@@ -28,10 +28,12 @@ where
     /// replicas. In order for CRDT semantics to hold, this operation must be
     /// commutative, associative, and idempotent. There are tests to help
     /// guarantee this below.
-    fn merge(&mut self, other: Self) {
+    fn merge(mut self, other: Self) -> Self {
         for part in other.split() {
             self.merge_part(part);
         }
+
+        self
     }
 }
 
@@ -79,16 +81,10 @@ pub fn test_associative<T>(a: T, b: T, c: T)
 where
     T: Split + Clone + PartialEq + std::fmt::Debug,
 {
-    let mut abc = a.clone();
-    abc.merge(b.clone());
-    abc.merge(c.clone());
+    let ab_c = a.clone().merge(b.clone()).merge(c.clone());
+    let a_bc = a.merge(b.merge(c));
 
-    let mut a_bc = a;
-    let mut bc = b;
-    bc.merge(c);
-    a_bc.merge(bc);
-
-    assert_eq!(abc, a_bc);
+    assert_eq!(ab_c, a_bc);
 }
 
 /// Test that `merge` and `merge_parts` hold the proper relationship. That is:
@@ -108,8 +104,7 @@ pub fn test_merge_or_merge_parts<T>(a: T, b: T)
 where
     T: Split + Clone + PartialEq + std::fmt::Debug,
 {
-    let mut merged = a.clone();
-    merged.merge(b.clone());
+    let merged = a.clone().merge(b.clone());
 
     let mut from_parts = a;
     for part in b.split() {
