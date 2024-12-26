@@ -1,12 +1,10 @@
 use crate::merge::Merge;
-use std::hash::Hash;
-use std::{
-    collections::{
-        hash_map::{Drain, Entry, Iter},
-        HashMap,
-    },
-    fmt,
+use std::collections::{
+    hash_map::{Drain, Entry, Iter},
+    HashMap,
 };
+use std::fmt;
+use std::hash::Hash;
 
 /// A grow-only map (G-Map.) Allows any hashable type as a key, but values must
 /// implement `Merge`.
@@ -81,6 +79,16 @@ where
     K: Eq + Hash,
     V: Merge,
 {
+    type Part = (K, V);
+
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        self.0.into_iter()
+    }
+
+    fn merge_part(&mut self, (key, value): Self::Part) {
+        self.upsert(key, value);
+    }
+
     fn merge(mut self, mut other: Self) -> Self {
         for (k, v) in other.drain() {
             self.upsert(k, v);
@@ -179,7 +187,7 @@ mod test {
 
                 let result = map.get(&"test").unwrap();
 
-                prop_assert_eq!(result, &lww1.merge(lww2));
+                prop_assert_eq!(result, &Merge::merge(lww1, lww2));
             }
         }
     }
@@ -194,7 +202,7 @@ mod test {
             let map1 = GMap::<&str, Lww<i32>>::new();
             let map2 = GMap::<&str, Lww<i32>>::new();
 
-            let merged = map1.merge(map2);
+            let merged = Merge::merge(map1, map2);
 
             assert_eq!(merged.len(), 0);
         }
@@ -207,7 +215,7 @@ mod test {
             let mut map2 = GMap::<&str, Lww<u8>>::new();
             map2.upsert("bar", Lww::new(2, Hlc::zero()));
 
-            let merged = map1.merge(map2);
+            let merged = Merge::merge(map1, map2);
 
             assert_eq!(merged.get(&"foo").unwrap().value(), &1);
             assert_eq!(merged.get(&"bar").unwrap().value(), &2);
@@ -225,12 +233,17 @@ mod test {
                 let mut map2 = GMap::<&str, Lww<u8>>::new();
                 map2.upsert("test", lww2.clone());
 
-                let merged_lww = lww1.merge(lww2);
-                let merged_map = map1.merge(map2);
+                let merged_lww = Merge::merge(lww1, lww2);
+                let merged_map = Merge::merge(map1, map2);
 
                 let result = merged_map.get(&"test").unwrap();
 
                 prop_assert_eq!(result, &merged_lww);
+            }
+
+            #[test]
+            fn merge_or_merge_parts(a: GMap<u8, Lww<bool>>, b: GMap<u8, Lww<bool>>) {
+                crate::merge::test_merge_or_merge_parts(a, b);
             }
 
             #[test]

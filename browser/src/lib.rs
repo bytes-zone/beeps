@@ -35,4 +35,6 @@ pub fn main() {
 
     alert(&replica.state().pings.contains(&now).to_string());
     alert(replica.state().get_tag(&now).unwrap());
+
+    alert(&serde_json::to_string(&replica).unwrap());
 }

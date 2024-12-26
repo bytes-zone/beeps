@@ -40,7 +40,20 @@ impl<T: Ord> GSet<T> {
     }
 }
 
-impl<T: Ord> Merge for GSet<T> {
+impl<T> Merge for GSet<T>
+where
+    T: Ord,
+{
+    type Part = T;
+
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        self.0.into_iter()
+    }
+
+    fn merge_part(&mut self, part: Self::Part) {
+        self.insert(part);
+    }
+
     fn merge(mut self, mut other: Self) -> Self {
         self.0.append(&mut other.0);
 
@@ -76,11 +89,16 @@ impl<'a, T: Ord> IntoIterator for &'a GSet<T> {
 mod test {
     use super::*;
 
-    mod test {
+    mod merge {
         use super::*;
         use proptest::prelude::*;
 
         proptest! {
+            #[test]
+            fn merge_or_merge_parts(a: GSet<u8>, b: GSet<u8>) {
+                crate::merge::test_merge_or_merge_parts(a, b);
+            }
+
             #[test]
             fn test_idempotent(a: GSet<u8>) {
                 crate::merge::test_idempotent(a);

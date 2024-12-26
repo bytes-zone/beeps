@@ -1,5 +1,7 @@
-use crate::{hlc::Hlc, merge::Merge};
+use crate::hlc::Hlc;
+use crate::merge::Merge;
 use core::fmt::{self, Debug, Formatter};
+use std::iter;
 
 /// A last-write-wins register. Values can be anything you like. We decide which
 /// writes "win" when merging with a hybrid logical clock.
@@ -43,12 +45,14 @@ impl<T> Merge for Lww<T>
 where
     T: Clone,
 {
-    fn merge(self, other: Self) -> Self {
-        if other.clock > self.clock {
-            other
-        } else {
-            self
-        }
+    type Part = Lww<T>;
+
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        iter::once(self)
+    }
+
+    fn merge_part(&mut self, part: Self::Part) {
+        self.set(part.value, part.clock);
     }
 }
 
@@ -70,7 +74,7 @@ mod test {
     fn overwrites_if_clock_is_newer() {
         let first_clock = Hlc::zero();
 
-        let lww = Lww::new(1, first_clock).merge(Lww::new(2, first_clock.next()));
+        let lww = Merge::merge(Lww::new(1, first_clock), Lww::new(2, first_clock.next()));
 
         assert_eq!(lww.value, 2);
     }
@@ -79,7 +83,7 @@ mod test {
     fn rejects_if_clock_is_equal() {
         let first_clock = Hlc::zero();
 
-        let lww = Lww::new(1, first_clock).merge(Lww::new(2, first_clock));
+        let lww = Merge::merge(Lww::new(1, first_clock), Lww::new(2, first_clock));
 
         assert_eq!(lww.value, 1);
     }
@@ -88,7 +92,7 @@ mod test {
     fn rejects_if_clock_is_older() {
         let first_clock = Hlc::zero();
 
-        let merged = Lww::new(1, first_clock.next()).merge(Lww::new(2, first_clock));
+        let merged = Merge::merge(Lww::new(1, first_clock.next()), Lww::new(2, first_clock));
 
         assert_eq!(merged.value, 1);
     }
@@ -107,6 +111,13 @@ mod test {
         #[test]
         fn merge_idempotent(a: Lww<bool>) {
             crate::merge::test_idempotent(a);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn merge_or_merge_parts(a: Lww<bool>, b: Lww<bool>) {
+            crate::merge::test_merge_or_merge_parts(a, b);
         }
     }
 }
