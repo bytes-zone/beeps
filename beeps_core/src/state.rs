@@ -1,7 +1,9 @@
+use crate::gmap::GMap;
+use crate::gset::GSet;
 use crate::hlc::Hlc;
 use crate::lww::Lww;
 use crate::merge::Merge;
-use crate::{gmap::GMap, gset::GSet};
+use crate::split::Split;
 use chrono::{DateTime, Utc};
 
 /// The state that gets synced between replicas.
@@ -88,6 +90,44 @@ impl Merge for State {
         self.pings = self.pings.merge(other.pings);
 
         self
+    }
+}
+
+/// Parts of the `State` that can be split and merged independently.
+pub enum Part {
+    /// A part to be applied to `minutes_per_ping`
+    MinutesPerPing(Lww<u16>),
+
+    /// A part to be applied to `pings`
+    Ping(DateTime<Utc>),
+
+    /// A part to be applied to `tags`
+    Tag((DateTime<Utc>, Lww<Option<String>>)),
+}
+
+impl Split<Part> for State {
+    type Part = Part;
+
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        self.minutes_per_ping
+            .split()
+            .map(Part::MinutesPerPing)
+            .chain(self.pings.split().map(Part::Ping))
+            .chain(self.tags.split().map(Part::Tag))
+    }
+
+    fn merge_part(&mut self, part: Part) {
+        match part {
+            Part::MinutesPerPing(part) => {
+                self.minutes_per_ping.merge_part(part);
+            }
+            Part::Ping(part) => {
+                self.pings.merge_part(part);
+            }
+            Part::Tag(part) => {
+                self.tags.merge_part(part);
+            }
+        }
     }
 }
 
