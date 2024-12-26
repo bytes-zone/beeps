@@ -1,8 +1,9 @@
-use crate::merge::Merge;
-
 /// Split a data structure into parts (for storage and syncing) and
 /// merge them back together later.
-pub trait Split<Part>: Merge {
+pub trait Split<Part>
+where
+    Self: Sized,
+{
     /// The "parts" that we split this data structure into. These can be
     /// whatever you like, but should generally be the smallest parts possible.
     type Part;
@@ -20,34 +21,100 @@ pub trait Split<Part>: Merge {
     fn split(self) -> Vec<Part>;
 
     /// Build a data structure from the given parts. (For example, this is used
-    /// when load data from the database.)
-    fn merge_parts(&mut self, parts: Vec<Part>);
+    /// when we load data from the database.)
+    fn merge_part(&mut self, part: Part);
+
+    /// Merge two `Merge`s into one. This happens when we sync state between
+    /// replicas. In order for CRDT semantics to hold, this operation must be
+    /// commutative, associative, and idempotent. There are tests to help
+    /// guarantee this below.
+    fn merge(&mut self, other: Self) {
+        for part in other.split() {
+            self.merge_part(part);
+        }
+    }
 }
 
-/// Test that `split` returns the smallest possible parts.
-// #[cfg(test)]
-// pub fn test_split_minimal<T, Part>(orig: T)
-// where
-//     T: Parts<Part> + Clone + PartialEq + std::fmt::Debug,
-// {
-//     for part in orig.to_parts() {
-//         assert_eq!(part.clone().split(), vec![part]);
-//     }
-// }
+/// Test that a Merge implementation is idempotent (in other words, merging
+/// multiple times should not change the state.)
+#[cfg(test)]
+pub fn test_idempotent<T, Part>(base: T, part: Part)
+where
+    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
+    Part: Clone,
+{
+    let mut once = base.clone();
+    once.merge_part(part.clone());
 
-/// Test the relationship between `merge_parts` and `merge`. That is, for any
-/// data structure that implements `Merge`, merging the parts of one data
-/// structure into the other should give the same results as merging the two
-/// data structures directly.
+    let mut twice = base.clone();
+    twice.merge_part(part.clone());
+    twice.merge_part(part.clone());
+
+    assert_eq!(once, twice);
+}
+
+/// Test that the implementation is commutative (in other words, the order of
+/// merges should not effect the final result.)
+#[cfg(test)]
+pub fn test_commutative<T, Part>(base: T, part_a: Part, part_b: Part)
+where
+    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
+    Part: Clone,
+{
+    let mut ab = base.clone();
+    ab.merge_part(part_a.clone());
+    ab.merge_part(part_b.clone());
+
+    let mut ba = base.clone();
+    ba.merge_part(part_b.clone());
+    ba.merge_part(part_a.clone());
+
+    assert_eq!(ab, ba);
+}
+
+/// Test that a Merge implementation is associative (in other words, the order
+/// in which replicas are merged should not effect the final result.)
+#[cfg(test)]
+pub fn test_associative<T, Part>(a: T, b: T, c: T)
+where
+    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
+{
+    let mut abc = a.clone();
+    abc.merge(b.clone());
+    abc.merge(c.clone());
+
+    let mut a_bc = a;
+    let mut bc = b;
+    bc.merge(c);
+    a_bc.merge(bc);
+
+    assert_eq!(abc, a_bc);
+}
+
+/// Test that `merge` and `merge_parts` hold the proper relationship. That is:
+///
+///     a.merge(b)
+///
+/// Should give the same result as:
+///
+///     for part in b.split() {
+///         a.merge_part(part)
+///     }
+///
+/// This is only useful if `merge` is implemented separately from `merge_part`,
+/// as the default implementation does essentially the second code sample.
 #[cfg(test)]
 pub fn test_merge_or_merge_parts<T, Part>(a: T, b: T)
 where
     T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
 {
-    let merged = a.clone().merge(b.clone());
+    let mut merged = a.clone();
+    merged.merge(b.clone());
 
     let mut from_parts = a;
-    from_parts.merge_parts(b.split());
+    for part in b.split() {
+        from_parts.merge_part(part);
+    }
 
     assert_eq!(from_parts, merged);
 }
