@@ -83,10 +83,8 @@ where
         self.0.into_iter().collect()
     }
 
-    fn merge_parts(&mut self, parts: Vec<T>) {
-        for part in parts {
-            self.insert(part);
-        }
+    fn merge_part(&mut self, part: Self::Part) {
+        self.insert(part);
     }
 }
 

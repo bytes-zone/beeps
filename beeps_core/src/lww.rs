@@ -64,10 +64,8 @@ where
         vec![self.clone()]
     }
 
-    fn merge_parts(&mut self, parts: Vec<Lww<T>>) {
-        for part in parts {
-            self.set(part.value, part.clock);
-        }
+    fn merge_part(&mut self, part: Self::Part) {
+        self.set(part.value, part.clock);
     }
 }
 
