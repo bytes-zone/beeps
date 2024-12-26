@@ -73,7 +73,7 @@ impl<'a, T: Ord> IntoIterator for &'a GSet<T> {
     }
 }
 
-impl<T> Split<T> for GSet<T>
+impl<T> Split for GSet<T>
 where
     T: Ord,
 {

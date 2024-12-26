@@ -105,7 +105,7 @@ pub enum Part {
     Tag((DateTime<Utc>, Lww<Option<String>>)),
 }
 
-impl Split<Part> for State {
+impl Split for State {
     type Part = Part;
 
     fn split(self) -> impl Iterator<Item = Self::Part> {

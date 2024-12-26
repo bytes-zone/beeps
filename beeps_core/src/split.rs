@@ -1,6 +1,6 @@
 /// Split a data structure into parts (for storage and syncing) and
 /// merge them back together later.
-pub trait Split<Part>
+pub trait Split
 where
     Self: Sized,
 {
@@ -18,11 +18,11 @@ where
     /// 2. `empty.merge_parts(a.to_parts())` should result in a value equal to
     ///    the original `a`.
     /// 3. `a.merge_parts(b.split())` should be the same as `a.merge(b)`.
-    fn split(self) -> impl Iterator<Item = Part>;
+    fn split(self) -> impl Iterator<Item = Self::Part>;
 
     /// Build a data structure from the given parts. (For example, this is used
     /// when we load data from the database.)
-    fn merge_part(&mut self, part: Part);
+    fn merge_part(&mut self, part: Self::Part);
 
     /// Merge two `Merge`s into one. This happens when we sync state between
     /// replicas. In order for CRDT semantics to hold, this operation must be
@@ -38,10 +38,10 @@ where
 /// Test that a Merge implementation is idempotent (in other words, merging
 /// multiple times should not change the state.)
 #[cfg(test)]
-pub fn test_idempotent<T, Part>(base: T, part: Part)
+pub fn test_idempotent<T>(base: T, part: T::Part)
 where
-    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
-    Part: Clone,
+    T: Split + Clone + PartialEq + std::fmt::Debug,
+    T::Part: Clone,
 {
     let mut once = base.clone();
     once.merge_part(part.clone());
@@ -56,10 +56,10 @@ where
 /// Test that the implementation is commutative (in other words, the order of
 /// merges should not effect the final result.)
 #[cfg(test)]
-pub fn test_commutative<T, Part>(base: T, part_a: Part, part_b: Part)
+pub fn test_commutative<T>(base: T, part_a: T::Part, part_b: T::Part)
 where
-    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
-    Part: Clone,
+    T: Split + Clone + PartialEq + std::fmt::Debug,
+    T::Part: Clone,
 {
     let mut ab = base.clone();
     ab.merge_part(part_a.clone());
@@ -75,9 +75,9 @@ where
 /// Test that a Merge implementation is associative (in other words, the order
 /// in which replicas are merged should not effect the final result.)
 #[cfg(test)]
-pub fn test_associative<T, Part>(a: T, b: T, c: T)
+pub fn test_associative<T>(a: T, b: T, c: T)
 where
-    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
+    T: Split + Clone + PartialEq + std::fmt::Debug,
 {
     let mut abc = a.clone();
     abc.merge(b.clone());
@@ -104,9 +104,9 @@ where
 /// This is only useful if `merge` is implemented separately from `merge_part`,
 /// as the default implementation does essentially the second code sample.
 #[cfg(test)]
-pub fn test_merge_or_merge_parts<T, Part>(a: T, b: T)
+pub fn test_merge_or_merge_parts<T>(a: T, b: T)
 where
-    T: Split<Part> + Clone + PartialEq + std::fmt::Debug,
+    T: Split + Clone + PartialEq + std::fmt::Debug,
 {
     let mut merged = a.clone();
     merged.merge(b.clone());

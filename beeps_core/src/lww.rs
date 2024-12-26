@@ -54,7 +54,7 @@ where
     }
 }
 
-impl<T> Split<Lww<T>> for Lww<T>
+impl<T> Split for Lww<T>
 where
     T: Clone,
 {

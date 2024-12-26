@@ -89,7 +89,7 @@ where
     }
 }
 
-impl<K, V> Split<(K, V)> for GMap<K, V>
+impl<K, V> Split for GMap<K, V>
 where
     K: Eq + Hash,
     V: Merge,
