@@ -54,14 +54,6 @@ where
     fn merge_part(&mut self, part: Self::Part) {
         self.set(part.value, part.clock);
     }
-
-    fn merge(self, other: Self) -> Self {
-        if other.clock > self.clock {
-            other
-        } else {
-            self
-        }
-    }
 }
 
 impl<T: Debug> Debug for Lww<T> {

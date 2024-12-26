@@ -242,6 +242,11 @@ mod test {
             }
 
             #[test]
+            fn merge_or_merge_parts(a: GMap<u8, Lww<bool>>, b: GMap<u8, Lww<bool>>) {
+                crate::merge::test_merge_or_merge_parts(a, b);
+            }
+
+            #[test]
             fn merge_idempotent(a: GMap<u8, Lww<u8>>) {
                 crate::merge::test_idempotent(a);
             }

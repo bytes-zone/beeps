@@ -95,6 +95,11 @@ mod test {
 
         proptest! {
             #[test]
+            fn merge_or_merge_parts(a: GSet<u8>, b: GSet<u8>) {
+                crate::merge::test_merge_or_merge_parts(a, b);
+            }
+
+            #[test]
             fn test_idempotent(a: GSet<u8>) {
                 crate::merge::test_idempotent(a);
             }
@@ -107,18 +112,6 @@ mod test {
             #[test]
             fn test_associative(a: GSet<u8>, b: GSet<u8>, c: GSet<u8>) {
                 crate::merge::test_associative(a, b, c);
-            }
-        }
-    }
-
-    mod split {
-        use super::*;
-        use proptest::prelude::*;
-
-        proptest! {
-            #[test]
-            fn merge_or_merge_parts(a: GSet<u8>, b: GSet<u8>) {
-                crate::merge::test_merge_or_merge_parts(a, b);
             }
         }
     }
