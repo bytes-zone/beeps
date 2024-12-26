@@ -471,6 +471,7 @@ dependencies = [
  "beeps_core",
  "chrono",
  "console_error_panic_hook",
+ "serde_json",
  "wasm-bindgen",
 ]
 
