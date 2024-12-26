@@ -79,8 +79,8 @@ where
 {
     type Part = T;
 
-    fn split(self) -> Vec<T> {
-        self.0.into_iter().collect()
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        self.0.into_iter()
     }
 
     fn merge_part(&mut self, part: Self::Part) {

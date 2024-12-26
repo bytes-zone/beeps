@@ -60,8 +60,8 @@ where
 {
     type Part = Lww<T>;
 
-    fn split(self) -> Vec<Lww<T>> {
-        vec![self.clone()]
+    fn split(self) -> impl Iterator<Item = Self::Part> {
+        std::iter::once(self)
     }
 
     fn merge_part(&mut self, part: Self::Part) {

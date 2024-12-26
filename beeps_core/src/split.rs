@@ -18,7 +18,7 @@ where
     /// 2. `empty.merge_parts(a.to_parts())` should result in a value equal to
     ///    the original `a`.
     /// 3. `a.merge_parts(b.split())` should be the same as `a.merge(b)`.
-    fn split(self) -> Vec<Part>;
+    fn split(self) -> impl Iterator<Item = Part>;
 
     /// Build a data structure from the given parts. (For example, this is used
     /// when we load data from the database.)
