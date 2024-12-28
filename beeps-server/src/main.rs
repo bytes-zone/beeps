@@ -3,6 +3,9 @@
 /// Get a database connection for a request
 mod conn;
 
+/// Handlers for the routes the server responds to.
+mod handlers;
+
 /// JWT auth for requests
 mod jwt;
 
@@ -10,7 +13,7 @@ mod jwt;
 mod state;
 
 use crate::state::State;
-use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
+use axum::{http::header::AUTHORIZATION, routing::post, Router};
 use clap::Parser;
 use sqlx::{migrate, postgres::PgPoolOptions};
 use std::{iter::once, num::ParseIntError, time::Duration};
@@ -38,10 +41,6 @@ struct Config {
     /// Secret to use to sign JWTs
     #[clap(long, env)]
     jwt_secret: String,
-
-    /// Password to use for logging in
-    #[clap(long, env)]
-    login_password: String,
 
     /// URL to connect to the database
     #[clap(long, env)]
@@ -92,7 +91,7 @@ async fn main() {
 
     let app = Router::new()
         // ROUTES
-        .route("/", get(handler))
+        .route("/api/v1/register", post(handlers::register::handler))
         // STATE
         .with_state(state)
         // MIDDLEWARE
@@ -109,9 +108,4 @@ async fn main() {
     tracing::info!(address = ?listener.local_addr(), "listening");
 
     axum::serve(listener, app).await.unwrap();
-}
-
-/// Just standing in for a real handler during setup
-async fn handler() -> impl IntoResponse {
-    "Hello, World!"
 }
