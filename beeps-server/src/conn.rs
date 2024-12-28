@@ -3,10 +3,10 @@ use axum::{
     extract::{FromRef, FromRequestParts},
     http::{request::Parts, StatusCode},
 };
-use sqlx::PgPool;
+use sqlx::{pool::PoolConnection, PgPool};
 
 /// A connection to the database
-pub struct Conn(pub sqlx::pool::PoolConnection<sqlx::Postgres>);
+pub struct Conn(pub PoolConnection<sqlx::Postgres>);
 
 #[async_trait]
 impl<S> FromRequestParts<S> for Conn

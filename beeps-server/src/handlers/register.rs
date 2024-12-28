@@ -1,21 +1,31 @@
 use crate::conn::Conn;
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    password_hash::{self, rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Acquire;
 
+/// The request to register a new account.
 #[derive(Debug, Deserialize)]
 pub struct Req {
+    /// Email to use for contact and login.
     email: String,
+
+    /// Plaintext password to use for login.
     password: String,
 }
 
+/// Result of registering a new account.
 #[derive(Debug, Serialize)]
 pub struct Resp {
+    /// Email that was successfully registered.
     email: String,
 }
 
@@ -54,14 +64,18 @@ pub async fn handler(Conn(mut conn): Conn, Json(req): Json<Req>) -> Result<Json<
     Ok(Json(Resp { email: req.email }))
 }
 
+/// Errors that can occur when registering a new account.
 #[derive(Debug, PartialEq)]
 pub enum Error {
+    /// The email address is already associated with an account.
     AlreadyRegistered,
+
+    /// An internal error occurred.
     InternalError,
 }
 
 impl IntoResponse for Error {
-    fn into_response(self) -> axum::response::Response {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             Self::AlreadyRegistered => (
                 StatusCode::BAD_REQUEST,
@@ -85,8 +99,8 @@ impl From<sqlx::Error> for Error {
     }
 }
 
-impl From<argon2::password_hash::Error> for Error {
-    fn from(err: argon2::password_hash::Error) -> Self {
+impl From<password_hash::Error> for Error {
+    fn from(err: password_hash::Error) -> Self {
         tracing::error!(?err, "error while hashing password");
         Self::InternalError
     }
