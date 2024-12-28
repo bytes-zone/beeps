@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 axum = "0.7.9"
 clap = { version = "4.5.23", features = ["derive", "env"] }
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "chrono"] }
 tokio = { version = "1.42.0", features = ["rt-multi-thread", "tracing"] }
 tower-http = { version = "0.6.2", features = [
     "compression-full",
