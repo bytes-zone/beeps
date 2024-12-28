@@ -1,5 +1,8 @@
 //! A sync server for beeps.
 
+/// Get a database connection for a request
+mod conn;
+
 /// Shared state for requests
 mod state;
 
