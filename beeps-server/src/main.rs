@@ -3,6 +3,9 @@
 /// Get a database connection for a request
 mod conn;
 
+/// Common error handling
+mod error;
+
 /// Handlers for the routes the server responds to.
 mod handlers;
 

@@ -1,16 +1,14 @@
-use crate::{conn::Conn, state::AllowRegistration};
+use crate::bail_if;
+use crate::error::Error;
+use crate::state::AllowRegistration;
+use crate::{bail, conn::Conn};
 use argon2::{
-    password_hash::{self, rand_core::OsRng, PasswordHasher, SaltString},
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    Json,
-};
+use axum::http::StatusCode;
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use sqlx::Acquire;
 
 /// The request to register a new account.
@@ -37,9 +35,11 @@ pub async fn handler(
     Json(req): Json<Req>,
 ) -> Result<Json<Resp>, Error> {
     // Validation: don't allow any calls to this endpoint if we don't allow registration.
-    if !allow_registration.0 {
-        return Err(Error::RegistrationClosed);
-    }
+    bail_if!(
+        !allow_registration.0,
+        StatusCode::FORBIDDEN,
+        "Registration is closed".to_string()
+    );
 
     // Validation: don't allow a duplicate account if one exists.
     let mut tx = conn.begin().await?;
@@ -51,9 +51,10 @@ pub async fn handler(
     .fetch_optional(&mut *tx)
     .await?;
 
-    if existing.is_some() {
-        return Err(Error::AlreadyRegistered);
-    }
+    bail_if!(
+        existing.is_some(),
+        "An account with this email already exists".to_string()
+    );
 
     // We're good, so create the account.
     let argon2 = Argon2::default();
@@ -72,52 +73,6 @@ pub async fn handler(
     tx.commit().await?;
 
     Ok(Json(Resp { email: req.email }))
-}
-
-/// Errors that can occur when registering a new account.
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// This server is not configured to allow registration.
-    RegistrationClosed,
-
-    /// The email address is already associated with an account.
-    AlreadyRegistered,
-
-    /// An internal error occurred.
-    Internal,
-}
-
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            Self::RegistrationClosed => (StatusCode::FORBIDDEN, "Registration is closed"),
-            Self::AlreadyRegistered => (
-                StatusCode::BAD_REQUEST,
-                "An account with this email already exists",
-            ),
-            Self::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
-        };
-
-        let body = Json(json!({
-            "error": error_message,
-        }));
-
-        (status, body).into_response()
-    }
-}
-
-impl From<sqlx::Error> for Error {
-    fn from(err: sqlx::Error) -> Self {
-        tracing::error!(?err, "sqlx error");
-        Self::Internal
-    }
-}
-
-impl From<password_hash::Error> for Error {
-    fn from(err: password_hash::Error) -> Self {
-        tracing::error!(?err, "error while hashing password");
-        Self::Internal
-    }
 }
 
 #[cfg(test)]
@@ -158,9 +113,16 @@ mod test {
 
         let res = handler(Conn(conn), State(AllowRegistration(true)), Json(req))
             .await
-            .unwrap_err();
+            .unwrap_err()
+            .unwrap_custom();
 
-        assert_eq!(res, Error::AlreadyRegistered);
+        assert_eq!(
+            res,
+            (
+                StatusCode::BAD_REQUEST,
+                "An account with this email already exists".to_string()
+            )
+        );
     }
 
     #[test_log::test(sqlx::test)]
@@ -172,8 +134,12 @@ mod test {
 
         let res = handler(Conn(conn), State(AllowRegistration(false)), Json(req))
             .await
-            .unwrap_err();
+            .unwrap_err()
+            .unwrap_custom();
 
-        assert_eq!(res, Error::RegistrationClosed);
+        assert_eq!(
+            res,
+            (StatusCode::FORBIDDEN, "Registration is closed".to_string())
+        );
     }
 }
