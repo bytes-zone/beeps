@@ -2,7 +2,7 @@
 
 use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
 use clap::Parser;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{migrate, postgres::PgPoolOptions};
 use std::{iter::once, num::ParseIntError, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, decompression, limit, sensitive_headers, timeout, trace};
@@ -72,6 +72,11 @@ async fn main() {
         .connect(&options.database_url)
         .await
         .expect("can't connect to database");
+
+    migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("could not run migrations");
 
     let app = Router::new()
         // ROUTES
