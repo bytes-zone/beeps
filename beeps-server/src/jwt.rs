@@ -10,13 +10,20 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+/// Claims a JWT can make in our system
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Claims {
+    /// The subject of the claims. In our case, the email address associated
+    /// with the account.
     pub sub: String,
+
+    /// When the token was issued.
     pub iat: i64,
+
+    /// When the token expires.
     pub exp: i64,
 
-    // special claims for beeps
+    /// What document ID this token grants access to.
     pub document_id: i64,
 }
 
@@ -31,6 +38,7 @@ impl Claims {
         }
     }
 
+    /// Parse and verify a token from a string
     fn from_str(token: &str, decoding_key: &DecodingKey) -> Result<Self, AuthError> {
         decode::<Self>(token, decoding_key, &Validation::default())
             .map_err(|err| {
@@ -59,8 +67,10 @@ where
     }
 }
 
+/// Errors returned with JWT auth fails
 #[derive(Debug, PartialEq)]
 pub enum AuthError {
+    /// The token itself was invalid (expired, improperly signed, etc)
     InvalidToken,
 }
 
