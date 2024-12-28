@@ -13,15 +13,26 @@ pub struct State {
 
     /// Key for verifying existing JWTs.
     decoding_key: DecodingKey,
+
+    /// Whether or not to allow new registrations.
+    allow_registration: AllowRegistration,
 }
+
+#[derive(Debug, Clone)]
+pub struct AllowRegistration(pub bool);
 
 impl State {
     /// Create a new state.
-    pub fn new(pool: Pool<Postgres>, jwt_base64_secret: &str) -> Result<Self, Error> {
+    pub fn new(
+        pool: Pool<Postgres>,
+        jwt_base64_secret: &str,
+        allow_registration: bool,
+    ) -> Result<Self, Error> {
         Ok(Self {
             pool,
             encoding_key: EncodingKey::from_base64_secret(jwt_base64_secret)?,
             decoding_key: DecodingKey::from_base64_secret(jwt_base64_secret)?,
+            allow_registration: AllowRegistration(allow_registration),
         })
     }
 }

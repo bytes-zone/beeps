@@ -1,9 +1,10 @@
-use crate::conn::Conn;
+use crate::{conn::Conn, state::AllowRegistration};
 use argon2::{
     password_hash::{self, rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
 use axum::{
+    extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -30,10 +31,19 @@ pub struct Resp {
 }
 
 #[tracing::instrument]
-pub async fn handler(Conn(mut conn): Conn, Json(req): Json<Req>) -> Result<Json<Resp>, Error> {
-    let mut tx = conn.begin().await?;
+pub async fn handler(
+    Conn(mut conn): Conn,
+    State(allow_registration): State<AllowRegistration>,
+    Json(req): Json<Req>,
+) -> Result<Json<Resp>, Error> {
+    // Validation: don't allow any calls to this endpoint if we don't allow registration.
+    if !allow_registration.0 {
+        return Err(Error::RegistrationClosed);
+    }
 
     // Validation: don't allow a duplicate account if one exists.
+    let mut tx = conn.begin().await?;
+
     let existing = sqlx::query!(
         "SELECT id FROM accounts WHERE email = $1 LIMIT 1",
         req.email
@@ -67,6 +77,9 @@ pub async fn handler(Conn(mut conn): Conn, Json(req): Json<Req>) -> Result<Json<
 /// Errors that can occur when registering a new account.
 #[derive(Debug, PartialEq)]
 pub enum Error {
+    /// This server is not configured to allow registration.
+    RegistrationClosed,
+
     /// The email address is already associated with an account.
     AlreadyRegistered,
 
@@ -77,6 +90,7 @@ pub enum Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
+            Self::RegistrationClosed => (StatusCode::FORBIDDEN, "Registration is closed"),
             Self::AlreadyRegistered => (
                 StatusCode::BAD_REQUEST,
                 "An account with this email already exists",
@@ -120,7 +134,9 @@ mod test {
             password: "test".to_string(),
         };
 
-        let res = handler(Conn(conn), Json(req)).await.unwrap();
+        let res = handler(Conn(conn), State(AllowRegistration(true)), Json(req))
+            .await
+            .unwrap();
 
         assert_eq!(res.email, email);
     }
@@ -140,8 +156,24 @@ mod test {
             password: "test".to_string(),
         };
 
-        let res = handler(Conn(conn), Json(req)).await.unwrap_err();
+        let res = handler(Conn(conn), State(AllowRegistration(true)), Json(req))
+            .await
+            .unwrap_err();
 
         assert_eq!(res, Error::AlreadyRegistered);
+    }
+
+    #[test_log::test(sqlx::test)]
+    async fn test_registration_closed(conn: PoolConnection<Postgres>) {
+        let req = Req {
+            email: "test@example.com".to_string(),
+            password: "test".to_string(),
+        };
+
+        let res = handler(Conn(conn), State(AllowRegistration(false)), Json(req))
+            .await
+            .unwrap_err();
+
+        assert_eq!(res, Error::RegistrationClosed);
     }
 }

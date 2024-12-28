@@ -53,6 +53,10 @@ struct Config {
     /// Database connection timeout, in seconds
     #[clap(long, env, default_value = "10", value_parser = duration_parser)]
     database_acquire_timeout: Duration,
+
+    /// Whether or not to allow new registrations
+    #[clap(long, env)]
+    allow_registration: bool,
 }
 
 /// Parse a duration from a string
@@ -87,7 +91,8 @@ async fn main() {
         .await
         .expect("could not run migrations");
 
-    let state = State::new(pool, &options.jwt_secret).expect("could not initialize state");
+    let state = State::new(pool, &options.jwt_secret, options.allow_registration)
+        .expect("could not initialize state");
 
     let app = Router::new()
         // ROUTES
