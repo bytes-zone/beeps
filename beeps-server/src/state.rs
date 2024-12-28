@@ -18,6 +18,7 @@ pub struct State {
     allow_registration: AllowRegistration,
 }
 
+/// Whether or not the server should allow new registrations.
 #[derive(Debug, Clone)]
 pub struct AllowRegistration(pub bool);
 
