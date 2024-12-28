@@ -4,7 +4,7 @@ version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.7.9"
+axum = { version = "0.7.9", features = ["http2", "macros"] }
 clap = { version = "4.5.23", features = ["derive", "env"] }
 sqlx = { version = "0.8.2", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "chrono"] }
 tokio = { version = "1.42.0", features = ["rt-multi-thread", "tracing"] }
