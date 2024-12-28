@@ -1,5 +1,6 @@
 //! A sync server for beeps.
 
+/// Shared state for requests
 mod state;
 
 use crate::state::State;
