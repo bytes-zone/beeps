@@ -30,6 +30,15 @@ impl Claims {
             document_id,
         }
     }
+
+    fn from_header(bearer: Bearer, decoding_key: &DecodingKey) -> Result<Self, AuthError> {
+        decode::<Self>(bearer.token(), decoding_key, &Validation::default())
+            .map_err(|err| {
+                tracing::trace!(?err, "error decoding token");
+                AuthError::InvalidToken
+            })
+            .map(|data| data.claims)
+    }
 }
 
 #[async_trait]
@@ -46,17 +55,7 @@ where
             .await
             .map_err(|_| AuthError::InvalidToken)?;
 
-        let token_data = decode::<Claims>(
-            bearer.token(),
-            &DecodingKey::from_ref(state),
-            &Validation::default(),
-        )
-        .map_err(|err| {
-            tracing::trace!(?err, "error decoding token");
-            AuthError::InvalidToken
-        })?;
-
-        Ok(token_data.claims)
+        Claims::from_header(bearer, &DecodingKey::from_ref(state))
     }
 }
 
