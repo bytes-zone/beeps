@@ -10,9 +10,9 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Claims {
-    pub sub: i64,
+    pub sub: String,
     pub iat: i64,
     pub exp: i64,
 
@@ -22,17 +22,17 @@ pub struct Claims {
 
 impl Claims {
     #[cfg(test)]
-    pub fn test(sub: i64, document_id: i64) -> Self {
+    pub fn test(sub: &str, document_id: i64) -> Self {
         Self {
-            sub,
+            sub: sub.to_string(),
             iat: 0,
             exp: (chrono::Utc::now() + chrono::Duration::days(30)).timestamp(),
             document_id,
         }
     }
 
-    fn from_header(bearer: Bearer, decoding_key: &DecodingKey) -> Result<Self, AuthError> {
-        decode::<Self>(bearer.token(), decoding_key, &Validation::default())
+    fn from_str(token: &str, decoding_key: &DecodingKey) -> Result<Self, AuthError> {
+        decode::<Self>(token, decoding_key, &Validation::default())
             .map_err(|err| {
                 tracing::trace!(?err, "error decoding token");
                 AuthError::InvalidToken
@@ -55,11 +55,11 @@ where
             .await
             .map_err(|_| AuthError::InvalidToken)?;
 
-        Claims::from_header(bearer, &DecodingKey::from_ref(state))
+        Claims::from_str(bearer.token(), &DecodingKey::from_ref(state))
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AuthError {
     InvalidToken,
 }
@@ -73,5 +73,38 @@ impl IntoResponse for AuthError {
             "error": error_message,
         }));
         (status, body).into_response()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use jsonwebtoken::{encode, EncodingKey};
+
+    #[test]
+    fn valid_token() {
+        let claims = Claims::test("test@example.com", 1);
+        let key = EncodingKey::from_secret(b"secret");
+        let token = encode(&jsonwebtoken::Header::default(), &claims, &key).unwrap();
+
+        let decoding_key = DecodingKey::from_secret(b"secret");
+        let result = Claims::from_str(&token, &decoding_key);
+        assert_eq!(result.unwrap(), claims);
+    }
+
+    #[test]
+    fn test_expired_token() {
+        let claims = Claims {
+            sub: "test@example.com".to_string(),
+            iat: 0,
+            exp: 0,
+            document_id: 1,
+        };
+        let key = EncodingKey::from_secret(b"secret");
+        let token = encode(&jsonwebtoken::Header::default(), &claims, &key).unwrap();
+
+        let decoding_key = DecodingKey::from_secret(b"secret");
+        let result = Claims::from_str(&token, &decoding_key);
+        assert_eq!(result.unwrap_err(), AuthError::InvalidToken);
     }
 }
