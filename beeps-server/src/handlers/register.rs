@@ -84,7 +84,7 @@ pub enum Error {
     AlreadyRegistered,
 
     /// An internal error occurred.
-    InternalError,
+    Internal,
 }
 
 impl IntoResponse for Error {
@@ -95,7 +95,7 @@ impl IntoResponse for Error {
                 StatusCode::BAD_REQUEST,
                 "An account with this email already exists",
             ),
-            Self::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
+            Self::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
         };
 
         let body = Json(json!({
@@ -109,14 +109,14 @@ impl IntoResponse for Error {
 impl From<sqlx::Error> for Error {
     fn from(err: sqlx::Error) -> Self {
         tracing::error!(?err, "sqlx error");
-        Self::InternalError
+        Self::Internal
     }
 }
 
 impl From<password_hash::Error> for Error {
     fn from(err: password_hash::Error) -> Self {
         tracing::error!(?err, "error while hashing password");
-        Self::InternalError
+        Self::Internal
     }
 }
 
