@@ -1,5 +1,8 @@
 //! A sync server for beeps.
 
+mod state;
+
+use crate::state::State;
 use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use sqlx::{migrate, postgres::PgPoolOptions};
@@ -78,11 +81,13 @@ async fn main() {
         .await
         .expect("could not run migrations");
 
+    let state = State::new(pool, &options.jwt_secret).expect("could not initialize state");
+
     let app = Router::new()
         // ROUTES
         .route("/", get(handler))
         // STATE
-        // .with_state(state);
+        .with_state(state)
         // MIDDLEWARE
         .layer(trace::TraceLayer::new_for_http())
         .layer(compression::CompressionLayer::new())
