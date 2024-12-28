@@ -3,6 +3,9 @@
 /// Get a database connection for a request
 mod conn;
 
+/// JWT auth for requests
+mod jwt;
+
 /// Shared state for requests
 mod state;
 
