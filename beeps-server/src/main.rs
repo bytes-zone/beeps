@@ -2,6 +2,7 @@
 
 use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
 use clap::Parser;
+use sqlx::postgres::PgPoolOptions;
 use std::{iter::once, num::ParseIntError, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, decompression, limit, sensitive_headers, timeout, trace};
@@ -31,6 +32,18 @@ struct Config {
     /// Password to use for logging in
     #[clap(long, env)]
     login_password: String,
+
+    /// URL to connect to the database
+    #[clap(long, env)]
+    database_url: String,
+
+    /// The maximum amount of connections the database pool should maintain.
+    #[clap(long, env, default_value = "5")]
+    database_max_connections: u32,
+
+    /// Database connection timeout, in seconds
+    #[clap(long, env, default_value = "10", value_parser = duration_parser)]
+    database_acquire_timeout: Duration,
 }
 
 /// Parse a duration from a string
@@ -52,6 +65,13 @@ async fn main() {
         )
         .with(fmt::layer())
         .init();
+
+    let pool = PgPoolOptions::new()
+        .max_connections(options.database_max_connections)
+        .acquire_timeout(options.database_acquire_timeout)
+        .connect(&options.database_url)
+        .await
+        .expect("can't connect to database");
 
     let app = Router::new()
         // ROUTES
