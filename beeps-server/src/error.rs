@@ -43,10 +43,12 @@ macro_rules! bail_if {
 }
 
 impl Error {
+    /// Construct a custom error
     pub fn custom(message: &str) -> Self {
         Self::custom_with_status(message, StatusCode::BAD_REQUEST)
     }
 
+    /// Construct a custom error with a specific status code
     pub fn custom_with_status(message: &str, status: StatusCode) -> Self {
         Self::Custom(status, message.to_string())
     }

@@ -1,14 +1,12 @@
+use crate::error::Error;
 use axum::extract::FromRef;
 use axum::http::request::Parts;
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::RequestPartsExt;
 use axum::{async_trait, extract::FromRequestParts};
-use axum::{Json, RequestPartsExt};
 use axum_extra::headers::{authorization::Bearer, Authorization};
 use axum_extra::TypedHeader;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 /// Claims a JWT can make in our system
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -39,13 +37,12 @@ impl Claims {
     }
 
     /// Parse and verify a token from a string
-    fn from_str(token: &str, decoding_key: &DecodingKey) -> Result<Self, AuthError> {
-        decode::<Self>(token, decoding_key, &Validation::default())
-            .map_err(|err| {
-                tracing::trace!(?err, "error decoding token");
-                AuthError::InvalidToken
-            })
-            .map(|data| data.claims)
+    #[expect(clippy::absolute_paths)]
+    fn from_str(
+        token: &str,
+        decoding_key: &DecodingKey,
+    ) -> Result<Self, jsonwebtoken::errors::Error> {
+        decode::<Self>(token, decoding_key, &Validation::default()).map(|data| data.claims)
     }
 }
 
@@ -55,34 +52,16 @@ where
     DecodingKey: FromRef<S>,
     S: Send + Sync,
 {
-    type Rejection = AuthError;
+    type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
-            .map_err(|_| AuthError::InvalidToken)?;
+            .map_err(|_| Error::custom("missing or invalid authorization header"))?;
 
         Claims::from_str(bearer.token(), &DecodingKey::from_ref(state))
-    }
-}
-
-/// Errors returned with JWT auth fails
-#[derive(Debug, PartialEq)]
-pub enum AuthError {
-    /// The token itself was invalid (expired, improperly signed, etc)
-    InvalidToken,
-}
-
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
-        };
-        let body = Json(json!({
-            "error": error_message,
-        }));
-        (status, body).into_response()
+            .map_err(|_| Error::custom("invalid token"))
     }
 }
 
@@ -115,6 +94,10 @@ mod test {
 
         let decoding_key = DecodingKey::from_secret(b"secret");
         let result = Claims::from_str(&token, &decoding_key);
-        assert_eq!(result.unwrap_err(), AuthError::InvalidToken);
+
+        assert_eq!(
+            result.unwrap_err().kind(),
+            &jsonwebtoken::errors::ErrorKind::ExpiredSignature
+        );
     }
 }
