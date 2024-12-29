@@ -1,7 +1,8 @@
+use crate::error::Error;
 use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts},
-    http::{request::Parts, StatusCode},
+    http::request::Parts,
 };
 use sqlx::{pool::PoolConnection, PgPool};
 
@@ -14,7 +15,7 @@ where
     PgPool: FromRef<State>,
     State: Send + Sync,
 {
-    type Rejection = (StatusCode, String);
+    type Rejection = Error;
 
     async fn from_request_parts(
         _parts: &mut Parts,
@@ -22,10 +23,7 @@ where
     ) -> Result<Self, Self::Rejection> {
         let pool = PgPool::from_ref(state);
 
-        let conn = pool
-            .acquire()
-            .await
-            .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+        let conn = pool.acquire().await?;
 
         Ok(Self(conn))
     }
