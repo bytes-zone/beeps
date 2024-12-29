@@ -37,8 +37,8 @@ pub async fn handler(
     // Validation: don't allow any calls to this endpoint if we don't allow registration.
     bail_if!(
         !allow_registration.0,
-        StatusCode::FORBIDDEN,
-        "Registration is closed".to_string()
+        "Registration is closed",
+        StatusCode::FORBIDDEN
     );
 
     // Validation: don't allow a duplicate account if one exists.
@@ -53,7 +53,7 @@ pub async fn handler(
 
     bail_if!(
         existing.is_some(),
-        "An account with this email already exists".to_string()
+        "An account with this email already exists"
     );
 
     // We're good, so create the account.

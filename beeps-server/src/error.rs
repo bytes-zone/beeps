@@ -20,13 +20,10 @@ pub enum Error {
 #[macro_export]
 macro_rules! bail {
     ($message:expr) => {
-        return Err($crate::error::Error::Custom(
-            axum::http::StatusCode::BAD_REQUEST,
-            $message,
-        ))
+        return Err($crate::error::Error::custom($message))
     };
-    ($status:expr, $message:expr) => {
-        return Err($crate::error::Error::Custom($status, $message))
+    ($message:expr, $status:expr) => {
+        return Err($crate::error::Error::custom_with_status($message, $status))
     };
 }
 
@@ -46,6 +43,14 @@ macro_rules! bail_if {
 }
 
 impl Error {
+    pub fn custom(message: &str) -> Self {
+        Self::custom_with_status(message, StatusCode::BAD_REQUEST)
+    }
+
+    pub fn custom_with_status(message: &str, status: StatusCode) -> Self {
+        Self::Custom(status, message.to_string())
+    }
+
     /// Unwrap a handler-specific error
     #[cfg(test)]
     pub fn unwrap_custom(self) -> (StatusCode, String) {
