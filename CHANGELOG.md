@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 (2024-12-29)
+
+`beeps-server` is now available. You will need to provide it with a Postgres database and some secret material for signing JWTs. Right now only email/password login is implemented (whose registration is gated by an `--allow-registration` flag), plus a "whoami" endpoint for debugging. The server is not yet integrated with the client, but that will be coming soon.
+
 ## 0.3.0 (2024-12-24)
 
 - You can now copy/paste tags with the `c`/`v` keys.
