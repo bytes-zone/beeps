@@ -16,7 +16,11 @@ mod jwt;
 mod state;
 
 use crate::state::State;
-use axum::{http::header::AUTHORIZATION, routing::post, Router};
+use axum::{
+    http::header::AUTHORIZATION,
+    routing::{get, post},
+    Router,
+};
 use clap::Parser;
 use sqlx::{migrate, postgres::PgPoolOptions};
 use std::{iter::once, num::ParseIntError, time::Duration};
@@ -101,6 +105,7 @@ async fn main() {
         // ROUTES
         .route("/api/v1/register", post(handlers::register::handler))
         .route("/api/v1/login", post(handlers::login::handler))
+        .route("/api/v1/whoami", get(handlers::whoami::handler))
         // STATE
         .with_state(state)
         // MIDDLEWARE

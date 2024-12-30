@@ -2,6 +2,7 @@
 
 pub mod login;
 pub mod register;
+pub mod whoami;
 
 #[cfg(test)]
 mod test;

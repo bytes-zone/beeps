@@ -9,7 +9,7 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 /// Claims a JWT can make in our system
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Claims {
     /// The subject of the claims. In our case, the email address associated
     /// with the account.
