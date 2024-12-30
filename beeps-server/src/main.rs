@@ -100,6 +100,7 @@ async fn main() {
     let app = Router::new()
         // ROUTES
         .route("/api/v1/register", post(handlers::register::handler))
+        .route("/api/v1/login", post(handlers::login::handler))
         // STATE
         .with_state(state)
         // MIDDLEWARE
