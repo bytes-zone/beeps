@@ -77,6 +77,14 @@ impl From<password_hash::Error> for Error {
     }
 }
 
+#[expect(clippy::absolute_paths)]
+impl From<jsonwebtoken::errors::Error> for Error {
+    fn from(err: jsonwebtoken::errors::Error) -> Self {
+        tracing::error!(?err, "JWT error");
+        Self::Internal
+    }
+}
+
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {

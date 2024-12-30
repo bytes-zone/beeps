@@ -2,3 +2,6 @@
 
 pub mod login;
 pub mod register;
+
+#[cfg(test)]
+mod test;
