@@ -1,7 +1,28 @@
 //! A sync server for beeps.
 
-use axum::{http::header::AUTHORIZATION, response::IntoResponse, routing::get, Router};
+/// Get a database connection for a request
+mod conn;
+
+/// Common error handling
+mod error;
+
+/// Handlers for the routes the server responds to.
+mod handlers;
+
+/// JWT auth for requests
+mod jwt;
+
+/// Shared state for requests
+mod state;
+
+use crate::state::State;
+use axum::{
+    http::header::AUTHORIZATION,
+    routing::{get, post},
+    Router,
+};
 use clap::Parser;
+use sqlx::{migrate, postgres::PgPoolOptions};
 use std::{iter::once, num::ParseIntError, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{compression, decompression, limit, sensitive_headers, timeout, trace};
@@ -28,9 +49,21 @@ struct Config {
     #[clap(long, env)]
     jwt_secret: String,
 
-    /// Password to use for logging in
+    /// URL to connect to the database
     #[clap(long, env)]
-    login_password: String,
+    database_url: String,
+
+    /// The maximum amount of connections the database pool should maintain.
+    #[clap(long, env, default_value = "5")]
+    database_max_connections: u32,
+
+    /// Database connection timeout, in seconds
+    #[clap(long, env, default_value = "10", value_parser = duration_parser)]
+    database_acquire_timeout: Duration,
+
+    /// Whether or not to allow new registrations
+    #[clap(long, env)]
+    allow_registration: bool,
 }
 
 /// Parse a duration from a string
@@ -53,11 +86,28 @@ async fn main() {
         .with(fmt::layer())
         .init();
 
+    let pool = PgPoolOptions::new()
+        .max_connections(options.database_max_connections)
+        .acquire_timeout(options.database_acquire_timeout)
+        .connect(&options.database_url)
+        .await
+        .expect("can't connect to database");
+
+    migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("could not run migrations");
+
+    let state = State::new(pool, &options.jwt_secret, options.allow_registration)
+        .expect("could not initialize state");
+
     let app = Router::new()
         // ROUTES
-        .route("/", get(handler))
+        .route("/api/v1/register", post(handlers::register::handler))
+        .route("/api/v1/login", post(handlers::login::handler))
+        .route("/api/v1/whoami", get(handlers::whoami::handler))
         // STATE
-        // .with_state(state);
+        .with_state(state)
         // MIDDLEWARE
         .layer(trace::TraceLayer::new_for_http())
         .layer(compression::CompressionLayer::new())
@@ -72,9 +122,4 @@ async fn main() {
     tracing::info!(address = ?listener.local_addr(), "listening");
 
     axum::serve(listener, app).await.unwrap();
-}
-
-/// Just standing in for a real handler during setup
-async fn handler() -> impl IntoResponse {
-    "Hello, World!"
 }

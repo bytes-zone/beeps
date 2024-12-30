@@ -6,7 +6,7 @@
     {
       "name": "postgres",
       "source": "github.com/quartz-technology/daggerverse/postgres",
-      "pin": "6be53287110567fb5c9558f56189178ff0d2d390"
+      "pin": "e667507b78d9b0eda6dfc06aa072c4c6dac370a0"
     }
   ],
   "source": ".dagger"

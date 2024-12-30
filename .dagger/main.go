@@ -26,15 +26,14 @@ import (
 type Beeps struct{}
 
 // Start a postgres server
-func (m *Beeps) Postgres(init *dagger.File) *dagger.Container {
+func (m *Beeps) Postgres() *dagger.Container {
 	return dag.Postgres(
 		dag.SetSecret("postgres-user", "beeps"),
 		dag.SetSecret("postgres-password", "beeps"),
 		dagger.PostgresOpts{
-			DbPort:     5432,
-			DbName:     "beeps",
-			Cache:      true,
-			InitScript: dag.Directory().WithFile("init.sql", init),
+			DbPort: 5432,
+			DbName: "beeps",
+			Cache:  true,
 		},
 	).Database()
 }
@@ -192,7 +191,14 @@ func (m *Beeps) Test(
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("test").
+		// Database
+		WithServiceBinding("postgres", m.Postgres().AsService()).
+		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
+		WithExec([]string{"cargo", "install", "sqlx-cli", "--no-default-features", "--features=postgres"}).
+
+		// Test
 		With(userSource(source)).
+		WithExec([]string{"sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
 		WithExec([]string{"cargo", "test"})
 }
 
