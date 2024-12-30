@@ -28,15 +28,15 @@ pub struct Resp {
     email: String,
 }
 
-#[tracing::instrument(skip(req), fields(req.email = %req.email))]
+#[tracing::instrument(skip(conn, req), fields(req.email = %req.email))]
 pub async fn handler(
     Conn(mut conn): Conn,
-    State(allow_registration): State<AllowRegistration>,
+    State(AllowRegistration(allow_registration)): State<AllowRegistration>,
     Json(req): Json<Req>,
 ) -> Result<Json<Resp>, Error> {
     // Validation: don't allow any calls to this endpoint if we don't allow registration.
     bail_if!(
-        !allow_registration.0,
+        !allow_registration,
         "Registration is closed",
         StatusCode::FORBIDDEN
     );
