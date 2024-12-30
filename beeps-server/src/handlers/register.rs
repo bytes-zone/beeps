@@ -28,7 +28,7 @@ pub struct Resp {
     email: String,
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(req), fields(req.email = %req.email))]
 pub async fn handler(
     Conn(mut conn): Conn,
     State(allow_registration): State<AllowRegistration>,
