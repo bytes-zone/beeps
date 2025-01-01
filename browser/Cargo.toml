@@ -14,7 +14,7 @@ workspace = true
 
 [dependencies]
 beeps_core = { path = "../beeps_core" }
-wasm-bindgen = "0.2.84"
+wasm-bindgen = "0.2.99"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
