@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 argon2 = "0.5.3"
 axum = { version = "0.7.9", features = ["http2", "macros"] }
-axum-extra = { version = "0.9.6", features = ["typed-header"] }
+axum-extra = { version = "0.10.0", features = ["typed-header"] }
 chrono = { version = "0.4.39", features = ["serde"] }
 clap = { version = "4.5.23", features = ["derive", "env"] }
 jsonwebtoken = "9.3.0"
