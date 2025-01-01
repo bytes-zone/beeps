@@ -1,8 +1,8 @@
 use crate::error::Error;
 use axum::extract::FromRef;
+use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum::RequestPartsExt;
-use axum::{async_trait, extract::FromRequestParts};
 use axum_extra::headers::{authorization::Bearer, Authorization};
 use axum_extra::TypedHeader;
 use jsonwebtoken::{decode, DecodingKey, Validation};
@@ -46,7 +46,6 @@ impl Claims {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
     DecodingKey: FromRef<S>,
