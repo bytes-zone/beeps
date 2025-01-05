@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 (2025-01-04)
+
+Add a `/health` endpoint to the server for healthchecks in environments like Kubernetes.
+
+This release is available as a container image at `ghcr.io/bytes-zone/beeps:v0.4.2`.
+
 ## 0.4.1 (2025-01-04)
 
 Version updates for all packages. The server is now available as a container image now, too! You can find it at `ghcr.io/bytes-zone/beeps:v0.4.1`.
