@@ -111,7 +111,7 @@ func (m *Beeps) All(
 	nice := NiceOutput{}
 
 	eg.Go(func() error {
-		out, err := m.Build(ctx, source, false).Stderr(ctx)
+		out, err := m.Build(ctx, source, false, "").Stderr(ctx)
 		nice.build = out
 		return err
 	})
@@ -172,10 +172,16 @@ func (m *Beeps) Build(
 	source *dagger.Directory,
 	// +optional
 	release bool,
+	// +optional
+	binary string,
 ) *dagger.Container {
 	command := []string{"cargo", "build"}
 	if release {
 		command = append(command, "--release")
+	}
+
+	if binary != "" {
+		command = append(command, "--bin", binary)
 	}
 
 	return m.rustBase("build").
@@ -195,7 +201,7 @@ func (m *Beeps) ServerContainerImage(
 		From("bitnami/minideb:bookworm").
 		WithFile(
 			"/bin/beeps-server",
-			m.Build(ctx, source, true).
+			m.Build(ctx, source, true, "beeps-server").
 				WithExec([]string{"cp", "/target/release/beeps-server", "/beeps-server"}).
 				File("/beeps-server"),
 		).
