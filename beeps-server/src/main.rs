@@ -119,8 +119,8 @@ async fn main() {
         )))
         .layer(timeout::TimeoutLayer::new(options.request_timeout));
 
+    tracing::info!(address = options.address, "listening");
     let listener = TcpListener::bind(options.address).await.unwrap();
-    tracing::info!(address = ?listener.local_addr(), "listening");
 
     axum::serve(listener, app).await.unwrap();
 }
