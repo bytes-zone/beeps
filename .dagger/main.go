@@ -33,7 +33,7 @@ func (m *Beeps) Postgres() *dagger.Container {
 		dagger.PostgresOpts{
 			DbPort: 5432,
 			DbName: "beeps",
-			Cache:  true,
+			Cache:  false,
 		},
 	).Database()
 }
