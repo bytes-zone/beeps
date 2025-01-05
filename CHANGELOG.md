@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3 (2025-01-05)
+
+Log some helpful information on `beeps-server` startup to make operations easier.
+
+This release is available as a container image at `ghcr.io/bytes-zone/beeps:v0.4.3`.
+
 ## 0.4.2 (2025-01-04)
 
 Add a `/health` endpoint to the server for healthchecks in environments like Kubernetes.
