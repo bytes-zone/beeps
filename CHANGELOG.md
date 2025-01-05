@@ -2,7 +2,7 @@
 
 ## 0.4.1 (2025-01-04)
 
-Version updates for all packages. The server is now available as a container image now, too! You can find it at `ghcr.io/bytes-zone/beeps:0.4.1`.
+Version updates for all packages. The server is now available as a container image now, too! You can find it at `ghcr.io/bytes-zone/beeps:v0.4.1`.
 
 ## 0.4.0 (2024-12-29)
 
