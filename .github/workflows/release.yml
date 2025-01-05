@@ -23,7 +23,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   upload-docker:
-    name: dagger
     runs-on: dagger
     steps:
       - name: Checkout
@@ -39,7 +38,7 @@ jobs:
         with:
           version: "latest"
           verb: call
-          args: server-container-image publish --address ghcr.io/${{ github.repository }}/beeps:${{ github.ref_name }}
+          args: server-container-image publish --address ghcr.io/${{ github.repository }}:${{ github.ref_name }}
 
   upload-assets:
     needs: create-release
