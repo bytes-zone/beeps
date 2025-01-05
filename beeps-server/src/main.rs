@@ -103,6 +103,7 @@ async fn main() {
 
     let app = Router::new()
         // ROUTES
+        .route("/health", get(handlers::health::handler))
         .route("/api/v1/register", post(handlers::register::handler))
         .route("/api/v1/login", post(handlers::login::handler))
         .route("/api/v1/whoami", get(handlers::whoami::handler))
