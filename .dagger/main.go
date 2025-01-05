@@ -183,6 +183,26 @@ func (m *Beeps) Build(
 		WithExec(command)
 }
 
+// Build the server container image
+func (m *Beeps) ServerContainerImage(
+	ctx context.Context,
+	// +optional
+	// +defaultPath=.
+	// +ignore=["target", ".git", ".dagger"]
+	source *dagger.Directory,
+) *dagger.Container {
+	return dag.Container().
+		From("bitnami/minideb:bookworm").
+		WithFile(
+			"/bin/beeps-server",
+			m.Build(ctx, source, true).
+				WithExec([]string{"cp", "/target/release/beeps-server", "/beeps-server"}).
+				File("/beeps-server"),
+		).
+		WithEntrypoint([]string{"/bin/beeps-server"}).
+		WithExposedPort(3000)
+}
+
 // Run unit and integration tests for the project
 func (m *Beeps) Test(
 	ctx context.Context,
