@@ -23,7 +23,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   upload-docker:
-    name: dagger
     runs-on: dagger
     steps:
       - name: Checkout
