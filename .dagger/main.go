@@ -206,6 +206,7 @@ func (m *Beeps) ServerContainerImage(
 				File("/beeps-server"),
 		).
 		WithEntrypoint([]string{"/bin/beeps-server"}).
+		WithLabel("org.opencontainers.image.description", "the Beeps server").
 		WithExposedPort(3000)
 }
 
