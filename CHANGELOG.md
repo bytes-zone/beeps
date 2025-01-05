@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 (2025-01-04)
+
+Version updates for all packages. The server is now available as a container image now, too! You can find it at `ghcr.io/bytes-zone/beeps:0.4.1`.
+
 ## 0.4.0 (2024-12-29)
 
 `beeps-server` is now available. You will need to provide it with a Postgres database and some secret material for signing JWTs. Right now only email/password login is implemented (whose registration is gated by an `--allow-registration` flag), plus a "whoami" endpoint for debugging. The server is not yet integrated with the client, but that will be coming soon.
