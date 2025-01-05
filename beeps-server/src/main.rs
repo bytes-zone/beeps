@@ -86,6 +86,12 @@ async fn main() {
         .with(fmt::layer())
         .init();
 
+    tracing::info!(
+        ?options.database_max_connections,
+        ?options.database_acquire_timeout,
+        "initializing DB connection"
+    );
+
     let pool = PgPoolOptions::new()
         .max_connections(options.database_max_connections)
         .acquire_timeout(options.database_acquire_timeout)
@@ -97,6 +103,8 @@ async fn main() {
         .run(&pool)
         .await
         .expect("could not run migrations");
+
+    tracing::info!(?options.allow_registration, "registration status");
 
     let state = State::new(pool, &options.jwt_secret, options.allow_registration)
         .expect("could not initialize state");
