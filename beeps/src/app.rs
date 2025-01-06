@@ -6,7 +6,7 @@ use notify_rust::Notification;
 use ratatui::{
     prelude::*,
     widgets::{
-        Block, Borders, Cell, Clear, Paragraph, Row, Scrollbar, ScrollbarOrientation,
+        Block, Borders, Cell, Clear, Padding, Paragraph, Row, Scrollbar, ScrollbarOrientation,
         ScrollbarState, Table, TableState,
     },
     Frame,
@@ -63,7 +63,7 @@ impl App {
                 self.state = AppState::Loaded(Loaded {
                     replica,
                     table_state: TableState::new().with_selected(0),
-                    editing: None,
+                    popover: None,
                     copied: None,
                 });
                 self.status_line = Some("Loaded replica".to_owned());
@@ -177,8 +177,8 @@ struct Loaded {
     /// State of the pings table
     table_state: TableState,
 
-    /// What we're editing, and the current value.
-    editing: Option<(DateTime<Utc>, Input)>,
+    /// Modal views above the table
+    popover: Option<Popover>,
 
     /// The value that's currently copied, for copy/paste.
     copied: Option<String>,
@@ -197,7 +197,7 @@ impl Loaded {
         let mut effects = Vec::new();
         let mut exit_code = None;
 
-        match &mut self.editing {
+        match &mut self.popover {
             None => {
                 match key.code {
                     KeyCode::Char('q') => exit_code = Some(ExitCode::SUCCESS),
@@ -216,13 +216,14 @@ impl Loaded {
                         }
                     }
                     KeyCode::Char('e') | KeyCode::Enter => {
-                        self.editing = self.selected_ping().map(|ping| {
-                            (
+                        self.popover = self.selected_ping().map(|ping| {
+                            Popover::Editing(
                                 *ping,
                                 Input::new(self.replica.get_tag(ping).cloned().unwrap_or_default()),
                             )
                         });
                     }
+                    KeyCode::Char('?') | KeyCode::F(1) => self.popover = Some(Popover::Help),
                     KeyCode::Backspace | KeyCode::Delete => {
                         if let Some(idx) = self.table_state.selected() {
                             let ping = self.current_pings().nth(idx).unwrap();
@@ -234,17 +235,20 @@ impl Loaded {
                     _ => (),
                 };
             }
-            Some(editing) => match key.code {
+            Some(Popover::Help) => match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => self.popover = None,
+                _ => (),
+            },
+            Some(Popover::Editing(ping, tag_input)) => match key.code {
                 KeyCode::Enter => {
-                    let (ping, tag_input) = editing;
                     self.replica.tag_ping(*ping, tag_input.value().to_string());
 
-                    self.editing = None;
+                    self.popover = None;
                     effects.push(Effect::Save(self.replica.clone()));
                 }
-                KeyCode::Esc => self.editing = None,
+                KeyCode::Esc => self.popover = None,
                 _ => {
-                    editing.1.handle_event(&Event::Key(key));
+                    tag_input.handle_event(&Event::Key(key));
                 }
             },
         }
@@ -274,7 +278,9 @@ impl Loaded {
     /// Render the table and editing popover
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         self.render_table(frame, body_area);
-        self.render_editing_popover(body_area, frame);
+        if let Some(popover) = &mut self.popover {
+            popover.render(body_area, frame);
+        }
     }
 
     /// Render the table of pings
@@ -327,39 +333,87 @@ impl Loaded {
             &mut scroll_state,
         );
     }
+}
 
+/// States shown above the main table.
+#[derive(Debug)]
+pub enum Popover {
+    /// Show a table of keyboard shortcuts
+    Help,
+
+    /// Editing the tag for a ping
+    Editing(DateTime<Utc>, Input),
+}
+
+impl Popover {
     /// Render the editing popover
     #[expect(clippy::cast_possible_truncation)]
-    fn render_editing_popover(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
-        if let Some((ping, tag_input)) = &self.editing {
-            let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
-            let popup_horiz = Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
+    fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
+        match &self {
+            Popover::Help => {
+                let popup_vert = Layout::vertical([Constraint::Percentage(50)]).flex(Flex::Center);
+                let popup_horiz =
+                    Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
 
-            let [popup_area] = popup_vert.areas(body_area);
-            let [popup_area] = popup_horiz.areas(popup_area);
+                let [popup_area] = popup_vert.areas(body_area);
+                let [popup_area] = popup_horiz.areas(popup_area);
 
-            let width = popup_area.width - 2 - 1; // -2 for the border, -1 for the cursor
-
-            let input_scroll = tag_input.visual_scroll(width as usize);
-
-            let popup = Paragraph::new(tag_input.value())
-                .scroll((0, input_scroll as u16))
+                let popup = Table::new(
+                    [
+                        Row::new(vec!["? / F1", "Display this help"]),
+                        Row::new(vec!["j / down", "Select ping below"]),
+                        Row::new(vec!["k / up", "Select ping above"]),
+                        Row::new(vec!["e / enter", "Edit tag for selected ping"]),
+                        Row::new(vec!["c", "Copy tag for selected ping"]),
+                        Row::new(vec!["v", "Paste copied tag to selected ping"]),
+                        Row::new(vec!["q", "Quit / Close help"]),
+                        Row::new(vec!["enter (editing)", "Save tag"]),
+                        Row::new(vec!["escape (editing)", "Cancel tag edit"]),
+                    ],
+                    [Constraint::Max(16), Constraint::Fill(1)],
+                )
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title(format!("Edit tag for {}", ping.to_rfc2822())),
-                )
-                .style(Style::default().fg(Color::Blue));
+                        .title("Keyboard Shortcuts")
+                        .padding(Padding::horizontal(1))
+                        .border_style(Style::new().blue()),
+                );
 
-            frame.render_widget(Clear, popup_area);
-            frame.render_widget(popup, popup_area);
+                frame.render_widget(Clear, popup_area);
+                frame.render_widget(popup, popup_area);
+            }
+            Popover::Editing(ping, tag_input) => {
+                let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
+                let popup_horiz =
+                    Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
 
-            frame.set_cursor_position((
-                popup_area.x
-                            + (tag_input.visual_cursor().max(input_scroll) - input_scroll) as u16 // current end of text
-                            + 1, // just past the end of the text
-                popup_area.y + 1, // +1 row for the border/title
-            ));
+                let [popup_area] = popup_vert.areas(body_area);
+                let [popup_area] = popup_horiz.areas(popup_area);
+
+                let width = popup_area.width - 2 - 1; // -2 for the border, -1 for the cursor
+
+                let input_scroll = tag_input.visual_scroll(width as usize);
+
+                let popup = Paragraph::new(tag_input.value())
+                    .scroll((0, input_scroll as u16))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(format!("Edit tag for {}", ping.to_rfc2822())),
+                    )
+                    .style(Style::default().fg(Color::Blue));
+
+                frame.render_widget(Clear, popup_area);
+                frame.render_widget(popup, popup_area);
+
+                frame.set_cursor_position((
+                    popup_area.x
+                                + (tag_input.visual_cursor().max(input_scroll) - input_scroll) as u16 // current end of text
+                                + 1, // just past the end of the text
+                    popup_area.y + 1, // +1 row for the border/title
+                ));
+            }
         }
     }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.4 (Unreleased)
+
+- Shortcut listing is now available in the TUI (`?`)
+
 ## 0.4.3 (2025-01-05)
 
 Log some helpful information on `beeps-server` startup to make operations easier.
