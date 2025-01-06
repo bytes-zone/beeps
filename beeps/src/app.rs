@@ -6,7 +6,7 @@ use notify_rust::Notification;
 use ratatui::{
     prelude::*,
     widgets::{
-        Block, Borders, Cell, Clear, Paragraph, Row, Scrollbar, ScrollbarOrientation,
+        Block, Borders, Cell, Clear, Padding, Paragraph, Row, Scrollbar, ScrollbarOrientation,
         ScrollbarState, Table, TableState,
     },
     Frame,
@@ -223,6 +223,7 @@ impl Loaded {
                             )
                         });
                     }
+                    KeyCode::Char('?') | KeyCode::F(1) => self.popover = Some(Popover::Help),
                     KeyCode::Backspace | KeyCode::Delete => {
                         if let Some(idx) = self.table_state.selected() {
                             let ping = self.current_pings().nth(idx).unwrap();
@@ -234,6 +235,10 @@ impl Loaded {
                     _ => (),
                 };
             }
+            Some(Popover::Help) => match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => self.popover = None,
+                _ => (),
+            },
             Some(Popover::Editing(ping, tag_input)) => match key.code {
                 KeyCode::Enter => {
                     self.replica.tag_ping(*ping, tag_input.value().to_string());
@@ -333,6 +338,9 @@ impl Loaded {
 /// States shown above the main table.
 #[derive(Debug)]
 pub enum Popover {
+    /// Show a table of keyboard shortcuts
+    Help,
+
     /// Editing the tag for a ping
     Editing(DateTime<Utc>, Input),
 }
@@ -342,6 +350,39 @@ impl Popover {
     #[expect(clippy::cast_possible_truncation)]
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         match &self {
+            Popover::Help => {
+                let popup_vert = Layout::vertical([Constraint::Percentage(50)]).flex(Flex::Center);
+                let popup_horiz =
+                    Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
+
+                let [popup_area] = popup_vert.areas(body_area);
+                let [popup_area] = popup_horiz.areas(popup_area);
+
+                let popup = Table::new(
+                    [
+                        Row::new(vec!["? / F1", "Display this help"]),
+                        Row::new(vec!["j / down", "Select ping below"]),
+                        Row::new(vec!["k / up", "Select ping above"]),
+                        Row::new(vec!["e / enter", "Edit tag for selected ping"]),
+                        Row::new(vec!["c", "Copy tag for selected ping"]),
+                        Row::new(vec!["v", "Paste copied tag to selected ping"]),
+                        Row::new(vec!["q", "Quit / Close help"]),
+                        Row::new(vec!["enter (editing)", "Save tag"]),
+                        Row::new(vec!["escape (editing)", "Cancel tag edit"]),
+                    ],
+                    [Constraint::Max(16), Constraint::Fill(1)],
+                )
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("Keyboard Shortcuts")
+                        .padding(Padding::horizontal(1))
+                        .border_style(Style::new().blue()),
+                );
+
+                frame.render_widget(Clear, popup_area);
+                frame.render_widget(popup, popup_area);
+            }
             Popover::Editing(ping, tag_input) => {
                 let popup_vert = Layout::vertical([Constraint::Length(3)]).flex(Flex::Center);
                 let popup_horiz =
