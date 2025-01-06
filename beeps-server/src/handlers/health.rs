@@ -9,6 +9,6 @@ mod test {
 
     #[test_log::test(tokio::test)]
     async fn test_success() {
-        assert_eq!(handler().await, "OK")
+        assert_eq!(handler().await, "OK");
     }
 }

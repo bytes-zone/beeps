@@ -121,7 +121,7 @@ mod test {
         assert_eq!(
             resp,
             (StatusCode::BAD_REQUEST, BAD_LOGIN_MESSAGE.to_string())
-        )
+        );
     }
 
     #[test_log::test(sqlx::test)]
@@ -143,6 +143,6 @@ mod test {
         assert_eq!(
             resp,
             (StatusCode::BAD_REQUEST, BAD_LOGIN_MESSAGE.to_string())
-        )
+        );
     }
 }

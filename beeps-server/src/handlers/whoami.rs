@@ -21,6 +21,6 @@ mod test {
 
         let Json(resp) = handler(claims.clone()).await;
 
-        assert_eq!(resp, claims)
+        assert_eq!(resp, claims);
     }
 }

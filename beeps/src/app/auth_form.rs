@@ -63,7 +63,7 @@ impl AuthForm {
                         + (self.server.visual_cursor().max(server_input_scroll) - server_input_scroll) as u16 // current end of text
                         + 1, // just past the end of the text
                     server_area.y + 1, // +1 row for the border/title
-                ))
+                ));
             };
         }
 
@@ -88,7 +88,7 @@ impl AuthForm {
                         + (self.username.visual_cursor().max(username_input_scroll) - username_input_scroll) as u16 // current end of text
                         + 1, // just past the end of the text
                     username_area.y + 1, // +1 row for the border/title
-                ))
+                ));
             };
         }
 
@@ -113,7 +113,7 @@ impl AuthForm {
                         + (self.password.visual_cursor().max(password_input_scroll) - password_input_scroll) as u16 // current end of text
                         + 1, // just past the end of the text
                     password_area.y + 1, // +1 row for the border/title
-                ))
+                ));
             };
         }
     }

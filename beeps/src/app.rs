@@ -234,7 +234,7 @@ impl Loaded {
                         }
                     }
                     KeyCode::Char('r') => {
-                        self.popover = Some(Popover::Registering(auth_form::AuthForm::default()))
+                        self.popover = Some(Popover::Registering(auth_form::AuthForm::default()));
                     }
                     _ => (),
                 };
