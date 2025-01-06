@@ -27,6 +27,8 @@ pub struct AuthForm {
 form_fields!(Field, Server, Username, Password);
 
 impl AuthForm {
+    /// Render this form to the screen
+    #[expect(clippy::cast_possible_truncation)]
     pub fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         let popup_vert = Layout::vertical([Constraint::Length(9)]).flex(Flex::Center);
         let popup_horiz = Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
@@ -118,6 +120,9 @@ impl AuthForm {
         }
     }
 
+    /// Handle a key event, updating the internal state of the form. This
+    /// doesn't handle submission or cancellation events; it's up to the
+    /// wrapping component to do that.
     pub fn handle_event(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Tab => {
@@ -138,6 +143,8 @@ impl AuthForm {
         }
     }
 
+    /// Once you're done filling out the form, call `finish` to unwrap the
+    /// inputs into something you can use to make an HTTP request.
     pub fn finish(&self) -> AuthInfo {
         AuthInfo {
             server: self.server.to_string(),

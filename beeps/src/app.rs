@@ -1,3 +1,4 @@
+/// The form to register or log in
 mod auth_form;
 
 use crate::config::Config;
