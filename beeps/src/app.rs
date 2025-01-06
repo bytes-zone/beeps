@@ -1,4 +1,6 @@
-use crate::{config::Config, form_fields};
+mod auth_form;
+
+use crate::config::Config;
 use beeps_core::{NodeId, Replica};
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
@@ -232,12 +234,7 @@ impl Loaded {
                         }
                     }
                     KeyCode::Char('r') => {
-                        self.popover = Some(Popover::Registering {
-                            active: RegisteringField::Username,
-                            server: Input::new("https://beeps.bytes.zone".into()),
-                            username: Input::new("".into()),
-                            password: Input::new("".into()),
-                        })
+                        self.popover = Some(Popover::Registering(auth_form::AuthForm::default()))
                     }
                     _ => (),
                 };
@@ -258,29 +255,13 @@ impl Loaded {
                     tag_input.handle_event(&Event::Key(key));
                 }
             },
-            Some(Popover::Registering {
-                active,
-                server,
-                username,
-                password,
-            }) => match key.code {
+            Some(Popover::Registering(auth)) => match key.code {
                 KeyCode::Esc => self.popover = None,
                 KeyCode::Enter => {
-                    todo!("{:#?}", self.popover)
+                    effects.push(Effect::Register(auth.finish()));
+                    self.popover = None;
                 }
-                KeyCode::Tab => {
-                    *active = active.next();
-                }
-                KeyCode::BackTab => {
-                    *active = active.prev();
-                }
-                _ => {
-                    match active {
-                        RegisteringField::Server => server.handle_event(&Event::Key(key)),
-                        RegisteringField::Username => username.handle_event(&Event::Key(key)),
-                        RegisteringField::Password => password.handle_event(&Event::Key(key)),
-                    };
-                }
+                _ => auth.handle_event(key),
             },
         }
 
@@ -376,28 +357,14 @@ pub enum Popover {
     Editing(DateTime<Utc>, Input),
 
     /// Register with the server
-    Registering {
-        /// Which field we're editing
-        active: RegisteringField,
-
-        /// What server to connect to
-        server: Input,
-
-        /// Who are you?
-        username: Input,
-
-        /// What's your password?
-        password: Input,
-    },
+    Registering(auth_form::AuthForm),
 }
-
-form_fields!(RegisteringField, Server, Username, Password);
 
 impl Popover {
     /// Render the editing popover
     #[expect(clippy::cast_possible_truncation)]
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
-        match &self {
+        match self {
             Popover::Help => {
                 let popup_vert = Layout::vertical([Constraint::Percentage(50)]).flex(Flex::Center);
                 let popup_horiz =
@@ -463,102 +430,7 @@ impl Popover {
                     popup_area.y + 1, // +1 row for the border/title
                 ));
             }
-            Popover::Registering {
-                active,
-                server,
-                username,
-                password,
-            } => {
-                let popup_vert = Layout::vertical([Constraint::Length(9)]).flex(Flex::Center);
-                let popup_horiz =
-                    Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
-
-                let [popup_area] = popup_vert.areas(body_area);
-                let [popup_area] = popup_horiz.areas(popup_area);
-                frame.render_widget(Clear, popup_area);
-
-                let width = popup_area.width - 2 - 1; // -2 for the border, -1 for the cursor
-
-                let fields = Layout::vertical(Constraint::from_lengths([3, 3, 3]));
-                let [server_area, username_area, password_area] = fields.areas(popup_area);
-
-                let border_style = Style::default().fg(Color::Blue);
-
-                // SERVER
-                {
-                    let server_input_scroll = server.visual_scroll(width as usize);
-
-                    let server_field = Paragraph::new(server.value())
-                        .scroll((0, server_input_scroll as u16))
-                        .block(
-                            Block::default()
-                                .borders(Borders::ALL)
-                                .title("Server")
-                                .border_style(border_style),
-                        );
-
-                    frame.render_widget(server_field, server_area);
-
-                    if matches!(active, RegisteringField::Server) {
-                        frame.set_cursor_position((
-                            popup_area.x
-                                + (server.visual_cursor().max(server_input_scroll) - server_input_scroll) as u16 // current end of text
-                                + 1, // just past the end of the text
-                            server_area.y + 1, // +1 row for the border/title
-                        ))
-                    };
-                }
-
-                // USERNAME
-                {
-                    let username_input_scroll = username.visual_scroll(width as usize);
-
-                    let username_field = Paragraph::new(username.value())
-                        .scroll((0, username_input_scroll as u16))
-                        .block(
-                            Block::default()
-                                .borders(Borders::ALL)
-                                .title("Server")
-                                .border_style(border_style),
-                        );
-
-                    frame.render_widget(username_field, username_area);
-
-                    if matches!(active, RegisteringField::Username) {
-                        frame.set_cursor_position((
-                            popup_area.x
-                                + (username.visual_cursor().max(username_input_scroll) - username_input_scroll) as u16 // current end of text
-                                + 1, // just past the end of the text
-                            username_area.y + 1, // +1 row for the border/title
-                        ))
-                    };
-                }
-
-                // PASSWORD
-                {
-                    let password_input_scroll = password.visual_scroll(width as usize);
-
-                    let password_field = Paragraph::new("*".repeat(password.value().len()))
-                        .scroll((0, password_input_scroll as u16))
-                        .block(
-                            Block::default()
-                                .borders(Borders::ALL)
-                                .title("Server")
-                                .border_style(border_style),
-                        );
-
-                    frame.render_widget(password_field, password_area);
-
-                    if matches!(active, RegisteringField::Password) {
-                        frame.set_cursor_position((
-                            popup_area.x
-                                + (password.visual_cursor().max(password_input_scroll) - password_input_scroll) as u16 // current end of text
-                                + 1, // just past the end of the text
-                            password_area.y + 1, // +1 row for the border/title
-                        ))
-                    };
-                }
-            }
+            Popover::Registering(auth) => auth.render(body_area, frame),
         }
     }
 }
@@ -595,11 +467,7 @@ pub enum Effect {
     NotifyAboutNewPing,
 
     /// Register a new account on the server and log into it
-    Register {
-        server: String,
-        username: String,
-        password: String,
-    },
+    Register(auth_form::AuthInfo),
 }
 
 impl Effect {
@@ -651,11 +519,7 @@ impl Effect {
                 Ok(None)
             }
 
-            Self::Register {
-                server,
-                username,
-                password,
-            } => todo!(),
+            Self::Register(info) => todo!("effect handling {:#?}", info),
         }
     }
 }
