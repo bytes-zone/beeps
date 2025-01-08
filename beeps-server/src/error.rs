@@ -4,7 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use serde_json::json;
+use beeps_core::sync::error::ErrorResp;
 
 /// An error from the API
 #[derive(Debug, PartialEq)]
@@ -95,9 +95,9 @@ impl IntoResponse for Error {
             Self::Custom(status_code, message) => (status_code, message),
         };
 
-        let body = Json(json!({
-            "error": error_message,
-        }));
+        let body = Json(ErrorResp {
+            error: error_message,
+        });
 
         (status, body).into_response()
     }

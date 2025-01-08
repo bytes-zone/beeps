@@ -1,4 +1,4 @@
-use super::error::Result;
+use super::{error::Result, handle_response};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
@@ -23,15 +23,12 @@ pub struct Resp {
 pub const PATH: &str = "/api/v1/register";
 
 /// Register with the server.
+///
+/// ## Errors
+///
+/// Errors are the same as `handle_response`.
 pub async fn register(client: reqwest::Client, server: &str, req: Req) -> Result<Resp> {
     let url = Url::parse(server)?.join(PATH)?;
 
-    let resp = client
-        .post(url)
-        .json(&req)
-        .send()
-        .await?
-        .error_for_status()?;
-
-    Ok(resp.json().await?)
+    handle_response(client.post(url).json(&req)).await
 }

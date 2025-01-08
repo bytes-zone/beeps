@@ -454,7 +454,6 @@ dependencies = [
  "clap",
  "jsonwebtoken",
  "serde",
- "serde_json",
  "sqlx",
  "test-log",
  "tokio",
