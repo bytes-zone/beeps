@@ -148,7 +148,7 @@ impl AuthForm {
     pub fn finish(&self) -> AuthInfo {
         AuthInfo {
             server: self.server.to_string(),
-            username: self.username.to_string(),
+            email: self.username.to_string(),
             password: self.password.to_string(),
         }
     }
@@ -172,7 +172,7 @@ pub struct AuthInfo {
     pub server: String,
 
     /// What username to use
-    pub username: String,
+    pub email: String,
 
     /// What password to use
     pub password: String,

@@ -2,7 +2,7 @@
 mod auth_form;
 
 use crate::config::Config;
-use beeps_core::{NodeId, Replica};
+use beeps_core::{sync::register, NodeId, Replica};
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
@@ -546,18 +546,16 @@ impl Effect {
                 let mut url = Url::parse(&info.server).unwrap();
                 url.set_path("/api/v1/register");
 
-                let _resp = conn
-                    .http
-                    .post(url)
-                    .json(
-                        &(json!({
-                            "username": info.username,
-                            "password": info.password,
-                        })),
-                    )
-                    .send()
-                    .await
-                    .unwrap();
+                register(
+                    &conn.http,
+                    &info.server,
+                    &register::Req {
+                        email: info.email.clone(),
+                        password: info.password.clone(),
+                    },
+                )
+                .await
+                .unwrap();
 
                 Ok(None)
             }

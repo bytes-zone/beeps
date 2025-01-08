@@ -27,8 +27,8 @@ pub const PATH: &str = "/api/v1/register";
 /// ## Errors
 ///
 /// Errors are the same as `handle_response`.
-pub async fn register(client: reqwest::Client, server: &str, req: Req) -> Result<Resp> {
+pub async fn register(client: &reqwest::Client, server: &str, req: &Req) -> Result<Resp> {
     let url = Url::parse(server)?.join(PATH)?;
 
-    handle_response(client.post(url).json(&req)).await
+    handle_response(client.post(url).json(req)).await
 }
