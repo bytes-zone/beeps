@@ -449,6 +449,7 @@ dependencies = [
  "argon2",
  "axum",
  "axum-extra",
+ "beeps_core",
  "chrono",
  "clap",
  "jsonwebtoken",
@@ -472,7 +473,10 @@ dependencies = [
  "proptest-state-machine",
  "rand",
  "rand_pcg",
+ "reqwest",
  "serde",
+ "thiserror 2.0.9",
+ "url",
 ]
 
 [[package]]

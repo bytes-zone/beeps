@@ -8,25 +8,8 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use axum::{extract::State, Json};
-use serde::{Deserialize, Serialize};
+use beeps_core::sync::register::{Req, Resp};
 use sqlx::Acquire;
-
-/// The request to register a new account.
-#[derive(Debug, Deserialize)]
-pub struct Req {
-    /// Email to use for contact and login.
-    email: String,
-
-    /// Plaintext password to use for login.
-    password: String,
-}
-
-/// Result of registering a new account.
-#[derive(Debug, Serialize)]
-pub struct Resp {
-    /// Email that was successfully registered.
-    email: String,
-}
 
 #[tracing::instrument(skip(conn, req), fields(req.email = %req.email))]
 pub async fn handler(
