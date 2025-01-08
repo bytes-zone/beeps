@@ -18,7 +18,6 @@ use ratatui::{
     },
     Frame,
 };
-use reqwest::Url;
 use std::{io, mem, process::ExitCode, sync::Arc};
 use tokio::fs;
 use tui_input::{backend::crossterm::EventHandler, Input};
@@ -561,14 +560,20 @@ impl Effect {
     }
 }
 
+/// Problems that can happen while running an `Effect`.
 #[derive(Debug, thiserror::Error)]
 enum Problem {
+    /// We had a problem writing to disk, for example with permissions or
+    /// missing files.
     #[error("IO error: {0}")]
     IO(#[from] io::Error),
 
+    /// We had a problem loading or saving JSON.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
+    /// We had a problem communicating with the server, for example due to a bad
+    /// URL or expired credentials.
     #[error("Problem communicating with the server: {0}")]
     Server(#[from] sync::Error),
 }
