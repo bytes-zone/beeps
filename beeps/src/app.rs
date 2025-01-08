@@ -2,7 +2,10 @@
 mod auth_form;
 
 use crate::config::Config;
-use beeps_core::{sync::register, NodeId, Replica};
+use beeps_core::{
+    sync::{self, register},
+    NodeId, Replica,
+};
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
@@ -16,7 +19,6 @@ use ratatui::{
     Frame,
 };
 use reqwest::Url;
-use serde_json::json;
 use std::{io, mem, process::ExitCode, sync::Arc};
 use tokio::fs;
 use tui_input::{backend::crossterm::EventHandler, Input};
@@ -505,7 +507,7 @@ impl Effect {
         &self,
         conn: Arc<EffectConnections>,
         config: Arc<Config>,
-    ) -> Result<Option<Action>, io::Error> {
+    ) -> Result<Option<Action>, Problem> {
         match self {
             Self::Load => {
                 let store = config.data_dir().join("store.json");
@@ -543,9 +545,6 @@ impl Effect {
             }
 
             Self::Register(info) => {
-                let mut url = Url::parse(&info.server).unwrap();
-                url.set_path("/api/v1/register");
-
                 register(
                     &conn.http,
                     &info.server,
@@ -554,11 +553,22 @@ impl Effect {
                         password: info.password.clone(),
                     },
                 )
-                .await
-                .unwrap();
+                .await?;
 
                 Ok(None)
             }
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+enum Problem {
+    #[error("IO error: {0}")]
+    IO(#[from] io::Error),
+
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    #[error("Problem communicating with the server: {0}")]
+    Server(#[from] sync::Error),
 }

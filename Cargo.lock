@@ -438,6 +438,7 @@ dependencies = [
  "ratatui",
  "reqwest",
  "serde_json",
+ "thiserror 2.0.9",
  "tokio",
  "tui-input",
 ]
