@@ -9,7 +9,7 @@ mod config;
 /// `form_fields!` macro
 mod form_fields;
 
-use app::App;
+use app::{App, EffectConnections};
 use clap::Parser;
 use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
@@ -36,6 +36,8 @@ async fn main() -> io::Result<ExitCode> {
 async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::Result<ExitCode> {
     let mut app = App::new();
 
+    let conn = Arc::new(EffectConnections::new());
+
     // We expect side-effectful behaviors (that is, things like FS or network
     // access) to take place via async tasks. Once those tasks are done, we read
     // their results off of a channel. We keep track of outstanding effects so
@@ -49,6 +51,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
     // the first draw.
     outstanding_effects.push(spawn_effect_task(
         effect_tx.clone(),
+        Arc::clone(&conn),
         Arc::clone(&config),
         app.init(),
     ));
@@ -96,6 +99,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
                 // in a list.
                 outstanding_effects.push(spawn_effect_task(
                     effect_tx.clone(),
+                    Arc::clone(&conn),
                     Arc::clone(&config),
                     effect,
                 ));
@@ -130,11 +134,12 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
 /// Spawn a task to run an effect and send the next action to the app.
 fn spawn_effect_task(
     effect_tx: UnboundedSender<app::Action>,
+    state: Arc<EffectConnections>,
     config: Arc<config::Config>,
     effect: app::Effect,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        if let Some(next_action) = effect.run(config).await {
+        if let Some(next_action) = effect.run(state, config).await {
             // TODO: what do we do if the channel is closed? It probably means
             // we're shutting down and it's OK to drop messages, but we still
             // get the error.

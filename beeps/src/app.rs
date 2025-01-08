@@ -15,6 +15,8 @@ use ratatui::{
     },
     Frame,
 };
+use reqwest::Url;
+use serde_json::json;
 use std::{io, mem, process::ExitCode, sync::Arc};
 use tokio::fs;
 use tui_input::{backend::crossterm::EventHandler, Input};
@@ -455,6 +457,18 @@ pub enum Action {
     TimePassed,
 }
 
+pub struct EffectConnections {
+    http: reqwest::Client,
+}
+
+impl EffectConnections {
+    pub fn new() -> Self {
+        Self {
+            http: reqwest::Client::new(),
+        }
+    }
+}
+
 /// Things that can happen as a result of user input. Side effects!
 #[derive(Debug)]
 pub enum Effect {
@@ -474,8 +488,8 @@ pub enum Effect {
 impl Effect {
     /// Perform the side-effectful portions of this effect, returning the next
     /// `Action` the application needs to handle
-    pub async fn run(&self, config: Arc<Config>) -> Option<Action> {
-        match self.run_inner(config).await {
+    pub async fn run(&self, conn: Arc<EffectConnections>, config: Arc<Config>) -> Option<Action> {
+        match self.run_inner(conn, config).await {
             Ok(action) => action,
             Err(problem) => Some(Action::Problem(problem.to_string())),
         }
@@ -483,7 +497,11 @@ impl Effect {
 
     /// The actual implementation of `run`, but with a `Result` wrapper to make
     /// it more ergonomic to write.
-    async fn run_inner(&self, config: Arc<Config>) -> Result<Option<Action>, io::Error> {
+    async fn run_inner(
+        &self,
+        conn: Arc<EffectConnections>,
+        config: Arc<Config>,
+    ) -> Result<Option<Action>, io::Error> {
         match self {
             Self::Load => {
                 let store = config.data_dir().join("store.json");
@@ -520,7 +538,25 @@ impl Effect {
                 Ok(None)
             }
 
-            Self::Register(info) => todo!("effect handling {:#?}", info),
+            Self::Register(info) => {
+                let mut url = Url::parse(&info.server).unwrap();
+                url.set_path("/api/v1/register");
+
+                let _resp = conn
+                    .http
+                    .post(url)
+                    .json(
+                        &(json!({
+                            "username": info.username,
+                            "password": info.password,
+                        })),
+                    )
+                    .send()
+                    .await
+                    .unwrap();
+
+                Ok(None)
+            }
         }
     }
 }
