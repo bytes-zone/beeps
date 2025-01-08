@@ -457,11 +457,15 @@ pub enum Action {
     TimePassed,
 }
 
+/// Connections to external services that effect use. We keep these around to
+/// have some level of connection sharing for the app as a whole.
 pub struct EffectConnections {
+    /// an HTTP client with reqwest
     http: reqwest::Client,
 }
 
 impl EffectConnections {
+    /// Get a new `EffectConnections`
     pub fn new() -> Self {
         Self {
             http: reqwest::Client::new(),
