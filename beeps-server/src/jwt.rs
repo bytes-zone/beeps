@@ -5,6 +5,7 @@ use axum::http::request::Parts;
 use axum::RequestPartsExt;
 use axum_extra::headers::{authorization::Bearer, Authorization};
 use axum_extra::TypedHeader;
+use jsonwebtoken::EncodingKey;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
@@ -44,6 +45,22 @@ impl Claims {
     ) -> Result<Self, jsonwebtoken::errors::Error> {
         decode::<Self>(token, decoding_key, &Validation::default()).map(|data| data.claims)
     }
+}
+
+/// Issue a new JWT with the given subject and document ID
+pub fn issue(
+    encoding_key: &EncodingKey,
+    sub: &str,
+    document_id: i64,
+) -> jsonwebtoken::errors::Result<String> {
+    let claims = Claims {
+        sub: sub.to_string(),
+        iat: 0,
+        exp: (chrono::Utc::now() + chrono::Duration::days(90)).timestamp(),
+        document_id,
+    };
+
+    jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, encoding_key)
 }
 
 impl<S> FromRequestParts<S> for Claims

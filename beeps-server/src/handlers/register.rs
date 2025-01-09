@@ -1,5 +1,6 @@
 use crate::bail_if;
 use crate::error::Error;
+use crate::jwt;
 use crate::state::AllowRegistration;
 use crate::{bail, conn::Conn};
 use argon2::{
@@ -9,12 +10,14 @@ use argon2::{
 use axum::http::StatusCode;
 use axum::{extract::State, Json};
 use beeps_core::sync::register::{Req, Resp};
+use jsonwebtoken::EncodingKey;
 use sqlx::Acquire;
 
-#[tracing::instrument(skip(conn, req), fields(req.email = %req.email))]
+#[tracing::instrument(skip(conn, encoding_key, req), fields(req.email = %req.email))]
 pub async fn handler(
     Conn(mut conn): Conn,
     State(AllowRegistration(allow_registration)): State<AllowRegistration>,
+    State(encoding_key): State<EncodingKey>,
     Json(req): Json<Req>,
 ) -> Result<Json<Resp>, Error> {
     // Validation: don't allow any calls to this endpoint if we don't allow registration.
@@ -55,13 +58,29 @@ pub async fn handler(
 
     tx.commit().await?;
 
-    Ok(Json(Resp { email: req.email }))
+    Ok(Json(Resp {
+        jwt: jwt::issue(
+            &encoding_key,
+            &req.email,
+            0, // TODO
+        )?,
+    }))
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::jwt::Claims;
+    use jsonwebtoken::{DecodingKey, Validation};
     use sqlx::{pool::PoolConnection, query, Postgres};
+
+    fn encoding_key() -> EncodingKey {
+        EncodingKey::from_secret(b"secret".as_ref())
+    }
+
+    fn decoding_key() -> DecodingKey {
+        DecodingKey::from_secret(b"secret".as_ref())
+    }
 
     #[test_log::test(sqlx::test)]
     async fn test_success(conn: PoolConnection<Postgres>) {
@@ -72,11 +91,20 @@ mod test {
             password: "test".to_string(),
         };
 
-        let res = handler(Conn(conn), State(AllowRegistration(true)), Json(req))
-            .await
-            .unwrap();
+        let resp = handler(
+            Conn(conn),
+            State(AllowRegistration(true)),
+            State(encoding_key()),
+            Json(req),
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(res.email, email);
+        let token =
+            jsonwebtoken::decode::<Claims>(&resp.jwt, &decoding_key(), &Validation::default())
+                .unwrap();
+
+        assert_eq!(token.claims.sub, email);
     }
 
     #[test_log::test(sqlx::test)]
@@ -94,10 +122,15 @@ mod test {
             password: "test".to_string(),
         };
 
-        let res = handler(Conn(conn), State(AllowRegistration(true)), Json(req))
-            .await
-            .unwrap_err()
-            .unwrap_custom();
+        let res = handler(
+            Conn(conn),
+            State(AllowRegistration(true)),
+            State(encoding_key()),
+            Json(req),
+        )
+        .await
+        .unwrap_err()
+        .unwrap_custom();
 
         assert_eq!(
             res,
@@ -115,10 +148,15 @@ mod test {
             password: "test".to_string(),
         };
 
-        let res = handler(Conn(conn), State(AllowRegistration(false)), Json(req))
-            .await
-            .unwrap_err()
-            .unwrap_custom();
+        let res = handler(
+            Conn(conn),
+            State(AllowRegistration(false)),
+            State(encoding_key()),
+            Json(req),
+        )
+        .await
+        .unwrap_err()
+        .unwrap_custom();
 
         assert_eq!(
             res,

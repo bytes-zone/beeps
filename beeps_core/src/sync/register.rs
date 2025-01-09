@@ -15,8 +15,8 @@ pub struct Req {
 /// Result of registering a new account.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Resp {
-    /// Email that was successfully registered.
-    pub email: String,
+    /// JWT to use for future requests.
+    pub jwt: String,
 }
 
 /// Where the register endpoint lives.
