@@ -61,6 +61,7 @@ pub async fn handler(
 mod test {
     use axum::http::StatusCode;
     use jsonwebtoken::{DecodingKey, Validation};
+    use jwt::Claims;
     use sqlx::{pool::PoolConnection, Postgres};
 
     use crate::handlers::test::TestDoc;
