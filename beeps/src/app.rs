@@ -72,16 +72,19 @@ impl App {
                     popover: None,
                     copied: None,
                 });
+                tracing::info!("loaded replica");
                 self.status_line = Some("Loaded replica".to_owned());
 
                 vec![]
             }
             Action::SavedReplica => {
+                tracing::info!("saved replica");
                 self.status_line = Some("Saved replica".to_owned());
 
                 vec![]
             }
             Action::SavedSyncClientAuth => {
+                tracing::info!("saved auth");
                 self.status_line = Some("Saved auth".to_owned());
 
                 vec![]
@@ -94,6 +97,7 @@ impl App {
                 self.state.handle_key(key)
             }
             Action::Problem(problem) => {
+                tracing::info!(?problem, "displaying a problem");
                 self.status_line = Some(problem.clone());
 
                 vec![]
@@ -318,6 +322,7 @@ impl Loaded {
     /// Handle time passing
     fn handle_time_passed(&mut self) -> Vec<Effect> {
         if self.replica.schedule_pings() {
+            tracing::debug!("handling new ping(s)");
             vec![
                 Effect::NotifyAboutNewPing,
                 Effect::SaveReplica(self.replica.clone()),
@@ -330,10 +335,14 @@ impl Loaded {
     /// Handle logging in
     fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
         if let Some(client) = &mut self.client {
+            tracing::debug!("setting JWT for existing client");
             client.auth = Some(jwt);
 
             vec![Effect::SaveSyncClientAuth(client.clone())]
         } else {
+            tracing::error!(
+                "got a JWT when I didn't have a client to go with it. What's going on?"
+            );
             vec![]
         }
     }
@@ -552,7 +561,10 @@ impl Effect {
     pub async fn run(&self, conn: Arc<EffectConnections>, config: Arc<Config>) -> Option<Action> {
         match self.run_inner(conn, config).await {
             Ok(action) => action,
-            Err(problem) => Some(Action::Problem(problem.to_string())),
+            Err(problem) => {
+                tracing::error!(?problem, "problem running effect");
+                Some(Action::Problem(problem.to_string()))
+            }
         }
     }
 
@@ -565,6 +577,8 @@ impl Effect {
     ) -> Result<Option<Action>, Problem> {
         match self {
             Self::Load => {
+                tracing::info!("loading");
+
                 let auth_path = config.data_dir().join("auth.json");
                 let auth: Option<Client> = if fs::try_exists(&auth_path).await? {
                     let data = fs::read(&auth_path).await?;
@@ -573,13 +587,19 @@ impl Effect {
                     None
                 };
 
+                tracing::debug!(found = auth.is_some(), "tried to load client auth");
+
                 let store_path = config.data_dir().join("store.json");
                 if fs::try_exists(&store_path).await? {
+                    tracing::debug!(found = true, "tried to load store");
+
                     let data = fs::read(&store_path).await?;
                     let replica: Replica = serde_json::from_slice(&data)?;
 
                     Ok(Some(Action::LoadedReplica(replica, auth)))
                 } else {
+                    tracing::debug!(found = false, "tried to load store");
+
                     Ok(Some(Action::LoadedReplica(
                         Replica::new(NodeId::random()),
                         auth,
@@ -588,6 +608,8 @@ impl Effect {
             }
 
             Self::SaveReplica(replica) => {
+                tracing::debug!("saving replica");
+
                 let base = config.data_dir();
                 fs::create_dir_all(&base).await?;
 
@@ -600,6 +622,8 @@ impl Effect {
             }
 
             Self::SaveSyncClientAuth(client) => {
+                tracing::info!("saving client auth");
+
                 let base = config.data_dir();
                 fs::create_dir_all(&base).await?;
 
@@ -612,6 +636,8 @@ impl Effect {
             }
 
             Self::NotifyAboutNewPing => {
+                tracing::debug!("notifying about new ping");
+
                 // We don't care if the notification failed to show.
                 let _ = Notification::new()
                     .summary("New ping!")
@@ -622,6 +648,8 @@ impl Effect {
             }
 
             Self::Register(client, req) => {
+                tracing::info!("registering");
+
                 let resp = client.register(&conn.http, req).await?;
 
                 Ok(Some(Action::LoggedIn(resp.jwt)))

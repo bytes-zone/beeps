@@ -131,6 +131,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
         // outstanding effects to finish (e.g. so we can persist final state to
         // disk) before exiting the loop with the exit code from the app.
         if let Some(code) = app.should_exit() {
+            tracing::info!(outstanding_effects = outstanding_effects.len(), "quitting");
             for effect in outstanding_effects.drain(..) {
                 // we should do something with the results here. No need to
                 // ignore failures just because we're exiting.
