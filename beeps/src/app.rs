@@ -136,8 +136,8 @@ impl AppState {
         match self {
             Self::Unloaded => self.handle_key_unloaded(key),
             Self::Loaded(loaded) => {
-                let (effects, exit_code) = loaded.handle_key(key);
-                exit_code.map(|code| self.quit(code));
+                let (mut effects, exit_code) = loaded.handle_key(key);
+                exit_code.map(|code| effects.append(&mut self.quit(code)));
 
                 effects
             }
