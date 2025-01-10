@@ -294,15 +294,17 @@ impl Loaded {
                 KeyCode::Esc => self.popover = None,
                 KeyCode::Enter => {
                     let finished = auth.finish();
+                    let client = Client::new(finished.server);
 
                     effects.push(Effect::Register(
-                        Client::new(finished.server),
+                        client.clone(),
                         register::Req {
                             email: finished.email,
                             password: finished.password,
                         },
                     ));
 
+                    self.client = Some(client);
                     self.popover = None;
                 }
                 _ => auth.handle_event(key),
