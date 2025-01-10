@@ -78,7 +78,7 @@ impl AuthForm {
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title("Server")
+                        .title("Email")
                         .border_style(border_style),
                 );
 
@@ -103,7 +103,7 @@ impl AuthForm {
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title("Server")
+                        .title("Password")
                         .border_style(border_style),
                 );
 
