@@ -3,7 +3,7 @@ mod auth_form;
 
 use crate::config::Config;
 use beeps_core::{
-    sync::{self, register},
+    sync::{self, register, Client},
     NodeId, Replica,
 };
 use chrono::{DateTime, Local, Utc};
@@ -64,9 +64,10 @@ impl App {
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
     pub fn handle(&mut self, action: Action) -> Vec<Effect> {
         match action {
-            Action::LoadedReplica(replica) => {
+            Action::LoadedReplica(replica, client) => {
                 self.state = AppState::Loaded(Loaded {
                     replica,
+                    client,
                     table_state: TableState::new().with_selected(0),
                     popover: None,
                     copied: None,
@@ -75,8 +76,13 @@ impl App {
 
                 vec![]
             }
-            Action::Saved => {
+            Action::SavedReplica => {
                 self.status_line = Some("Saved replica".to_owned());
+
+                vec![]
+            }
+            Action::SavedSyncClientAuth => {
+                self.status_line = Some("Saved auth".to_owned());
 
                 vec![]
             }
@@ -93,6 +99,7 @@ impl App {
                 vec![]
             }
             Action::TimePassed => self.state.handle_time_passed(),
+            Action::LoggedIn(jwt) => self.state.handle_logged_in(jwt),
         }
     }
 
@@ -151,13 +158,30 @@ impl AppState {
         }
     }
 
+    /// Handle logging in successfully
+    fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
+        match self {
+            AppState::Loaded(loaded) => loaded.handle_logged_in(jwt),
+            _ => vec![],
+        }
+    }
+
     /// Start cleaning up and move into the exiting state.
     fn quit(&mut self, exit_code: ExitCode) -> Vec<Effect> {
         let pre_quit_state = mem::replace(self, Self::Exiting(exit_code));
 
         match pre_quit_state {
-            AppState::Loaded(Loaded { replica, .. }) => {
-                vec![Effect::Save(replica)]
+            AppState::Loaded(Loaded {
+                replica, client, ..
+            }) => {
+                let mut effects = Vec::with_capacity(2);
+
+                effects.push(Effect::SaveReplica(replica));
+                if let Some(client) = client {
+                    effects.push(Effect::SaveSyncClientAuth(client));
+                }
+
+                effects
             }
             _ => vec![],
         }
@@ -187,6 +211,9 @@ struct Loaded {
 
     /// The value that's currently copied, for copy/paste.
     copied: Option<String>,
+
+    /// Sync client info
+    client: Option<Client>,
 }
 
 impl Loaded {
@@ -217,7 +244,7 @@ impl Loaded {
                         if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
                             self.replica.tag_ping(*ping, tag.clone());
 
-                            effects.push(Effect::Save(self.replica.clone()));
+                            effects.push(Effect::SaveReplica(self.replica.clone()));
                         }
                     }
                     KeyCode::Char('e') | KeyCode::Enter => {
@@ -234,7 +261,7 @@ impl Loaded {
                             let ping = self.current_pings().nth(idx).unwrap();
                             self.replica.untag_ping(*ping);
 
-                            effects.push(Effect::Save(self.replica.clone()));
+                            effects.push(Effect::SaveReplica(self.replica.clone()));
                         }
                     }
                     KeyCode::Char('r') => {
@@ -252,7 +279,7 @@ impl Loaded {
                     self.replica.tag_ping(*ping, tag_input.value().to_string());
 
                     self.popover = None;
-                    effects.push(Effect::Save(self.replica.clone()));
+                    effects.push(Effect::SaveReplica(self.replica.clone()));
                 }
                 KeyCode::Esc => self.popover = None,
                 _ => {
@@ -262,7 +289,16 @@ impl Loaded {
             Some(Popover::Registering(auth)) => match key.code {
                 KeyCode::Esc => self.popover = None,
                 KeyCode::Enter => {
-                    effects.push(Effect::Register(auth.finish()));
+                    let finished = auth.finish();
+
+                    effects.push(Effect::Register(
+                        Client::new(finished.server),
+                        register::Req {
+                            email: finished.email,
+                            password: finished.password,
+                        },
+                    ));
+
                     self.popover = None;
                 }
                 _ => auth.handle_event(key),
@@ -284,8 +320,19 @@ impl Loaded {
         if self.replica.schedule_pings() {
             vec![
                 Effect::NotifyAboutNewPing,
-                Effect::Save(self.replica.clone()),
+                Effect::SaveReplica(self.replica.clone()),
             ]
+        } else {
+            vec![]
+        }
+    }
+
+    /// Handle logging in
+    fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
+        if let Some(client) = &mut self.client {
+            client.auth = Some(jwt);
+
+            vec![Effect::SaveSyncClientAuth(client.clone())]
         } else {
             vec![]
         }
@@ -443,10 +490,16 @@ impl Popover {
 #[derive(Debug)]
 pub enum Action {
     /// We loaded replica data from disk
-    LoadedReplica(Replica),
+    LoadedReplica(Replica, Option<Client>),
 
     /// We successfully saved the replica
-    Saved,
+    SavedReplica,
+
+    /// We successfully saved the sync client
+    SavedSyncClientAuth,
+
+    /// We logged in successfully and got a new JWT
+    LoggedIn(String),
 
     /// The user did something on the keyboard
     Key(KeyEvent),
@@ -481,13 +534,16 @@ pub enum Effect {
     Load,
 
     /// Save replica to disk
-    Save(Replica),
+    SaveReplica(Replica),
+
+    /// Save sync client auth to disk
+    SaveSyncClientAuth(Client),
 
     /// Notify that a new ping is available
     NotifyAboutNewPing,
 
     /// Register a new account on the server and log into it
-    Register(auth_form::AuthInfo),
+    Register(Client, register::Req),
 }
 
 impl Effect {
@@ -509,19 +565,29 @@ impl Effect {
     ) -> Result<Option<Action>, Problem> {
         match self {
             Self::Load => {
-                let store = config.data_dir().join("store.json");
+                let auth_path = config.data_dir().join("auth.json");
+                let auth: Option<Client> = if fs::try_exists(&auth_path).await? {
+                    let data = fs::read(&auth_path).await?;
+                    Some(serde_json::from_slice(&data)?)
+                } else {
+                    None
+                };
 
-                if fs::try_exists(&store).await? {
-                    let data = fs::read(&store).await?;
+                let store_path = config.data_dir().join("store.json");
+                if fs::try_exists(&store_path).await? {
+                    let data = fs::read(&store_path).await?;
                     let replica: Replica = serde_json::from_slice(&data)?;
 
-                    Ok(Some(Action::LoadedReplica(replica)))
+                    Ok(Some(Action::LoadedReplica(replica, auth)))
                 } else {
-                    Ok(Some(Action::LoadedReplica(Replica::new(NodeId::random()))))
+                    Ok(Some(Action::LoadedReplica(
+                        Replica::new(NodeId::random()),
+                        auth,
+                    )))
                 }
             }
 
-            Self::Save(replica) => {
+            Self::SaveReplica(replica) => {
                 let base = config.data_dir();
                 fs::create_dir_all(&base).await?;
 
@@ -530,7 +596,19 @@ impl Effect {
                 let data = serde_json::to_vec(replica)?;
                 fs::write(&store, &data).await?;
 
-                Ok(Some(Action::Saved))
+                Ok(Some(Action::SavedReplica))
+            }
+
+            Self::SaveSyncClientAuth(client) => {
+                let base = config.data_dir();
+                fs::create_dir_all(&base).await?;
+
+                let store = base.join("auth.json");
+
+                let data = serde_json::to_vec(client)?;
+                fs::write(&store, &data).await?;
+
+                Ok(Some(Action::SavedSyncClientAuth))
             }
 
             Self::NotifyAboutNewPing => {
@@ -543,18 +621,10 @@ impl Effect {
                 Ok(None)
             }
 
-            Self::Register(info) => {
-                register(
-                    &conn.http,
-                    &info.server,
-                    &register::Req {
-                        email: info.email.clone(),
-                        password: info.password.clone(),
-                    },
-                )
-                .await?;
+            Self::Register(client, req) => {
+                let resp = client.register(&conn.http, req).await?;
 
-                Ok(None)
+                Ok(Some(Action::LoggedIn(resp.jwt)))
             }
         }
     }
