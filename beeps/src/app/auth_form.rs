@@ -18,13 +18,13 @@ pub struct AuthForm {
     server: Input,
 
     /// Who are you?
-    username: Input,
+    email: Input,
 
     /// What's your password? (Will be masked)
     password: Input,
 }
 
-form_fields!(Field, Server, Username, Password);
+form_fields!(Field, Server, Email, Password);
 
 impl AuthForm {
     /// Render this form to the screen
@@ -40,7 +40,7 @@ impl AuthForm {
         let width = popup_area.width - 2 - 1; // -2 for the border, -1 for the cursor
 
         let fields = Layout::vertical(Constraint::from_lengths([3, 3, 3]));
-        let [server_area, username_area, password_area] = fields.areas(popup_area);
+        let [server_area, email_area, password_area] = fields.areas(popup_area);
 
         let border_style = Style::default().fg(Color::Blue);
 
@@ -69,12 +69,12 @@ impl AuthForm {
             };
         }
 
-        // USERNAME
+        // EMAIL
         {
-            let username_input_scroll = self.username.visual_scroll(width as usize);
+            let email_input_scroll = self.email.visual_scroll(width as usize);
 
-            let username_field = Paragraph::new(self.username.value())
-                .scroll((0, username_input_scroll as u16))
+            let email_field = Paragraph::new(self.email.value())
+                .scroll((0, email_input_scroll as u16))
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
@@ -82,14 +82,14 @@ impl AuthForm {
                         .border_style(border_style),
                 );
 
-            frame.render_widget(username_field, username_area);
+            frame.render_widget(email_field, email_area);
 
-            if matches!(self.active, Field::Username) {
+            if matches!(self.active, Field::Email) {
                 frame.set_cursor_position((
                     popup_area.x
-                        + (self.username.visual_cursor().max(username_input_scroll) - username_input_scroll) as u16 // current end of text
+                        + (self.email.visual_cursor().max(email_input_scroll) - email_input_scroll) as u16 // current end of text
                         + 1, // just past the end of the text
-                    username_area.y + 1, // +1 row for the border/title
+                    email_area.y + 1, // +1 row for the border/title
                 ));
             };
         }
@@ -136,7 +136,7 @@ impl AuthForm {
 
                 match self.active {
                     Field::Server => self.server.handle_event(&event),
-                    Field::Username => self.username.handle_event(&event),
+                    Field::Email => self.email.handle_event(&event),
                     Field::Password => self.password.handle_event(&event),
                 };
             }
@@ -148,7 +148,7 @@ impl AuthForm {
     pub fn finish(&self) -> AuthInfo {
         AuthInfo {
             server: self.server.to_string(),
-            email: self.username.to_string(),
+            email: self.email.to_string(),
             password: self.password.to_string(),
         }
     }
@@ -157,9 +157,9 @@ impl AuthForm {
 impl Default for AuthForm {
     fn default() -> Self {
         Self {
-            active: Field::Username,
+            active: Field::Email,
             server: Input::new("https://beeps.bytes.zone".into()),
-            username: Input::new(String::new()),
+            email: Input::new(String::new()),
             password: Input::new(String::new()),
         }
     }
