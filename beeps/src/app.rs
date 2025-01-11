@@ -1,4 +1,11 @@
-use beeps_core::{NodeId, Replica};
+/// The form to register or log in
+mod auth_form;
+
+use crate::config::Config;
+use beeps_core::{
+    sync::{self, register, Client},
+    NodeId, Replica,
+};
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
@@ -14,8 +21,6 @@ use ratatui::{
 use std::{io, mem, process::ExitCode, sync::Arc};
 use tokio::fs;
 use tui_input::{backend::crossterm::EventHandler, Input};
-
-use crate::config::Config;
 
 /// The "functional core" of the app.
 pub struct App {
@@ -59,19 +64,28 @@ impl App {
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
     pub fn handle(&mut self, action: Action) -> Vec<Effect> {
         match action {
-            Action::LoadedReplica(replica) => {
+            Action::LoadedReplica(replica, client) => {
                 self.state = AppState::Loaded(Loaded {
                     replica,
+                    client,
                     table_state: TableState::new().with_selected(0),
                     popover: None,
                     copied: None,
                 });
+                tracing::info!("loaded replica");
                 self.status_line = Some("Loaded replica".to_owned());
 
                 vec![]
             }
-            Action::Saved => {
+            Action::SavedReplica => {
+                tracing::info!("saved replica");
                 self.status_line = Some("Saved replica".to_owned());
+
+                vec![]
+            }
+            Action::SavedSyncClientAuth => {
+                tracing::info!("saved auth");
+                self.status_line = Some("Saved auth".to_owned());
 
                 vec![]
             }
@@ -83,11 +97,13 @@ impl App {
                 self.state.handle_key(key)
             }
             Action::Problem(problem) => {
+                tracing::info!(?problem, "displaying a problem");
                 self.status_line = Some(problem.clone());
 
                 vec![]
             }
             Action::TimePassed => self.state.handle_time_passed(),
+            Action::LoggedIn(jwt) => self.state.handle_logged_in(jwt),
         }
     }
 
@@ -120,8 +136,10 @@ impl AppState {
         match self {
             Self::Unloaded => self.handle_key_unloaded(key),
             Self::Loaded(loaded) => {
-                let (effects, exit_code) = loaded.handle_key(key);
-                exit_code.map(|code| self.quit(code));
+                let (mut effects, exit_code) = loaded.handle_key(key);
+                if let Some(exit_code) = exit_code {
+                    effects.append(&mut self.quit(exit_code));
+                }
 
                 effects
             }
@@ -146,13 +164,30 @@ impl AppState {
         }
     }
 
+    /// Handle logging in successfully
+    fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
+        match self {
+            AppState::Loaded(loaded) => loaded.handle_logged_in(jwt),
+            _ => vec![],
+        }
+    }
+
     /// Start cleaning up and move into the exiting state.
     fn quit(&mut self, exit_code: ExitCode) -> Vec<Effect> {
         let pre_quit_state = mem::replace(self, Self::Exiting(exit_code));
 
         match pre_quit_state {
-            AppState::Loaded(Loaded { replica, .. }) => {
-                vec![Effect::Save(replica)]
+            AppState::Loaded(Loaded {
+                replica, client, ..
+            }) => {
+                let mut effects = Vec::with_capacity(2);
+
+                effects.push(Effect::SaveReplica(replica));
+                if let Some(client) = client {
+                    effects.push(Effect::SaveSyncClientAuth(client));
+                }
+
+                effects
             }
             _ => vec![],
         }
@@ -182,6 +217,9 @@ struct Loaded {
 
     /// The value that's currently copied, for copy/paste.
     copied: Option<String>,
+
+    /// Sync client info
+    client: Option<Client>,
 }
 
 impl Loaded {
@@ -212,7 +250,7 @@ impl Loaded {
                         if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
                             self.replica.tag_ping(*ping, tag.clone());
 
-                            effects.push(Effect::Save(self.replica.clone()));
+                            effects.push(Effect::SaveReplica(self.replica.clone()));
                         }
                     }
                     KeyCode::Char('e') | KeyCode::Enter => {
@@ -229,8 +267,11 @@ impl Loaded {
                             let ping = self.current_pings().nth(idx).unwrap();
                             self.replica.untag_ping(*ping);
 
-                            effects.push(Effect::Save(self.replica.clone()));
+                            effects.push(Effect::SaveReplica(self.replica.clone()));
                         }
+                    }
+                    KeyCode::Char('r') => {
+                        self.popover = Some(Popover::Registering(auth_form::AuthForm::default()));
                     }
                     _ => (),
                 };
@@ -244,12 +285,31 @@ impl Loaded {
                     self.replica.tag_ping(*ping, tag_input.value().to_string());
 
                     self.popover = None;
-                    effects.push(Effect::Save(self.replica.clone()));
+                    effects.push(Effect::SaveReplica(self.replica.clone()));
                 }
                 KeyCode::Esc => self.popover = None,
                 _ => {
                     tag_input.handle_event(&Event::Key(key));
                 }
+            },
+            Some(Popover::Registering(auth)) => match key.code {
+                KeyCode::Esc => self.popover = None,
+                KeyCode::Enter => {
+                    let finished = auth.finish();
+                    let client = Client::new(finished.server);
+
+                    effects.push(Effect::Register(
+                        client.clone(),
+                        register::Req {
+                            email: finished.email,
+                            password: finished.password,
+                        },
+                    ));
+
+                    self.client = Some(client);
+                    self.popover = None;
+                }
+                _ => auth.handle_event(key),
             },
         }
 
@@ -266,11 +326,27 @@ impl Loaded {
     /// Handle time passing
     fn handle_time_passed(&mut self) -> Vec<Effect> {
         if self.replica.schedule_pings() {
+            tracing::debug!("handling new ping(s)");
             vec![
                 Effect::NotifyAboutNewPing,
-                Effect::Save(self.replica.clone()),
+                Effect::SaveReplica(self.replica.clone()),
             ]
         } else {
+            vec![]
+        }
+    }
+
+    /// Handle logging in
+    fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
+        if let Some(client) = &mut self.client {
+            tracing::debug!("setting JWT for existing client");
+            client.auth = Some(jwt);
+
+            vec![Effect::SaveSyncClientAuth(client.clone())]
+        } else {
+            tracing::error!(
+                "got a JWT when I didn't have a client to go with it. What's going on?"
+            );
             vec![]
         }
     }
@@ -343,13 +419,16 @@ pub enum Popover {
 
     /// Editing the tag for a ping
     Editing(DateTime<Utc>, Input),
+
+    /// Register with the server
+    Registering(auth_form::AuthForm),
 }
 
 impl Popover {
     /// Render the editing popover
     #[expect(clippy::cast_possible_truncation)]
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
-        match &self {
+        match self {
             Popover::Help => {
                 let popup_vert = Layout::vertical([Constraint::Percentage(50)]).flex(Flex::Center);
                 let popup_horiz =
@@ -367,8 +446,9 @@ impl Popover {
                         Row::new(vec!["c", "Copy tag for selected ping"]),
                         Row::new(vec!["v", "Paste copied tag to selected ping"]),
                         Row::new(vec!["q", "Quit / Close help"]),
-                        Row::new(vec!["enter (editing)", "Save tag"]),
-                        Row::new(vec!["escape (editing)", "Cancel tag edit"]),
+                        Row::new(vec!["r", "Register a new account with the server"]),
+                        Row::new(vec!["enter (editing)", "Save"]),
+                        Row::new(vec!["escape (editing)", "Cancel"]),
                     ],
                     [Constraint::Max(16), Constraint::Fill(1)],
                 )
@@ -414,6 +494,7 @@ impl Popover {
                     popup_area.y + 1, // +1 row for the border/title
                 ));
             }
+            Popover::Registering(auth) => auth.render(body_area, frame),
         }
     }
 }
@@ -422,10 +503,16 @@ impl Popover {
 #[derive(Debug)]
 pub enum Action {
     /// We loaded replica data from disk
-    LoadedReplica(Replica),
+    LoadedReplica(Replica, Option<Client>),
 
     /// We successfully saved the replica
-    Saved,
+    SavedReplica,
+
+    /// We successfully saved the sync client
+    SavedSyncClientAuth,
+
+    /// We logged in successfully and got a new JWT
+    LoggedIn(String),
 
     /// The user did something on the keyboard
     Key(KeyEvent),
@@ -437,6 +524,22 @@ pub enum Action {
     TimePassed,
 }
 
+/// Connections to external services that effect use. We keep these around to
+/// have some level of connection sharing for the app as a whole.
+pub struct EffectConnections {
+    /// an HTTP client with reqwest
+    http: reqwest::Client,
+}
+
+impl EffectConnections {
+    /// Get a new `EffectConnections`
+    pub fn new() -> Self {
+        Self {
+            http: reqwest::Client::new(),
+        }
+    }
+}
+
 /// Things that can happen as a result of user input. Side effects!
 #[derive(Debug)]
 pub enum Effect {
@@ -444,40 +547,73 @@ pub enum Effect {
     Load,
 
     /// Save replica to disk
-    Save(Replica),
+    SaveReplica(Replica),
+
+    /// Save sync client auth to disk
+    SaveSyncClientAuth(Client),
 
     /// Notify that a new ping is available
     NotifyAboutNewPing,
+
+    /// Register a new account on the server and log into it
+    Register(Client, register::Req),
 }
 
 impl Effect {
     /// Perform the side-effectful portions of this effect, returning the next
     /// `Action` the application needs to handle
-    pub async fn run(&self, config: Arc<Config>) -> Option<Action> {
-        match self.run_inner(config).await {
+    pub async fn run(&self, conn: Arc<EffectConnections>, config: Arc<Config>) -> Option<Action> {
+        match self.run_inner(conn, config).await {
             Ok(action) => action,
-            Err(problem) => Some(Action::Problem(problem.to_string())),
+            Err(problem) => {
+                tracing::error!(?problem, "problem running effect");
+                Some(Action::Problem(problem.to_string()))
+            }
         }
     }
 
     /// The actual implementation of `run`, but with a `Result` wrapper to make
     /// it more ergonomic to write.
-    async fn run_inner(&self, config: Arc<Config>) -> Result<Option<Action>, io::Error> {
+    async fn run_inner(
+        &self,
+        conn: Arc<EffectConnections>,
+        config: Arc<Config>,
+    ) -> Result<Option<Action>, Problem> {
         match self {
             Self::Load => {
-                let store = config.data_dir().join("store.json");
+                tracing::info!("loading");
 
-                if fs::try_exists(&store).await? {
-                    let data = fs::read(&store).await?;
+                let auth_path = config.data_dir().join("auth.json");
+                let auth: Option<Client> = if fs::try_exists(&auth_path).await? {
+                    let data = fs::read(&auth_path).await?;
+                    Some(serde_json::from_slice(&data)?)
+                } else {
+                    None
+                };
+
+                tracing::debug!(found = auth.is_some(), "tried to load client auth");
+
+                let store_path = config.data_dir().join("store.json");
+                if fs::try_exists(&store_path).await? {
+                    tracing::debug!(found = true, "tried to load store");
+
+                    let data = fs::read(&store_path).await?;
                     let replica: Replica = serde_json::from_slice(&data)?;
 
-                    Ok(Some(Action::LoadedReplica(replica)))
+                    Ok(Some(Action::LoadedReplica(replica, auth)))
                 } else {
-                    Ok(Some(Action::LoadedReplica(Replica::new(NodeId::random()))))
+                    tracing::debug!(found = false, "tried to load store");
+
+                    Ok(Some(Action::LoadedReplica(
+                        Replica::new(NodeId::random()),
+                        auth,
+                    )))
                 }
             }
 
-            Self::Save(replica) => {
+            Self::SaveReplica(replica) => {
+                tracing::debug!("saving replica");
+
                 let base = config.data_dir();
                 fs::create_dir_all(&base).await?;
 
@@ -486,10 +622,26 @@ impl Effect {
                 let data = serde_json::to_vec(replica)?;
                 fs::write(&store, &data).await?;
 
-                Ok(Some(Action::Saved))
+                Ok(Some(Action::SavedReplica))
+            }
+
+            Self::SaveSyncClientAuth(client) => {
+                tracing::info!("saving client auth");
+
+                let base = config.data_dir();
+                fs::create_dir_all(&base).await?;
+
+                let store = base.join("auth.json");
+
+                let data = serde_json::to_vec(client)?;
+                fs::write(&store, &data).await?;
+
+                Ok(Some(Action::SavedSyncClientAuth))
             }
 
             Self::NotifyAboutNewPing => {
+                tracing::debug!("notifying about new ping");
+
                 // We don't care if the notification failed to show.
                 let _ = Notification::new()
                     .summary("New ping!")
@@ -498,6 +650,32 @@ impl Effect {
 
                 Ok(None)
             }
+
+            Self::Register(client, req) => {
+                tracing::info!("registering");
+
+                let resp = client.register(&conn.http, req).await?;
+
+                Ok(Some(Action::LoggedIn(resp.jwt)))
+            }
         }
     }
+}
+
+/// Problems that can happen while running an `Effect`.
+#[derive(Debug, thiserror::Error)]
+enum Problem {
+    /// We had a problem writing to disk, for example with permissions or
+    /// missing files.
+    #[error("IO error: {0}")]
+    IO(#[from] io::Error),
+
+    /// We had a problem loading or saving JSON.
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    /// We had a problem communicating with the server, for example due to a bad
+    /// URL or expired credentials.
+    #[error("Problem communicating with the server: {0}")]
+    Server(#[from] sync::Error),
 }

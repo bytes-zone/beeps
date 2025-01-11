@@ -31,6 +31,9 @@ pub use replica::Replica;
 pub mod state;
 pub use state::State;
 
+/// Sync with the sync server.
+pub mod sync;
+
 /// Scheduling pings
 pub mod scheduler;
 pub use scheduler::Scheduler;

@@ -6,7 +6,10 @@ mod app;
 /// Configuration and argument parsing
 mod config;
 
-use app::App;
+/// `form_fields!` macro
+mod form_fields;
+
+use app::{App, EffectConnections};
 use clap::Parser;
 use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
@@ -17,11 +20,22 @@ use tokio::{
     task::JoinHandle,
     time,
 };
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> io::Result<ExitCode> {
     let config = config::Config::parse();
 
+    // set up logging
+    tokio::fs::create_dir_all(config.data_dir()).await?;
+    let file_appender = tracing_appender::rolling::never(config.data_dir(), "beeps.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_writer(non_blocking)
+        .init();
+
+    // start the app
     let mut terminal = ratatui::init();
     terminal.clear()?;
     let res = run(terminal, Arc::new(config)).await;
@@ -32,6 +46,8 @@ async fn main() -> io::Result<ExitCode> {
 /// Manage the lifecycle of the app
 async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::Result<ExitCode> {
     let mut app = App::new();
+
+    let conn = Arc::new(EffectConnections::new());
 
     // We expect side-effectful behaviors (that is, things like FS or network
     // access) to take place via async tasks. Once those tasks are done, we read
@@ -46,6 +62,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
     // the first draw.
     outstanding_effects.push(spawn_effect_task(
         effect_tx.clone(),
+        Arc::clone(&conn),
         Arc::clone(&config),
         app.init(),
     ));
@@ -93,6 +110,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
                 // in a list.
                 outstanding_effects.push(spawn_effect_task(
                     effect_tx.clone(),
+                    Arc::clone(&conn),
                     Arc::clone(&config),
                     effect,
                 ));
@@ -113,6 +131,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
         // outstanding effects to finish (e.g. so we can persist final state to
         // disk) before exiting the loop with the exit code from the app.
         if let Some(code) = app.should_exit() {
+            tracing::info!(outstanding_effects = outstanding_effects.len(), "quitting");
             for effect in outstanding_effects.drain(..) {
                 // we should do something with the results here. No need to
                 // ignore failures just because we're exiting.
@@ -127,11 +146,12 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
 /// Spawn a task to run an effect and send the next action to the app.
 fn spawn_effect_task(
     effect_tx: UnboundedSender<app::Action>,
+    state: Arc<EffectConnections>,
     config: Arc<config::Config>,
     effect: app::Effect,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        if let Some(next_action) = effect.run(config).await {
+        if let Some(next_action) = effect.run(state, config).await {
             // TODO: what do we do if the channel is closed? It probably means
             // we're shutting down and it's OK to drop messages, but we still
             // get the error.

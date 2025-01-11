@@ -1,9 +1,9 @@
+use crate::bail;
 use crate::conn::Conn;
 use crate::error::Error;
-use crate::{bail, jwt::Claims};
+use crate::jwt;
 use argon2::{password_hash, Argon2, PasswordHash, PasswordVerifier};
 use axum::{extract::State, Json};
-use chrono::{Duration, Utc};
 use jsonwebtoken::EncodingKey;
 use serde::{Deserialize, Serialize};
 
@@ -48,24 +48,20 @@ pub async fn handler(
         return Err(Error::Internal);
     }
 
-    let now = Utc::now();
-
-    let claims = Claims {
-        sub: account.email,
-        iat: now.timestamp(),
-        exp: (now + Duration::days(90)).timestamp(),
-        document_id: 0, // TODO
-    };
-
-    let token = jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, &encoding_key)?;
-
-    Ok(Json(Resp { jwt: token }))
+    Ok(Json(Resp {
+        jwt: jwt::issue(
+            &encoding_key,
+            &account.email,
+            0, // TODO
+        )?,
+    }))
 }
 
 #[cfg(test)]
 mod test {
     use axum::http::StatusCode;
     use jsonwebtoken::{DecodingKey, Validation};
+    use jwt::Claims;
     use sqlx::{pool::PoolConnection, Postgres};
 
     use crate::handlers::test::TestDoc;
@@ -121,7 +117,7 @@ mod test {
         assert_eq!(
             resp,
             (StatusCode::BAD_REQUEST, BAD_LOGIN_MESSAGE.to_string())
-        )
+        );
     }
 
     #[test_log::test(sqlx::test)]
@@ -143,6 +139,6 @@ mod test {
         assert_eq!(
             resp,
             (StatusCode::BAD_REQUEST, BAD_LOGIN_MESSAGE.to_string())
-        )
+        );
     }
 }
