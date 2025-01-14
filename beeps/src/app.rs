@@ -28,7 +28,7 @@ pub struct App {
     status_line: Option<String>,
 
     /// Where the app is in its lifecycle
-    state: AppState,
+    state: Loaded,
 }
 
 impl App {
@@ -55,29 +55,29 @@ impl App {
             let replica: Replica = serde_json::from_slice(&data)?;
 
             Ok(Self {
-                status_line: None,
-                state: AppState::Loaded(Loaded {
+                status_line: Some("Loaded replica".to_string()),
+                state: Loaded {
                     replica,
                     client: auth,
                     table_state: TableState::new().with_selected(0),
                     popover: None,
                     copied: None,
                     exiting: None,
-                }),
+                },
             })
         } else {
             tracing::debug!(found = false, "tried to load store");
 
             Ok(Self {
                 status_line: None,
-                state: AppState::Loaded(Loaded {
+                state: Loaded {
                     replica: Replica::new(NodeId::random()),
                     client: auth,
                     table_state: TableState::new().with_selected(0),
                     popover: None,
                     copied: None,
                     exiting: None,
-                }),
+                },
             })
         }
     }
@@ -132,80 +132,7 @@ impl App {
 
     /// Let the TUI manager know whether we're all wrapped up and can exit.
     pub fn should_exit(&self) -> Option<ExitCode> {
-        match self.state {
-            AppState::Loaded(Loaded {
-                exiting: Some(code),
-                ..
-            }) => Some(code),
-            AppState::Loaded(_) => None,
-        }
-    }
-}
-
-/// App lifecycle
-#[derive(Debug)]
-enum AppState {
-    /// We have loaded a replica from disk
-    Loaded(Loaded),
-}
-
-impl AppState {
-    /// Handle a key press
-    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        match self {
-            Self::Loaded(loaded) => {
-                let (mut effects, exit_code) = loaded.handle_key(key);
-                if let Some(exit_code) = exit_code {
-                    effects.append(&mut self.quit(exit_code));
-                }
-
-                effects
-            }
-        }
-    }
-
-    /// Handle time passing
-    fn handle_time_passed(&mut self) -> Vec<Effect> {
-        match self {
-            AppState::Loaded(loaded) => loaded.handle_time_passed(),
-        }
-    }
-
-    /// Handle logging in successfully
-    fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
-        match self {
-            AppState::Loaded(loaded) => loaded.handle_logged_in(jwt),
-        }
-    }
-
-    /// Start cleaning up and move into the exiting state.
-    fn quit(&mut self, exit_code: ExitCode) -> Vec<Effect> {
-        match self {
-            AppState::Loaded(Loaded {
-                replica,
-                client,
-                exiting,
-                ..
-            }) => {
-                *exiting = Some(exit_code);
-                let mut effects = Vec::with_capacity(2);
-
-                effects.push(Effect::SaveReplica(replica.clone()));
-                if let Some(client) = client {
-                    effects.push(Effect::SaveSyncClientAuth(client.clone()));
-                }
-
-                effects
-            }
-        }
-    }
-
-    /// Render the app state
-    fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
-        match self {
-            AppState::Loaded(loaded) if loaded.exiting.is_none() => loaded.render(body_area, frame),
-            AppState::Loaded(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
-        };
+        self.state.exiting
     }
 }
 
@@ -240,14 +167,20 @@ impl Loaded {
     }
 
     /// Handle a key press
-    fn handle_key(&mut self, key: KeyEvent) -> (Vec<Effect>, Option<ExitCode>) {
+    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         let mut effects = Vec::new();
-        let mut exit_code = None;
 
         match &mut self.popover {
             None => {
                 match key.code {
-                    KeyCode::Char('q') => exit_code = Some(ExitCode::SUCCESS),
+                    KeyCode::Char('q') => {
+                        self.exiting = Some(ExitCode::SUCCESS);
+
+                        effects.push(Effect::SaveReplica(self.replica.clone()));
+                        if let Some(client) = &self.client {
+                            effects.push(Effect::SaveSyncClientAuth(client.clone()));
+                        }
+                    }
                     KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
                     KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
                     KeyCode::Char('c') => {
@@ -322,7 +255,7 @@ impl Loaded {
             },
         }
 
-        (effects, exit_code)
+        effects
     }
 
     /// Get the currently-selected ping, if any
