@@ -18,7 +18,7 @@ use ratatui::{
     },
     Frame,
 };
-use std::{io, mem, process::ExitCode, sync::Arc};
+use std::{io, process::ExitCode, sync::Arc};
 use tokio::fs;
 use tui_input::{backend::crossterm::EventHandler, Input};
 
@@ -62,6 +62,7 @@ impl App {
                     table_state: TableState::new().with_selected(0),
                     popover: None,
                     copied: None,
+                    exiting: None,
                 }),
             })
         } else {
@@ -75,6 +76,7 @@ impl App {
                     table_state: TableState::new().with_selected(0),
                     popover: None,
                     copied: None,
+                    exiting: None,
                 }),
             })
         }
@@ -130,10 +132,12 @@ impl App {
 
     /// Let the TUI manager know whether we're all wrapped up and can exit.
     pub fn should_exit(&self) -> Option<ExitCode> {
-        if let AppState::Exiting(code) = &self.state {
-            Some(*code)
-        } else {
-            None
+        match self.state {
+            AppState::Loaded(Loaded {
+                exiting: Some(code),
+                ..
+            }) => Some(code),
+            AppState::Loaded(_) => None,
         }
     }
 }
@@ -143,9 +147,6 @@ impl App {
 enum AppState {
     /// We have loaded a replica from disk
     Loaded(Loaded),
-
-    /// We're done and want the following exit code after final effects
-    Exiting(ExitCode),
 }
 
 impl AppState {
@@ -160,7 +161,6 @@ impl AppState {
 
                 effects
             }
-            Self::Exiting(_) => vec![],
         }
     }
 
@@ -168,7 +168,6 @@ impl AppState {
     fn handle_time_passed(&mut self) -> Vec<Effect> {
         match self {
             AppState::Loaded(loaded) => loaded.handle_time_passed(),
-            _ => vec![],
         }
     }
 
@@ -176,36 +175,36 @@ impl AppState {
     fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
         match self {
             AppState::Loaded(loaded) => loaded.handle_logged_in(jwt),
-            _ => vec![],
         }
     }
 
     /// Start cleaning up and move into the exiting state.
     fn quit(&mut self, exit_code: ExitCode) -> Vec<Effect> {
-        let pre_quit_state = mem::replace(self, Self::Exiting(exit_code));
-
-        match pre_quit_state {
+        match self {
             AppState::Loaded(Loaded {
-                replica, client, ..
+                replica,
+                client,
+                exiting,
+                ..
             }) => {
+                *exiting = Some(exit_code);
                 let mut effects = Vec::with_capacity(2);
 
-                effects.push(Effect::SaveReplica(replica));
+                effects.push(Effect::SaveReplica(replica.clone()));
                 if let Some(client) = client {
-                    effects.push(Effect::SaveSyncClientAuth(client));
+                    effects.push(Effect::SaveSyncClientAuth(client.clone()));
                 }
 
                 effects
             }
-            _ => vec![],
         }
     }
 
     /// Render the app state
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         match self {
-            AppState::Loaded(loaded) => loaded.render(body_area, frame),
-            AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
+            AppState::Loaded(loaded) if loaded.exiting.is_none() => loaded.render(body_area, frame),
+            AppState::Loaded(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
         };
     }
 }
@@ -227,6 +226,9 @@ struct Loaded {
 
     /// Sync client info
     client: Option<Client>,
+
+    /// Exit code
+    exiting: Option<ExitCode>,
 }
 
 impl Loaded {
