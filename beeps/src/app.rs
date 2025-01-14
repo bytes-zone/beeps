@@ -21,7 +21,7 @@ use ratatui::{
     },
     Frame,
 };
-use std::{io, process::ExitCode, sync::Arc};
+use std::{io, process::ExitCode};
 use tokio::fs;
 use tui_input::{backend::crossterm::EventHandler, Input};
 
@@ -389,7 +389,7 @@ pub enum Effect {
 impl Effect {
     /// Perform the side-effectful portions of this effect, returning the next
     /// `Action` the application needs to handle
-    pub async fn run(&self, conn: Arc<EffectConnections>, config: Arc<Config>) -> Option<Action> {
+    pub async fn run(&self, conn: &EffectConnections, config: &Config) -> Option<Action> {
         match self.run_inner(conn, config).await {
             Ok(action) => action,
             Err(problem) => {
@@ -403,8 +403,8 @@ impl Effect {
     /// it more ergonomic to write.
     async fn run_inner(
         &self,
-        conn: Arc<EffectConnections>,
-        config: Arc<Config>,
+        conn: &EffectConnections,
+        config: &Config,
     ) -> Result<Option<Action>, Problem> {
         match self {
             Self::SaveReplica(replica) => {
