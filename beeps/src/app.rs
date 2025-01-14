@@ -98,19 +98,6 @@ impl App {
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
     pub fn handle(&mut self, action: Action) -> Vec<Effect> {
         match action {
-            Action::LoadedReplica(replica, client) => {
-                self.state = AppState::Loaded(Loaded {
-                    replica,
-                    client,
-                    table_state: TableState::new().with_selected(0),
-                    popover: None,
-                    copied: None,
-                });
-                tracing::info!("loaded replica");
-                self.status_line = Some("Loaded replica".to_owned());
-
-                vec![]
-            }
             Action::SavedReplica => {
                 tracing::info!("saved replica");
                 self.status_line = Some("Saved replica".to_owned());
@@ -522,9 +509,6 @@ impl Popover {
 /// Things that can happen to this app
 #[derive(Debug)]
 pub enum Action {
-    /// We loaded replica data from disk
-    LoadedReplica(Replica, Option<Client>),
-
     /// We successfully saved the replica
     SavedReplica,
 
@@ -563,9 +547,6 @@ impl EffectConnections {
 /// Things that can happen as a result of user input. Side effects!
 #[derive(Debug)]
 pub enum Effect {
-    /// Load replica state from disk
-    Load,
-
     /// Save replica to disk
     SaveReplica(Replica),
 
@@ -600,37 +581,6 @@ impl Effect {
         config: Arc<Config>,
     ) -> Result<Option<Action>, Problem> {
         match self {
-            Self::Load => {
-                tracing::info!("loading");
-
-                let auth_path = config.data_dir().join("auth.json");
-                let auth: Option<Client> = if fs::try_exists(&auth_path).await? {
-                    let data = fs::read(&auth_path).await?;
-                    Some(serde_json::from_slice(&data)?)
-                } else {
-                    None
-                };
-
-                tracing::debug!(found = auth.is_some(), "tried to load client auth");
-
-                let store_path = config.data_dir().join("store.json");
-                if fs::try_exists(&store_path).await? {
-                    tracing::debug!(found = true, "tried to load store");
-
-                    let data = fs::read(&store_path).await?;
-                    let replica: Replica = serde_json::from_slice(&data)?;
-
-                    Ok(Some(Action::LoadedReplica(replica, auth)))
-                } else {
-                    tracing::debug!(found = false, "tried to load store");
-
-                    Ok(Some(Action::LoadedReplica(
-                        Replica::new(NodeId::random()),
-                        auth,
-                    )))
-                }
-            }
-
             Self::SaveReplica(replica) => {
                 tracing::debug!("saving replica");
 
