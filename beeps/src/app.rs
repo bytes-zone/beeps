@@ -154,9 +154,6 @@ impl App {
 /// App lifecycle
 #[derive(Debug)]
 enum AppState {
-    /// We haven't loaded anything yet
-    Unloaded,
-
     /// We have loaded a replica from disk
     Loaded(Loaded),
 
@@ -168,7 +165,6 @@ impl AppState {
     /// Handle a key press
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match self {
-            Self::Unloaded => self.handle_key_unloaded(key),
             Self::Loaded(loaded) => {
                 let (mut effects, exit_code) = loaded.handle_key(key);
                 if let Some(exit_code) = exit_code {
@@ -178,15 +174,6 @@ impl AppState {
                 effects
             }
             Self::Exiting(_) => vec![],
-        }
-    }
-
-    /// Handle a key press when we're in the unloaded state
-    fn handle_key_unloaded(&mut self, key: KeyEvent) -> Vec<Effect> {
-        if key.code == KeyCode::Char('q') {
-            self.quit(ExitCode::SUCCESS)
-        } else {
-            vec![]
         }
     }
 
@@ -230,7 +217,6 @@ impl AppState {
     /// Render the app state
     fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
         match self {
-            AppState::Unloaded => frame.render_widget(Paragraph::new("Loading…"), body_area),
             AppState::Loaded(loaded) => loaded.render(body_area, frame),
             AppState::Exiting(_) => frame.render_widget(Paragraph::new("Exiting…"), body_area),
         };
