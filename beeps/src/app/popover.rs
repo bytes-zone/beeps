@@ -24,7 +24,7 @@ pub enum Popover {
 impl Popover {
     /// Render the editing popover
     #[expect(clippy::cast_possible_truncation)]
-    pub fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
+    pub fn render(&mut self, frame: &mut Frame<'_>, body_area: Rect) {
         match self {
             Popover::Help => {
                 let popup_vert = Layout::vertical([Constraint::Percentage(50)]).flex(Flex::Center);

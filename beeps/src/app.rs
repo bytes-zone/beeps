@@ -30,8 +30,23 @@ pub struct App {
     /// Status to display (visible at the bottom of the screen)
     status_line: Option<String>,
 
-    /// Where the app is in its lifecycle
-    state: Loaded,
+    /// The replica we're working with
+    replica: Replica,
+
+    /// State of the pings table
+    table_state: TableState,
+
+    /// Modal views above the table
+    popover: Option<Popover>,
+
+    /// The value that's currently copied, for copy/paste.
+    copied: Option<String>,
+
+    /// Sync client info
+    client: Option<Client>,
+
+    /// Exit code
+    exiting: Option<ExitCode>,
 }
 
 impl App {
@@ -59,28 +74,24 @@ impl App {
 
             Ok(Self {
                 status_line: Some("Loaded replica".to_string()),
-                state: Loaded {
-                    replica,
-                    client: auth,
-                    table_state: TableState::new().with_selected(0),
-                    popover: None,
-                    copied: None,
-                    exiting: None,
-                },
+                replica,
+                client: auth,
+                table_state: TableState::new().with_selected(0),
+                popover: None,
+                copied: None,
+                exiting: None,
             })
         } else {
             tracing::debug!(found = false, "tried to load store");
 
             Ok(Self {
                 status_line: None,
-                state: Loaded {
-                    replica: Replica::new(NodeId::random()),
-                    client: auth,
-                    table_state: TableState::new().with_selected(0),
-                    popover: None,
-                    copied: None,
-                    exiting: None,
-                },
+                replica: Replica::new(NodeId::random()),
+                client: auth,
+                table_state: TableState::new().with_selected(0),
+                popover: None,
+                copied: None,
+                exiting: None,
             })
         }
     }
@@ -90,14 +101,82 @@ impl App {
         let vertical = Layout::vertical([Constraint::Min(0), Constraint::Length(1)]);
         let [body_area, status_area] = vertical.areas(frame.area());
 
-        self.state.render(body_area, frame);
+        self.render_table(frame, body_area);
+        self.render_status(frame, status_area);
+        if let Some(popover) = &mut self.popover {
+            popover.render(frame, body_area);
+        }
+    }
 
-        let status = Paragraph::new(match &self.status_line {
-            Some(line) => line,
-            None => "All good!",
-        });
-
+    /// Render the status line
+    fn render_status(&self, frame: &mut Frame<'_>, status_area: Rect) {
+        let status = Paragraph::new(self.status_line.as_deref().unwrap_or_default());
         frame.render_widget(status, status_area);
+    }
+
+    /// Render the table of pings
+    fn render_table(&mut self, frame: &mut Frame<'_>, body_area: Rect) {
+        let rows: Vec<Row> = self
+            .current_pings()
+            .map(|ping| {
+                Row::new(vec![
+                    Cell::new(
+                        ping.with_timezone(&Local)
+                            .format("%a, %b %-d, %-I:%M %p")
+                            .to_string(),
+                    ),
+                    match self.replica.get_tag(ping) {
+                        Some(tag) => Cell::new(tag.clone()),
+                        _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
+                    },
+                ])
+            })
+            .collect();
+
+        let num_rows = rows.len();
+
+        let table = Table::new(rows, [Constraint::Min(21), Constraint::Min(9)])
+            .header(
+                Row::new(["Ping", "Tag"])
+                    .bg(Color::DarkGray)
+                    .fg(Color::White),
+            )
+            .column_spacing(2)
+            .highlight_symbol("● ")
+            .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
+            .flex(Flex::Legacy);
+
+        let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None)
+            .thumb_symbol("┃")
+            .thumb_style(Style::new().fg(Color::White))
+            .track_symbol(Some("┆"))
+            .track_style(Style::new().fg(Color::Gray));
+
+        let mut scroll_state =
+            ScrollbarState::new(num_rows).position(self.table_state.selected().unwrap_or(0));
+
+        frame.render_stateful_widget(table, body_area, &mut self.table_state);
+        frame.render_stateful_widget(
+            scroll,
+            body_area.inner(Margin::new(1, 1)),
+            &mut scroll_state,
+        );
+    }
+
+    /// Get the pings that we can display currently
+    fn current_pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
+        let now = Utc::now();
+
+        self.replica.pings().rev().filter(move |ping| **ping <= now)
+    }
+
+    /// Get the currently-selected ping, if any
+    fn selected_ping(&self) -> Option<&DateTime<Utc>> {
+        self.table_state
+            .selected()
+            .and_then(|idx| self.current_pings().nth(idx))
     }
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
@@ -120,7 +199,7 @@ impl App {
                     return vec![];
                 }
 
-                self.state.handle_key(key)
+                self.handle_key(key)
             }
             Action::Problem(problem) => {
                 tracing::info!(?problem, "displaying a problem");
@@ -128,45 +207,31 @@ impl App {
 
                 vec![]
             }
-            Action::TimePassed => self.state.handle_time_passed(),
-            Action::LoggedIn(jwt) => self.state.handle_logged_in(jwt),
+            Action::TimePassed => {
+                if self.replica.schedule_pings() {
+                    tracing::debug!("handling new ping(s)");
+                    vec![
+                        Effect::NotifyAboutNewPing,
+                        Effect::SaveReplica(self.replica.clone()),
+                    ]
+                } else {
+                    vec![]
+                }
+            }
+            Action::LoggedIn(jwt) => {
+                if let Some(client) = &mut self.client {
+                    tracing::debug!("setting JWT for existing client");
+                    client.auth = Some(jwt);
+
+                    vec![Effect::SaveSyncClientAuth(client.clone())]
+                } else {
+                    tracing::error!(
+                        "got a JWT when I didn't have a client to go with it. What's going on?"
+                    );
+                    vec![]
+                }
+            }
         }
-    }
-
-    /// Let the TUI manager know whether we're all wrapped up and can exit.
-    pub fn should_exit(&self) -> Option<ExitCode> {
-        self.state.exiting
-    }
-}
-
-/// State when we have successfully loaded and are running
-#[derive(Debug)]
-struct Loaded {
-    /// The replica we're working with
-    replica: Replica,
-
-    /// State of the pings table
-    table_state: TableState,
-
-    /// Modal views above the table
-    popover: Option<Popover>,
-
-    /// The value that's currently copied, for copy/paste.
-    copied: Option<String>,
-
-    /// Sync client info
-    client: Option<Client>,
-
-    /// Exit code
-    exiting: Option<ExitCode>,
-}
-
-impl Loaded {
-    /// Get the pings that we can display currently
-    fn current_pings(&self) -> impl Iterator<Item = &DateTime<Utc>> {
-        let now = Utc::now();
-
-        self.replica.pings().rev().filter(move |ping| **ping <= now)
     }
 
     /// Handle a key press
@@ -261,98 +326,9 @@ impl Loaded {
         effects
     }
 
-    /// Get the currently-selected ping, if any
-    fn selected_ping(&self) -> Option<&DateTime<Utc>> {
-        self.table_state
-            .selected()
-            .and_then(|idx| self.current_pings().nth(idx))
-    }
-
-    /// Handle time passing
-    fn handle_time_passed(&mut self) -> Vec<Effect> {
-        if self.replica.schedule_pings() {
-            tracing::debug!("handling new ping(s)");
-            vec![
-                Effect::NotifyAboutNewPing,
-                Effect::SaveReplica(self.replica.clone()),
-            ]
-        } else {
-            vec![]
-        }
-    }
-
-    /// Handle logging in
-    fn handle_logged_in(&mut self, jwt: String) -> Vec<Effect> {
-        if let Some(client) = &mut self.client {
-            tracing::debug!("setting JWT for existing client");
-            client.auth = Some(jwt);
-
-            vec![Effect::SaveSyncClientAuth(client.clone())]
-        } else {
-            tracing::error!(
-                "got a JWT when I didn't have a client to go with it. What's going on?"
-            );
-            vec![]
-        }
-    }
-
-    /// Render the table and editing popover
-    fn render(&mut self, body_area: Rect, frame: &mut Frame<'_>) {
-        self.render_table(frame, body_area);
-        if let Some(popover) = &mut self.popover {
-            popover.render(body_area, frame);
-        }
-    }
-
-    /// Render the table of pings
-    fn render_table(&mut self, frame: &mut Frame<'_>, body_area: Rect) {
-        let rows: Vec<Row> = self
-            .current_pings()
-            .map(|ping| {
-                Row::new(vec![
-                    Cell::new(
-                        ping.with_timezone(&Local)
-                            .format("%a, %b %-d, %-I:%M %p")
-                            .to_string(),
-                    ),
-                    match self.replica.get_tag(ping) {
-                        Some(tag) => Cell::new(tag.clone()),
-                        _ => Cell::new("<unknown>".to_string()).fg(Color::DarkGray),
-                    },
-                ])
-            })
-            .collect();
-
-        let num_rows = rows.len();
-
-        let table = Table::new(rows, [Constraint::Min(21), Constraint::Min(9)])
-            .header(
-                Row::new(["Ping", "Tag"])
-                    .bg(Color::DarkGray)
-                    .fg(Color::White),
-            )
-            .column_spacing(2)
-            .highlight_symbol("● ")
-            .row_highlight_style(Style::new().add_modifier(Modifier::BOLD))
-            .flex(Flex::Legacy);
-
-        let scroll = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(None)
-            .end_symbol(None)
-            .thumb_symbol("┃")
-            .thumb_style(Style::new().fg(Color::White))
-            .track_symbol(Some("┆"))
-            .track_style(Style::new().fg(Color::Gray));
-
-        let mut scroll_state =
-            ScrollbarState::new(num_rows).position(self.table_state.selected().unwrap_or(0));
-
-        frame.render_stateful_widget(table, body_area, &mut self.table_state);
-        frame.render_stateful_widget(
-            scroll,
-            body_area.inner(Margin::new(1, 1)),
-            &mut scroll_state,
-        );
+    /// Let the TUI manager know whether we're all wrapped up and can exit.
+    pub fn should_exit(&self) -> Option<ExitCode> {
+        self.exiting
     }
 }
 
