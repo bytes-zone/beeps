@@ -33,10 +33,50 @@ pub struct App {
 
 impl App {
     /// Create a new instance of the app
-    pub fn new() -> Self {
-        Self {
-            status_line: None,
-            state: AppState::Unloaded,
+    #[tracing::instrument]
+    pub async fn init(config: &Config) -> Result<Self, Problem> {
+        tracing::info!("initializing");
+
+        let auth_path = config.data_dir().join("auth.json");
+        let auth: Option<Client> = if fs::try_exists(&auth_path).await? {
+            let data = fs::read(&auth_path).await?;
+            Some(serde_json::from_slice(&data)?)
+        } else {
+            None
+        };
+
+        tracing::debug!(found = auth.is_some(), "tried to load client auth");
+
+        let store_path = config.data_dir().join("store.json");
+        if fs::try_exists(&store_path).await? {
+            tracing::debug!(found = true, "tried to load store");
+
+            let data = fs::read(&store_path).await?;
+            let replica: Replica = serde_json::from_slice(&data)?;
+
+            Ok(Self {
+                status_line: None,
+                state: AppState::Loaded(Loaded {
+                    replica,
+                    client: auth,
+                    table_state: TableState::new().with_selected(0),
+                    popover: None,
+                    copied: None,
+                }),
+            })
+        } else {
+            tracing::debug!(found = false, "tried to load store");
+
+            Ok(Self {
+                status_line: None,
+                state: AppState::Loaded(Loaded {
+                    replica: Replica::new(NodeId::random()),
+                    client: auth,
+                    table_state: TableState::new().with_selected(0),
+                    popover: None,
+                    copied: None,
+                }),
+            })
         }
     }
 
@@ -53,12 +93,6 @@ impl App {
         });
 
         frame.render_widget(status, status_area);
-    }
-
-    /// Produce any side effects as needed to initialize the app.
-    #[expect(clippy::unused_self)]
-    pub fn init(&self) -> Effect {
-        Effect::Load
     }
 
     /// Handle an `Action`, updating the app's state and producing some side effect(s)
@@ -664,7 +698,7 @@ impl Effect {
 
 /// Problems that can happen while running an `Effect`.
 #[derive(Debug, thiserror::Error)]
-enum Problem {
+pub enum Problem {
     /// We had a problem writing to disk, for example with permissions or
     /// missing files.
     #[error("IO error: {0}")]
