@@ -5,8 +5,8 @@
   "dependencies": [
     {
       "name": "postgres",
-      "source": "github.com/quartz-technology/daggerverse/postgres",
-      "pin": "e667507b78d9b0eda6dfc06aa072c4c6dac370a0"
+      "source": "github.com/felipepimentel/daggerverse/libraries/postgres@libraries/postgres/v0.0.0",
+      "pin": "36e606fe6b7d1c9561dc60db82ab31614b838754"
     }
   ],
   "source": ".dagger"

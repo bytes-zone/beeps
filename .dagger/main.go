@@ -26,16 +26,11 @@ import (
 type Beeps struct{}
 
 // Start a postgres server
-func (m *Beeps) Postgres() *dagger.Container {
-	return dag.Postgres(
-		dag.SetSecret("postgres-user", "beeps"),
-		dag.SetSecret("postgres-password", "beeps"),
-		dagger.PostgresOpts{
-			DbPort: 5432,
-			DbName: "beeps",
-			Cache:  false,
-		},
-	).Database()
+func (m *Beeps) Postgres() *dagger.Service {
+	return dag.Postgres(dagger.PostgresOpts{
+		User:     dag.SetSecret("postgres-user", "beeps"),
+		Password: dag.SetSecret("postgres-password", "beeps"),
+	}).Service()
 }
 
 const RUST_CONTAINER_IMAGE = "rust:1.84.0"
@@ -212,27 +207,16 @@ func (m *Beeps) Test(
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("test").
-		// Database
-		WithServiceBinding("postgres", m.Postgres().AsService()).
-		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
 		WithExec([]string{"cargo", "install", "sqlx-cli", "--no-default-features", "--features=postgres"}).
+
+		// Database
+		WithServiceBinding("postgres", m.Postgres()).
+		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
 
 		// Test
 		With(userSource(source)).
 		WithExec([]string{"sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
 		WithExec([]string{"cargo", "test"})
-}
-
-func (m *Beeps) Db(
-	ctx context.Context,
-	user *dagger.Secret,
-	password *dagger.Secret,
-) *dagger.Container {
-	return dag.Postgres(
-		user,
-		password,
-		dagger.PostgresOpts{DbName: "beeps"},
-	).Database()
 }
 
 // Lint source code with Clippy
