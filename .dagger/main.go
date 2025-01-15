@@ -255,6 +255,8 @@ func (m *Beeps) Clippy(
 		WithExec(command)
 }
 
+const TYPOS_VERSION = "1.29.4"
+
 // Find typos with Typos
 func (m *Beeps) Typos(
 	ctx context.Context,
@@ -262,8 +264,20 @@ func (m *Beeps) Typos(
 	// +ignore=["target", ".git", ".dagger", "pgdata"]
 	source *dagger.Directory,
 ) *dagger.Container {
-	return m.rustBase("typos").
-		WithExec([]string{"cargo", "install", "typos-cli"}).
+	return dag.Container().
+		From("alpine:3.21.2").
+		WithExec([]string{"apk", "add", "--update", "wget"}).
+		WithExec([]string{
+			"wget",
+			fmt.Sprintf(
+				"https://github.com/crate-ci/typos/releases/download/v%s/typos-v%s-x86_64-unknown-linux-musl.tar.gz",
+				TYPOS_VERSION,
+				TYPOS_VERSION,
+			),
+		}).
+		WithExec([]string{"tar", "-xzf", "typos-v1.29.4-x86_64-unknown-linux-musl.tar.gz"}).
+		WithExec([]string{"mv", "typos", "/bin/typos"}).
+		// done installing typos, now we can check!
 		With(userSource(source)).
 		WithExec([]string{"typos"})
 }
