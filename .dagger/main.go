@@ -111,7 +111,7 @@ func (m *Beeps) All(
 	nice := NiceOutput{}
 
 	eg.Go(func() error {
-		out, err := m.Clippy(ctx, source).Stderr(ctx)
+		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
 		nice.clippy = out
 		return err
 	})
@@ -241,11 +241,18 @@ func (m *Beeps) Clippy(
 	// +defaultPath=.
 	// +ignore=["target", ".git", ".dagger", "pgdata"]
 	source *dagger.Directory,
+	// +optional
+	noDeps bool,
 ) *dagger.Container {
+	command := []string{"cargo", "clippy", "--", "--deny=warnings"}
+	if noDeps {
+		command = append(command, "--no-deps")
+	}
+
 	return m.rustBase("clippy").
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		With(userSource(source)).
-		WithExec([]string{"cargo", "clippy", "--", "--deny=warnings"})
+		WithExec(command)
 }
 
 // Find typos with Typos
