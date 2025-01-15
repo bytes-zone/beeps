@@ -338,18 +338,6 @@ func (m *Beeps) WasmBuild(
 		WithExec([]string{"tar", "-xzf", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz", WASM_PACK_VERSION)}).
 		WithExec([]string{"mv", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl/wasm-pack", WASM_PACK_VERSION), "/bin"}).
 
-		// install wasm-bindgen-cli
-		WithExec([]string{
-			"wget",
-			fmt.Sprintf(
-				"https://github.com/rustwasm/wasm-bindgen/releases/download/%s/wasm-bindgen-%s-x86_64-unknown-linux-musl.tar.gz",
-				WASM_BINDGEN_VERSION,
-				WASM_BINDGEN_VERSION,
-			),
-		}).
-		WithExec([]string{"tar", "-xzf", fmt.Sprintf("wasm-bindgen-%s-x86_64-unknown-linux-musl.tar.gz", WASM_BINDGEN_VERSION)}).
-		WithExec([]string{"mv", fmt.Sprintf("wasm-bindgen-%s-x86_64-unknown-linux-musl/wasm-bindgen", WASM_BINDGEN_VERSION), "/bin"}).
-
 		// build the WASM package
 		With(userSource(source)).
 		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
