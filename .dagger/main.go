@@ -26,19 +26,14 @@ import (
 type Beeps struct{}
 
 // Start a postgres server
-func (m *Beeps) Postgres() *dagger.Container {
-	return dag.Postgres(
-		dag.SetSecret("postgres-user", "beeps"),
-		dag.SetSecret("postgres-password", "beeps"),
-		dagger.PostgresOpts{
-			DbPort: 5432,
-			DbName: "beeps",
-			Cache:  false,
-		},
-	).Database()
+func (m *Beeps) Postgres() *dagger.Service {
+	return dag.Postgres(dagger.PostgresOpts{
+		User:     dag.SetSecret("postgres-user", "beeps"),
+		Password: dag.SetSecret("postgres-password", "beeps"),
+	}).Service()
 }
 
-const RUST_CONTAINER_IMAGE = "rust:1.83.0"
+const RUST_CONTAINER_IMAGE = "rust:1.84.0"
 
 func (m *Beeps) rustBase(cacheKey string) *dagger.Container {
 	return dag.Container().
@@ -111,13 +106,7 @@ func (m *Beeps) All(
 	nice := NiceOutput{}
 
 	eg.Go(func() error {
-		out, err := m.Build(ctx, source, false, "").Stderr(ctx)
-		nice.build = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.Clippy(ctx, source).Stderr(ctx)
+		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
 		nice.clippy = out
 		return err
 	})
@@ -218,27 +207,16 @@ func (m *Beeps) Test(
 	source *dagger.Directory,
 ) *dagger.Container {
 	return m.rustBase("test").
-		// Database
-		WithServiceBinding("postgres", m.Postgres().AsService()).
-		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
 		WithExec([]string{"cargo", "install", "sqlx-cli", "--no-default-features", "--features=postgres"}).
+
+		// Database
+		WithServiceBinding("postgres", m.Postgres()).
+		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
 
 		// Test
 		With(userSource(source)).
 		WithExec([]string{"sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
 		WithExec([]string{"cargo", "test"})
-}
-
-func (m *Beeps) Db(
-	ctx context.Context,
-	user *dagger.Secret,
-	password *dagger.Secret,
-) *dagger.Container {
-	return dag.Postgres(
-		user,
-		password,
-		dagger.PostgresOpts{DbName: "beeps"},
-	).Database()
 }
 
 // Lint source code with Clippy
@@ -247,12 +225,21 @@ func (m *Beeps) Clippy(
 	// +defaultPath=.
 	// +ignore=["target", ".git", ".dagger", "pgdata"]
 	source *dagger.Directory,
+	// +optional
+	noDeps bool,
 ) *dagger.Container {
+	command := []string{"cargo", "clippy", "--", "--deny=warnings"}
+	if noDeps {
+		command = append(command, "--no-deps")
+	}
+
 	return m.rustBase("clippy").
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		With(userSource(source)).
-		WithExec([]string{"cargo", "clippy", "--", "--deny=warnings"})
+		WithExec(command)
 }
+
+const TYPOS_VERSION = "1.29.4"
 
 // Find typos with Typos
 func (m *Beeps) Typos(
@@ -261,8 +248,20 @@ func (m *Beeps) Typos(
 	// +ignore=["target", ".git", ".dagger", "pgdata"]
 	source *dagger.Directory,
 ) *dagger.Container {
-	return m.rustBase("typos").
-		WithExec([]string{"cargo", "install", "typos-cli"}).
+	return dag.Container().
+		From("alpine:3.21.2").
+		WithExec([]string{"apk", "add", "--update", "wget"}).
+		WithExec([]string{
+			"wget",
+			fmt.Sprintf(
+				"https://github.com/crate-ci/typos/releases/download/v%s/typos-v%s-x86_64-unknown-linux-musl.tar.gz",
+				TYPOS_VERSION,
+				TYPOS_VERSION,
+			),
+		}).
+		WithExec([]string{"tar", "-xzf", fmt.Sprintf("typos-v%s-x86_64-unknown-linux-musl.tar.gz", TYPOS_VERSION)}).
+		WithExec([]string{"mv", "typos", "/bin/typos"}).
+		// done installing typos, now we can check!
 		With(userSource(source)).
 		WithExec([]string{"typos"})
 }
@@ -287,11 +286,15 @@ func (m *Beeps) Machete(
 	// +ignore=["target", ".git", ".dagger", "pgdata"]
 	source *dagger.Directory,
 ) *dagger.Container {
-	return m.rustBase("machete").
-		WithExec([]string{"cargo", "install", "cargo-machete"}).
+	return dag.Container().
+		From("ghcr.io/bnjbvr/cargo-machete:v0.7.0").
 		With(userSource(source)).
-		WithExec([]string{"cargo", "machete"})
+		WithExec([]string{}, dagger.ContainerWithExecOpts{UseEntrypoint: true})
 }
+
+const WASM_PACK_VERSION = "0.13.1"
+
+const WASM_BINDGEN_VERSION = "0.2.100"
 
 // Build WASM package
 func (m *Beeps) WasmBuild(
@@ -305,9 +308,21 @@ func (m *Beeps) WasmBuild(
 	target string,
 ) *dagger.Container {
 	return m.rustBase("wasm-pack").
-		WithExec([]string{"cargo", "install", "wasm-pack"}).
-		WithExec([]string{"cargo", "install", "wasm-bindgen-cli"}).
 		WithExec([]string{"rustup", "component", "add", "rust-std", "--target", "wasm32-unknown-unknown"}).
+
+		// install wasm-pack
+		WithExec([]string{
+			"wget",
+			fmt.Sprintf(
+				"https://github.com/rustwasm/wasm-pack/releases/download/v%s/wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz",
+				WASM_PACK_VERSION,
+				WASM_PACK_VERSION,
+			),
+		}).
+		WithExec([]string{"tar", "-xzf", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz", WASM_PACK_VERSION)}).
+		WithExec([]string{"mv", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl/wasm-pack", WASM_PACK_VERSION), "/bin"}).
+
+		// build the WASM package
 		With(userSource(source)).
 		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
 }

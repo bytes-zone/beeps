@@ -2,7 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 /// A TUI for collecting and tagging pings
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[clap(version)]
 pub struct Config {
     /// Where should we store data?

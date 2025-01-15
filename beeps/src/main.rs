@@ -14,7 +14,7 @@ use clap::Parser;
 use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
 use ratatui::DefaultTerminal;
-use std::{io, process::ExitCode, sync::Arc};
+use std::{process::ExitCode, sync::Arc};
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedSender},
     task::JoinHandle,
@@ -23,7 +23,7 @@ use tokio::{
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
-async fn main() -> io::Result<ExitCode> {
+async fn main() -> Result<ExitCode, app::Problem> {
     let config = config::Config::parse();
 
     // set up logging
@@ -44,9 +44,10 @@ async fn main() -> io::Result<ExitCode> {
 }
 
 /// Manage the lifecycle of the app
-async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::Result<ExitCode> {
-    let mut app = App::new();
-
+async fn run(
+    mut terminal: DefaultTerminal,
+    config: Arc<config::Config>,
+) -> Result<ExitCode, app::Problem> {
     let conn = Arc::new(EffectConnections::new());
 
     // We expect side-effectful behaviors (that is, things like FS or network
@@ -60,12 +61,7 @@ async fn run(mut terminal: DefaultTerminal, config: Arc<config::Config>) -> io::
     // first frame. We could render before spawning for a slightly faster draw,
     // but defer it so that anything taken care of in `app.init` will reflect in
     // the first draw.
-    outstanding_effects.push(spawn_effect_task(
-        effect_tx.clone(),
-        Arc::clone(&conn),
-        Arc::clone(&config),
-        app.init(),
-    ));
+    let mut app = App::init(&config).await?;
     terminal.draw(|frame| app.render(frame))?;
 
     let mut event_stream = EventStream::new();
@@ -151,7 +147,7 @@ fn spawn_effect_task(
     effect: app::Effect,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        if let Some(next_action) = effect.run(state, config).await {
+        if let Some(next_action) = effect.run(&state, &config).await {
             // TODO: what do we do if the channel is closed? It probably means
             // we're shutting down and it's OK to drop messages, but we still
             // get the error.
