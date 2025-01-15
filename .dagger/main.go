@@ -308,6 +308,10 @@ func (m *Beeps) Machete(
 		WithExec([]string{}, dagger.ContainerWithExecOpts{UseEntrypoint: true})
 }
 
+const WASM_PACK_VERSION = "0.13.1"
+
+const WASM_BINDGEN_VERSION = "0.2.100"
+
 // Build WASM package
 func (m *Beeps) WasmBuild(
 	ctx context.Context,
@@ -320,9 +324,33 @@ func (m *Beeps) WasmBuild(
 	target string,
 ) *dagger.Container {
 	return m.rustBase("wasm-pack").
-		WithExec([]string{"cargo", "install", "wasm-pack"}).
-		WithExec([]string{"cargo", "install", "wasm-bindgen-cli"}).
 		WithExec([]string{"rustup", "component", "add", "rust-std", "--target", "wasm32-unknown-unknown"}).
+
+		// install wasm-pack
+		WithExec([]string{
+			"wget",
+			fmt.Sprintf(
+				"https://github.com/rustwasm/wasm-pack/releases/download/v%s/wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz",
+				WASM_PACK_VERSION,
+				WASM_PACK_VERSION,
+			),
+		}).
+		WithExec([]string{"tar", "-xzf", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz", WASM_PACK_VERSION)}).
+		WithExec([]string{"mv", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl/wasm-pack", WASM_PACK_VERSION), "/bin"}).
+
+		// install wasm-bindgen-cli
+		WithExec([]string{
+			"wget",
+			fmt.Sprintf(
+				"https://github.com/rustwasm/wasm-bindgen/releases/download/%s/wasm-bindgen-%s-x86_64-unknown-linux-musl.tar.gz",
+				WASM_BINDGEN_VERSION,
+				WASM_BINDGEN_VERSION,
+			),
+		}).
+		WithExec([]string{"tar", "-xzf", fmt.Sprintf("wasm-bindgen-%s-x86_64-unknown-linux-musl.tar.gz", WASM_BINDGEN_VERSION)}).
+		WithExec([]string{"mv", fmt.Sprintf("wasm-bindgen-%s-x86_64-unknown-linux-musl/wasm-bindgen", WASM_BINDGEN_VERSION), "/bin"}).
+
+		// build the WASM package
 		With(userSource(source)).
 		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
 }
