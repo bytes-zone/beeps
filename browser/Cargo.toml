@@ -14,7 +14,7 @@ workspace = true
 
 [dependencies]
 beeps_core = { path = "../beeps_core" }
-wasm-bindgen = "0.2.99"
+wasm-bindgen = "0.2.100"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -22,7 +22,7 @@ wasm-bindgen = "0.2.99"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
 chrono = "0.4.39"
-serde_json = "1.0.134"
+serde_json = "1.0.135"
 
 # Enable this to get wasm-pack to leave names in the file, making it possible to
 # analyze with Twiggy.
