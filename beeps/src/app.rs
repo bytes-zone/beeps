@@ -218,18 +218,10 @@ impl App {
                     vec![]
                 }
             }
-            Action::LoggedIn(jwt) => {
-                if let Some(client) = &mut self.client {
-                    tracing::debug!("setting JWT for existing client");
-                    client.auth = Some(jwt);
+            Action::LoggedIn(client) => {
+                self.client = Some(client.clone());
 
-                    vec![Effect::SaveSyncClientAuth(client.clone())]
-                } else {
-                    tracing::error!(
-                        "got a JWT when I didn't have a client to go with it. What's going on?"
-                    );
-                    vec![]
-                }
+                vec![Effect::SaveSyncClientAuth(client)]
             }
         }
     }
@@ -339,7 +331,6 @@ impl App {
                         }
                     }
 
-                    self.client = Some(client);
                     self.popover = None;
                 }
                 _ => auth.handle_event(key),
@@ -365,7 +356,7 @@ pub enum Action {
     SavedSyncClientAuth,
 
     /// We logged in successfully and got a new JWT
-    LoggedIn(String),
+    LoggedIn(Client),
 
     /// The user did something on the keyboard
     Key(KeyEvent),
@@ -478,7 +469,10 @@ impl Effect {
 
                 let resp = client.register(&conn.http, req).await?;
 
-                Ok(Some(Action::LoggedIn(resp.jwt)))
+                let mut out = client.clone();
+                out.auth = Some(resp.jwt);
+
+                Ok(Some(Action::LoggedIn(out)))
             }
 
             Self::LogIn(client, req) => {
@@ -486,7 +480,10 @@ impl Effect {
 
                 let resp = client.login(&conn.http, req).await?;
 
-                Ok(Some(Action::LoggedIn(resp.jwt)))
+                let mut out = client.clone();
+                out.auth = Some(resp.jwt);
+
+                Ok(Some(Action::LoggedIn(out)))
             }
         }
     }
