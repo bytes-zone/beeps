@@ -406,7 +406,7 @@ pub enum Effect {
 impl Effect {
     /// Perform the side-effectful portions of this effect, returning the next
     /// `Action` the application needs to handle
-    pub async fn run(&self, conn: &EffectConnections, config: &Config) -> Option<Action> {
+    pub async fn run(self, conn: &EffectConnections, config: &Config) -> Option<Action> {
         match self.run_inner(conn, config).await {
             Ok(action) => action,
             Err(problem) => {
@@ -419,7 +419,7 @@ impl Effect {
     /// The actual implementation of `run`, but with a `Result` wrapper to make
     /// it more ergonomic to write.
     async fn run_inner(
-        &self,
+        self,
         conn: &EffectConnections,
         config: &Config,
     ) -> Result<Option<Action>, Problem> {
@@ -432,7 +432,7 @@ impl Effect {
 
                 let store = base.join("store.json");
 
-                let data = serde_json::to_vec(replica)?;
+                let data = serde_json::to_vec(&replica)?;
                 fs::write(&store, &data).await?;
 
                 Ok(Some(Action::SavedReplica))
@@ -446,7 +446,7 @@ impl Effect {
 
                 let store = base.join("auth.json");
 
-                let data = serde_json::to_vec(client)?;
+                let data = serde_json::to_vec(&client)?;
                 fs::write(&store, &data).await?;
 
                 Ok(Some(Action::SavedSyncClientAuth))
@@ -464,26 +464,24 @@ impl Effect {
                 Ok(None)
             }
 
-            Self::Register(client, req) => {
+            Self::Register(mut client, req) => {
                 tracing::info!("registering");
 
-                let resp = client.register(&conn.http, req).await?;
+                let resp = client.register(&conn.http, &req).await?;
 
-                let mut out = client.clone();
-                out.auth = Some(resp.jwt);
+                client.auth = Some(resp.jwt);
 
-                Ok(Some(Action::LoggedIn(out)))
+                Ok(Some(Action::LoggedIn(client)))
             }
 
-            Self::LogIn(client, req) => {
+            Self::LogIn(mut client, req) => {
                 tracing::info!("logging in");
 
-                let resp = client.login(&conn.http, req).await?;
+                let resp = client.login(&conn.http, &req).await?;
 
-                let mut out = client.clone();
-                out.auth = Some(resp.jwt);
+                client.auth = Some(resp.jwt);
 
-                Ok(Some(Action::LoggedIn(out)))
+                Ok(Some(Action::LoggedIn(client)))
             }
         }
     }
