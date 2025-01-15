@@ -302,10 +302,10 @@ func (m *Beeps) Machete(
 	// +ignore=["target", ".git", ".dagger", "pgdata"]
 	source *dagger.Directory,
 ) *dagger.Container {
-	return m.rustBase("machete").
-		WithExec([]string{"cargo", "install", "cargo-machete"}).
+	return dag.Container().
+		From("ghcr.io/bnjbvr/cargo-machete:v0.7.0").
 		With(userSource(source)).
-		WithExec([]string{"cargo", "machete"})
+		WithExec([]string{}, dagger.ContainerWithExecOpts{UseEntrypoint: true})
 }
 
 // Build WASM package
