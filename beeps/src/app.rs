@@ -7,7 +7,7 @@ use popover::Popover;
 
 use crate::config::Config;
 use beeps_core::{
-    sync::{self, register, Client},
+    sync::{self, login, register, Client},
     NodeId, Replica,
 };
 use chrono::{DateTime, Local, Utc};
@@ -384,6 +384,9 @@ pub enum Effect {
 
     /// Register a new account on the server and log into it
     Register(Client, register::Req),
+
+    /// Log in to an existing account.
+    LogIn(Client, login::Req),
 }
 
 impl Effect {
@@ -451,6 +454,14 @@ impl Effect {
                 tracing::info!("registering");
 
                 let resp = client.register(&conn.http, req).await?;
+
+                Ok(Some(Action::LoggedIn(resp.jwt)))
+            }
+
+            Self::LogIn(client, req) => {
+                tracing::info!("logging in");
+
+                let resp = client.login(&conn.http, req).await?;
 
                 Ok(Some(Action::LoggedIn(resp.jwt)))
             }
