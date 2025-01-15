@@ -1,6 +1,6 @@
 {
   "name": "beeps",
-  "engineVersion": "v0.13.7",
+  "engineVersion": "v0.15.2",
   "sdk": "go",
   "dependencies": [
     {
