@@ -275,7 +275,7 @@ func (m *Beeps) Typos(
 				TYPOS_VERSION,
 			),
 		}).
-		WithExec([]string{"tar", "-xzf", "typos-v1.29.4-x86_64-unknown-linux-musl.tar.gz"}).
+		WithExec([]string{"tar", "-xzf", fmt.Sprintf("typos-v%s-x86_64-unknown-linux-musl.tar.gz", TYPOS_VERSION)}).
 		WithExec([]string{"mv", "typos", "/bin/typos"}).
 		// done installing typos, now we can check!
 		With(userSource(source)).
