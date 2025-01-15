@@ -4,24 +4,13 @@ use crate::error::Error;
 use crate::jwt;
 use argon2::{password_hash, Argon2, PasswordHash, PasswordVerifier};
 use axum::{extract::State, Json};
+use beeps_core::sync::login::{Req, Resp};
 use jsonwebtoken::EncodingKey;
-use serde::{Deserialize, Serialize};
 
 /// This should be the same for both missing accounts and incorrect passwords so
 /// as not to give additional information about what accounts exist to someone
 /// probing the system.
 static BAD_LOGIN_MESSAGE: &str = "incorrect email or password";
-
-#[derive(Debug, Deserialize)]
-pub struct Req {
-    email: String,
-    password: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct Resp {
-    jwt: String,
-}
 
 #[tracing::instrument(skip(conn, req, encoding_key), fields(req.email = %req.email))]
 pub async fn handler(
