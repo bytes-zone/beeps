@@ -111,12 +111,6 @@ func (m *Beeps) All(
 	nice := NiceOutput{}
 
 	eg.Go(func() error {
-		out, err := m.Build(ctx, source, false, "").Stderr(ctx)
-		nice.build = out
-		return err
-	})
-
-	eg.Go(func() error {
 		out, err := m.Clippy(ctx, source).Stderr(ctx)
 		nice.clippy = out
 		return err
