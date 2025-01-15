@@ -6,5 +6,8 @@ pub use client::Client;
 pub mod error;
 pub use error::Error;
 
+/// Log into the server
+pub mod login;
+
 /// Register with the server
 pub mod register;

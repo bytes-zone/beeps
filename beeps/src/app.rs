@@ -3,11 +3,11 @@ mod auth_form;
 
 /// Information displayed above the main layout
 mod popover;
-use popover::Popover;
+use popover::{AuthIntent, Popover};
 
 use crate::config::Config;
 use beeps_core::{
-    sync::{self, register, Client},
+    sync::{self, login, register, Client},
     NodeId, Replica,
 };
 use chrono::{DateTime, Local, Utc};
@@ -235,6 +235,7 @@ impl App {
     }
 
     /// Handle a key press
+    #[expect(clippy::too_many_lines)]
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         let mut effects = Vec::new();
 
@@ -281,7 +282,16 @@ impl App {
                         }
                     }
                     KeyCode::Char('r') => {
-                        self.popover = Some(Popover::Registering(auth_form::AuthForm::default()));
+                        self.popover = Some(Popover::Authenticating(
+                            auth_form::AuthForm::default(),
+                            AuthIntent::Register,
+                        ));
+                    }
+                    KeyCode::Char('l') => {
+                        self.popover = Some(Popover::Authenticating(
+                            auth_form::AuthForm::default(),
+                            AuthIntent::LogIn,
+                        ));
                     }
                     _ => (),
                 };
@@ -302,19 +312,32 @@ impl App {
                     tag_input.handle_event(&Event::Key(key));
                 }
             },
-            Some(Popover::Registering(auth)) => match key.code {
+            Some(Popover::Authenticating(auth, intent)) => match key.code {
                 KeyCode::Esc => self.popover = None,
                 KeyCode::Enter => {
                     let finished = auth.finish();
                     let client = Client::new(finished.server);
 
-                    effects.push(Effect::Register(
-                        client.clone(),
-                        register::Req {
-                            email: finished.email,
-                            password: finished.password,
-                        },
-                    ));
+                    match intent {
+                        AuthIntent::LogIn => {
+                            effects.push(Effect::LogIn(
+                                client.clone(),
+                                login::Req {
+                                    email: finished.email,
+                                    password: finished.password,
+                                },
+                            ));
+                        }
+                        AuthIntent::Register => {
+                            effects.push(Effect::Register(
+                                client.clone(),
+                                register::Req {
+                                    email: finished.email,
+                                    password: finished.password,
+                                },
+                            ));
+                        }
+                    }
 
                     self.client = Some(client);
                     self.popover = None;
@@ -384,6 +407,9 @@ pub enum Effect {
 
     /// Register a new account on the server and log into it
     Register(Client, register::Req),
+
+    /// Log in to an existing account.
+    LogIn(Client, login::Req),
 }
 
 impl Effect {
@@ -451,6 +477,14 @@ impl Effect {
                 tracing::info!("registering");
 
                 let resp = client.register(&conn.http, req).await?;
+
+                Ok(Some(Action::LoggedIn(resp.jwt)))
+            }
+
+            Self::LogIn(client, req) => {
+                tracing::info!("logging in");
+
+                let resp = client.login(&conn.http, req).await?;
 
                 Ok(Some(Action::LoggedIn(resp.jwt)))
             }

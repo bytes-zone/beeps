@@ -114,7 +114,7 @@ async fn main() {
         // ROUTES
         .route("/health", get(handlers::health::handler))
         .route(sync::register::PATH, post(handlers::register::handler))
-        .route("/api/v1/login", post(handlers::login::handler))
+        .route(sync::login::PATH, post(handlers::login::handler))
         .route("/api/v1/whoami", get(handlers::whoami::handler))
         // STATE
         .with_state(state)

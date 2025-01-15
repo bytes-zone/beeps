@@ -18,7 +18,18 @@ pub enum Popover {
     Editing(DateTime<Utc>, Input),
 
     /// Register with the server
-    Registering(auth_form::AuthForm),
+    Authenticating(auth_form::AuthForm, AuthIntent),
+}
+
+/// When we're working with an Authenticating popover, what do we intend to do
+/// with the information we're gathering?
+#[derive(Debug)]
+pub enum AuthIntent {
+    /// The user wants to register a new account
+    Register,
+
+    /// The user wants to log into the server
+    LogIn,
 }
 
 impl Popover {
@@ -91,7 +102,7 @@ impl Popover {
                     popup_area.y + 1, // +1 row for the border/title
                 ));
             }
-            Popover::Registering(auth) => auth.render(body_area, frame),
+            Popover::Authenticating(auth, _) => auth.render(body_area, frame),
         }
     }
 }
