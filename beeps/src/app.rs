@@ -251,18 +251,8 @@ impl App {
                     KeyCode::Backspace | KeyCode::Delete => {
                         effects.append(&mut self.clear_selected())
                     }
-                    KeyCode::Char('r') => {
-                        self.popover = Some(Popover::Authenticating(
-                            auth_form::AuthForm::default(),
-                            AuthIntent::Register,
-                        ));
-                    }
-                    KeyCode::Char('l') => {
-                        self.popover = Some(Popover::Authenticating(
-                            auth_form::AuthForm::default(),
-                            AuthIntent::LogIn,
-                        ));
-                    }
+                    KeyCode::Char('r') => self.register(),
+                    KeyCode::Char('l') => self.log_in(),
                     _ => (),
                 };
             }
@@ -316,6 +306,20 @@ impl App {
         }
 
         effects
+    }
+
+    fn register(&mut self) {
+        self.popover = Some(Popover::Authenticating(
+            auth_form::AuthForm::default(),
+            AuthIntent::Register,
+        ));
+    }
+
+    fn log_in(&mut self) {
+        self.popover = Some(Popover::Authenticating(
+            auth_form::AuthForm::default(),
+            AuthIntent::LogIn,
+        ));
     }
 
     fn show_help(&mut self) {
