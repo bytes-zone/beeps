@@ -246,22 +246,10 @@ impl App {
                     KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
                     KeyCode::Char('c') => self.copy_selected(),
                     KeyCode::Char('v') => effects.append(&mut self.paste_copied()),
-                    KeyCode::Char('e') | KeyCode::Enter => {
-                        self.popover = self.selected_ping().map(|ping| {
-                            Popover::Editing(
-                                *ping,
-                                Input::new(self.replica.get_tag(ping).cloned().unwrap_or_default()),
-                            )
-                        });
-                    }
-                    KeyCode::Char('?') | KeyCode::F(1) => self.popover = Some(Popover::Help),
+                    KeyCode::Char('e') | KeyCode::Enter => self.edit_selected(),
+                    KeyCode::Char('?') | KeyCode::F(1) => self.show_help(),
                     KeyCode::Backspace | KeyCode::Delete => {
-                        if let Some(idx) = self.table_state.selected() {
-                            let ping = self.current_pings().nth(idx).unwrap();
-                            self.replica.untag_ping(*ping);
-
-                            effects.push(Effect::SaveReplica(self.replica.clone()));
-                        }
+                        effects.append(&mut self.clear_selected())
                     }
                     KeyCode::Char('r') => {
                         self.popover = Some(Popover::Authenticating(
@@ -328,6 +316,30 @@ impl App {
         }
 
         effects
+    }
+
+    fn show_help(&mut self) {
+        self.popover = Some(Popover::Help)
+    }
+
+    fn clear_selected(&mut self) -> Vec<Effect> {
+        if let Some(idx) = self.table_state.selected() {
+            let ping = self.current_pings().nth(idx).unwrap();
+            self.replica.untag_ping(*ping);
+
+            vec![Effect::SaveReplica(self.replica.clone())]
+        } else {
+            vec![]
+        }
+    }
+
+    fn edit_selected(&mut self) {
+        self.popover = self.selected_ping().map(|ping| {
+            Popover::Editing(
+                *ping,
+                Input::new(self.replica.get_tag(ping).cloned().unwrap_or_default()),
+            )
+        });
     }
 
     fn paste_copied(&mut self) -> Vec<Effect> {
