@@ -244,18 +244,8 @@ impl App {
                     KeyCode::Char('q') => effects.append(&mut self.quit()),
                     KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
                     KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
-                    KeyCode::Char('c') => {
-                        self.copied = self
-                            .selected_ping()
-                            .and_then(|ping| self.replica.get_tag(ping).cloned());
-                    }
-                    KeyCode::Char('v') => {
-                        if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
-                            self.replica.tag_ping(*ping, tag.clone());
-
-                            effects.push(Effect::SaveReplica(self.replica.clone()));
-                        }
-                    }
+                    KeyCode::Char('c') => self.copy_selected(),
+                    KeyCode::Char('v') => effects.append(&mut self.paste_copied()),
                     KeyCode::Char('e') | KeyCode::Enter => {
                         self.popover = self.selected_ping().map(|ping| {
                             Popover::Editing(
@@ -338,6 +328,22 @@ impl App {
         }
 
         effects
+    }
+
+    fn paste_copied(&mut self) -> Vec<Effect> {
+        if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
+            self.replica.tag_ping(*ping, tag.clone());
+
+            vec![Effect::SaveReplica(self.replica.clone())]
+        } else {
+            vec![]
+        }
+    }
+
+    fn copy_selected(&mut self) {
+        self.copied = self
+            .selected_ping()
+            .and_then(|ping| self.replica.get_tag(ping).cloned());
     }
 
     fn quit(&mut self) -> Vec<Effect> {
