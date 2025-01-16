@@ -234,7 +234,6 @@ impl App {
     }
 
     /// Handle a key press
-    #[expect(clippy::too_many_lines)]
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         let mut effects = Vec::new();
 
@@ -249,10 +248,10 @@ impl App {
                     KeyCode::Char('e') | KeyCode::Enter => self.edit_selected(),
                     KeyCode::Char('?') | KeyCode::F(1) => self.show_help(),
                     KeyCode::Backspace | KeyCode::Delete => {
-                        effects.append(&mut self.clear_selected())
+                        effects.append(&mut self.clear_selected());
                     }
-                    KeyCode::Char('r') => self.register(),
-                    KeyCode::Char('l') => self.log_in(),
+                    KeyCode::Char('r') => self.start_registering(),
+                    KeyCode::Char('l') => self.start_logging_in(),
                     _ => (),
                 };
             }
@@ -308,28 +307,34 @@ impl App {
         effects
     }
 
+    /// Close any open popover. Note that this loses any outstanding work in the
+    /// popover; make sure to deal with it first.
     fn dismiss_popover(&mut self) {
-        self.popover = None
+        self.popover = None;
     }
 
-    fn register(&mut self) {
+    /// Show a new popover for registration.
+    fn start_registering(&mut self) {
         self.popover = Some(Popover::Authenticating(
             auth_form::AuthForm::default(),
             AuthIntent::Register,
         ));
     }
 
-    fn log_in(&mut self) {
+    /// Show a new popover for logging in.
+    fn start_logging_in(&mut self) {
         self.popover = Some(Popover::Authenticating(
             auth_form::AuthForm::default(),
             AuthIntent::LogIn,
         ));
     }
 
+    /// Show a new popover with the key binding help
     fn show_help(&mut self) {
-        self.popover = Some(Popover::Help)
+        self.popover = Some(Popover::Help);
     }
 
+    /// Clear the tag from the selected ping
     fn clear_selected(&mut self) -> Vec<Effect> {
         if let Some(idx) = self.table_state.selected() {
             let ping = self.current_pings().nth(idx).unwrap();
@@ -341,6 +346,7 @@ impl App {
         }
     }
 
+    /// Show a new popover editing the selected ping.
     fn edit_selected(&mut self) {
         self.popover = self.selected_ping().map(|ping| {
             Popover::Editing(
@@ -350,6 +356,14 @@ impl App {
         });
     }
 
+    /// Copy the selected ping to the paste buffer.
+    fn copy_selected(&mut self) {
+        self.copied = self
+            .selected_ping()
+            .and_then(|ping| self.replica.get_tag(ping).cloned());
+    }
+
+    /// Paste the copied tag (if any) into the selected ping.
     fn paste_copied(&mut self) -> Vec<Effect> {
         if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
             self.replica.tag_ping(*ping, tag.clone());
@@ -360,12 +374,7 @@ impl App {
         }
     }
 
-    fn copy_selected(&mut self) {
-        self.copied = self
-            .selected_ping()
-            .and_then(|ping| self.replica.get_tag(ping).cloned());
-    }
-
+    /// Start the process of quitting the app.
     fn quit(&mut self) -> Vec<Effect> {
         self.exiting = Some(ExitCode::SUCCESS);
 
