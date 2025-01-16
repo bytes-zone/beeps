@@ -1,4 +1,4 @@
-use beeps_core::sync::Client;
+use beeps_core::sync::{whoami, Client};
 use crossterm::event::KeyEvent;
 
 /// Things that can happen to this app
@@ -12,6 +12,9 @@ pub enum Action {
 
     /// We logged in successfully and got a new JWT
     LoggedIn(Client),
+
+    /// We got information about who is logged in
+    GotWhoAmI(whoami::Resp),
 
     /// The user did something on the keyboard
     Key(KeyEvent),

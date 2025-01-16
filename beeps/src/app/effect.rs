@@ -40,6 +40,9 @@ pub enum Effect {
 
     /// Log in to an existing account.
     LogIn(Client, login::Req),
+
+    /// Check login status
+    WhoAmI(Client),
 }
 
 impl Effect {
@@ -121,6 +124,14 @@ impl Effect {
                 client.auth = Some(resp.jwt);
 
                 Ok(Some(Action::LoggedIn(client)))
+            }
+
+            Self::WhoAmI(client) => {
+                tracing::info!("checking whoami");
+
+                let resp = client.whoami(&conn.http).await?;
+
+                Ok(Some(Action::GotWhoAmI(resp)))
             }
         }
     }
