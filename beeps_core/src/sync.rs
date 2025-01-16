@@ -11,3 +11,6 @@ pub mod login;
 
 /// Register with the server
 pub mod register;
+
+/// Check auth
+pub mod whoami;

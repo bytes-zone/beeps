@@ -1,5 +1,5 @@
 use super::error::{self, Error};
-use super::{login, register};
+use super::{login, register, whoami};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -49,6 +49,20 @@ impl Client {
         let url = Url::parse(&self.server)?.join(login::PATH)?;
 
         Self::handle_response(client.post(url).json(req)).await
+    }
+
+    /// Check that your auth works.
+    ///
+    /// ## Errors
+    ///
+    /// Errors are the same as `handle_response`.
+    pub async fn whoami(&self, client: &reqwest::Client) -> error::Result<whoami::Resp> {
+        let url = Url::parse(&self.server)?.join(whoami::PATH)?;
+
+        match &self.auth {
+            Some(auth) => Self::handle_response(client.get(url).bearer_auth(auth)).await,
+            None => Err(Error::Client("Unauthorized".to_string())),
+        }
     }
 
     /// Convert an HTTP response into a result, interpreting errors in a

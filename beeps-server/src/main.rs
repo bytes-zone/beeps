@@ -115,7 +115,7 @@ async fn main() {
         .route("/health", get(handlers::health::handler))
         .route(sync::register::PATH, post(handlers::register::handler))
         .route(sync::login::PATH, post(handlers::login::handler))
-        .route("/api/v1/whoami", get(handlers::whoami::handler))
+        .route(sync::whoami::PATH, get(handlers::whoami::handler))
         // STATE
         .with_state(state)
         // MIDDLEWARE

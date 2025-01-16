@@ -230,6 +230,11 @@ impl App {
 
                 vec![Effect::SaveSyncClientAuth(client)]
             }
+            Action::GotWhoAmI(resp) => {
+                self.status_line = Some(format!("Logged in as \"{}\"", resp.email));
+
+                vec![]
+            }
         }
     }
 
@@ -252,6 +257,7 @@ impl App {
                     }
                     KeyCode::Char('r') => self.start_registering(),
                     KeyCode::Char('l') => self.start_logging_in(),
+                    KeyCode::Char('w') => effects.append(&mut self.show_whoami()),
                     _ => (),
                 };
             }
@@ -327,6 +333,17 @@ impl App {
             auth_form::AuthForm::default(),
             AuthIntent::LogIn,
         ));
+    }
+
+    /// Ask the server if our token is still valid and show the response.
+    fn show_whoami(&mut self) -> Vec<Effect> {
+        if let Some(ref client) = self.client {
+            vec![Effect::WhoAmI(client.clone())]
+        } else {
+            self.status_line = Some("Not logged in".to_string());
+
+            vec![]
+        }
     }
 
     /// Show a new popover with the key binding help

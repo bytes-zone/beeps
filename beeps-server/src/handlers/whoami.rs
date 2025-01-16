@@ -1,9 +1,10 @@
 use crate::jwt::Claims;
 use axum::Json;
+use beeps_core::sync::whoami;
 
 #[tracing::instrument]
-pub async fn handler(claims: Claims) -> Json<Claims> {
-    Json(claims)
+pub async fn handler(claims: Claims) -> Json<whoami::Resp> {
+    Json(whoami::Resp { email: claims.sub })
 }
 
 #[cfg(test)]
@@ -21,6 +22,6 @@ mod test {
 
         let Json(resp) = handler(claims.clone()).await;
 
-        assert_eq!(resp, claims);
+        assert_eq!(resp, whoami::Resp { email: claims.sub });
     }
 }
