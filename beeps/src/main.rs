@@ -9,7 +9,7 @@ mod config;
 /// `form_fields!` macro
 mod form_fields;
 
-use app::{App, EffectConnections};
+use app::{effect::EffectConnections, App};
 use clap::Parser;
 use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
