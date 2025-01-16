@@ -1,5 +1,13 @@
+/// Things that can happen in the app
+mod action;
+pub use action::Action;
+
 /// The form to register or log in
 mod auth_form;
+
+/// Side effects the app can do
+pub mod effect;
+pub use effect::{Effect, Problem};
 
 /// Information displayed above the main layout
 mod popover;
@@ -7,13 +15,12 @@ use popover::{AuthIntent, Popover};
 
 use crate::config::Config;
 use beeps_core::{
-    sync::{self, login, register, Client},
+    sync::{login, register, Client},
     NodeId, Replica,
 };
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use layout::Flex;
-use notify_rust::Notification;
 use ratatui::{
     prelude::*,
     widgets::{
@@ -21,7 +28,7 @@ use ratatui::{
     },
     Frame,
 };
-use std::{io, process::ExitCode};
+use std::process::ExitCode;
 use tokio::fs;
 use tui_input::{backend::crossterm::EventHandler, Input};
 
@@ -227,79 +234,39 @@ impl App {
     }
 
     /// Handle a key press
-    #[expect(clippy::too_many_lines)]
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         let mut effects = Vec::new();
 
         match &mut self.popover {
             None => {
                 match key.code {
-                    KeyCode::Char('q') => {
-                        self.exiting = Some(ExitCode::SUCCESS);
-
-                        effects.push(Effect::SaveReplica(self.replica.clone()));
-                        if let Some(client) = &self.client {
-                            effects.push(Effect::SaveSyncClientAuth(client.clone()));
-                        }
-                    }
+                    KeyCode::Char('q') => effects.append(&mut self.quit()),
                     KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
                     KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
-                    KeyCode::Char('c') => {
-                        self.copied = self
-                            .selected_ping()
-                            .and_then(|ping| self.replica.get_tag(ping).cloned());
-                    }
-                    KeyCode::Char('v') => {
-                        if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
-                            self.replica.tag_ping(*ping, tag.clone());
-
-                            effects.push(Effect::SaveReplica(self.replica.clone()));
-                        }
-                    }
-                    KeyCode::Char('e') | KeyCode::Enter => {
-                        self.popover = self.selected_ping().map(|ping| {
-                            Popover::Editing(
-                                *ping,
-                                Input::new(self.replica.get_tag(ping).cloned().unwrap_or_default()),
-                            )
-                        });
-                    }
-                    KeyCode::Char('?') | KeyCode::F(1) => self.popover = Some(Popover::Help),
+                    KeyCode::Char('c') => self.copy_selected(),
+                    KeyCode::Char('v') => effects.append(&mut self.paste_copied()),
+                    KeyCode::Char('e') | KeyCode::Enter => self.edit_selected(),
+                    KeyCode::Char('?') | KeyCode::F(1) => self.show_help(),
                     KeyCode::Backspace | KeyCode::Delete => {
-                        if let Some(idx) = self.table_state.selected() {
-                            let ping = self.current_pings().nth(idx).unwrap();
-                            self.replica.untag_ping(*ping);
-
-                            effects.push(Effect::SaveReplica(self.replica.clone()));
-                        }
+                        effects.append(&mut self.clear_selected());
                     }
-                    KeyCode::Char('r') => {
-                        self.popover = Some(Popover::Authenticating(
-                            auth_form::AuthForm::default(),
-                            AuthIntent::Register,
-                        ));
-                    }
-                    KeyCode::Char('l') => {
-                        self.popover = Some(Popover::Authenticating(
-                            auth_form::AuthForm::default(),
-                            AuthIntent::LogIn,
-                        ));
-                    }
+                    KeyCode::Char('r') => self.start_registering(),
+                    KeyCode::Char('l') => self.start_logging_in(),
                     _ => (),
                 };
             }
             Some(Popover::Help) => match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => self.popover = None,
+                KeyCode::Char('q') | KeyCode::Esc => self.dismiss_popover(),
                 _ => (),
             },
             Some(Popover::Editing(ping, tag_input)) => match key.code {
                 KeyCode::Enter => {
                     self.replica.tag_ping(*ping, tag_input.value().to_string());
 
-                    self.popover = None;
+                    self.dismiss_popover();
                     effects.push(Effect::SaveReplica(self.replica.clone()));
                 }
-                KeyCode::Esc => self.popover = None,
+                KeyCode::Esc => self.dismiss_popover(),
                 _ => {
                     tag_input.handle_event(&Event::Key(key));
                 }
@@ -331,10 +298,91 @@ impl App {
                         }
                     }
 
-                    self.popover = None;
+                    self.dismiss_popover();
                 }
                 _ => auth.handle_event(key),
             },
+        }
+
+        effects
+    }
+
+    /// Close any open popover. Note that this loses any outstanding work in the
+    /// popover; make sure to deal with it first.
+    fn dismiss_popover(&mut self) {
+        self.popover = None;
+    }
+
+    /// Show a new popover for registration.
+    fn start_registering(&mut self) {
+        self.popover = Some(Popover::Authenticating(
+            auth_form::AuthForm::default(),
+            AuthIntent::Register,
+        ));
+    }
+
+    /// Show a new popover for logging in.
+    fn start_logging_in(&mut self) {
+        self.popover = Some(Popover::Authenticating(
+            auth_form::AuthForm::default(),
+            AuthIntent::LogIn,
+        ));
+    }
+
+    /// Show a new popover with the key binding help
+    fn show_help(&mut self) {
+        self.popover = Some(Popover::Help);
+    }
+
+    /// Clear the tag from the selected ping
+    fn clear_selected(&mut self) -> Vec<Effect> {
+        if let Some(idx) = self.table_state.selected() {
+            let ping = self.current_pings().nth(idx).unwrap();
+            self.replica.untag_ping(*ping);
+
+            vec![Effect::SaveReplica(self.replica.clone())]
+        } else {
+            vec![]
+        }
+    }
+
+    /// Show a new popover editing the selected ping.
+    fn edit_selected(&mut self) {
+        self.popover = self.selected_ping().map(|ping| {
+            Popover::Editing(
+                *ping,
+                Input::new(self.replica.get_tag(ping).cloned().unwrap_or_default()),
+            )
+        });
+    }
+
+    /// Copy the selected ping to the paste buffer.
+    fn copy_selected(&mut self) {
+        self.copied = self
+            .selected_ping()
+            .and_then(|ping| self.replica.get_tag(ping).cloned());
+    }
+
+    /// Paste the copied tag (if any) into the selected ping.
+    fn paste_copied(&mut self) -> Vec<Effect> {
+        if let Some((ping, tag)) = self.selected_ping().zip(self.copied.as_ref()) {
+            self.replica.tag_ping(*ping, tag.clone());
+
+            vec![Effect::SaveReplica(self.replica.clone())]
+        } else {
+            vec![]
+        }
+    }
+
+    /// Start the process of quitting the app.
+    fn quit(&mut self) -> Vec<Effect> {
+        self.exiting = Some(ExitCode::SUCCESS);
+
+        let mut effects = Vec::with_capacity(2);
+        effects.push(Effect::SaveReplica(self.replica.clone()));
+
+        if let Some(client) = &self.client {
+            effects.push(Effect::SaveSyncClientAuth(client.clone()));
         }
 
         effects
@@ -344,163 +392,4 @@ impl App {
     pub fn should_exit(&self) -> Option<ExitCode> {
         self.exiting
     }
-}
-
-/// Things that can happen to this app
-#[derive(Debug)]
-pub enum Action {
-    /// We successfully saved the replica
-    SavedReplica,
-
-    /// We successfully saved the sync client
-    SavedSyncClientAuth,
-
-    /// We logged in successfully and got a new JWT
-    LoggedIn(Client),
-
-    /// The user did something on the keyboard
-    Key(KeyEvent),
-
-    /// Something bad happened; display it to the user
-    Problem(String),
-
-    /// Some amount of time passed and we should do clock things
-    TimePassed,
-}
-
-/// Connections to external services that effect use. We keep these around to
-/// have some level of connection sharing for the app as a whole.
-pub struct EffectConnections {
-    /// an HTTP client with reqwest
-    http: reqwest::Client,
-}
-
-impl EffectConnections {
-    /// Get a new `EffectConnections`
-    pub fn new() -> Self {
-        Self {
-            http: reqwest::Client::new(),
-        }
-    }
-}
-
-/// Things that can happen as a result of user input. Side effects!
-#[derive(Debug)]
-pub enum Effect {
-    /// Save replica to disk
-    SaveReplica(Replica),
-
-    /// Save sync client auth to disk
-    SaveSyncClientAuth(Client),
-
-    /// Notify that a new ping is available
-    NotifyAboutNewPing,
-
-    /// Register a new account on the server and log into it
-    Register(Client, register::Req),
-
-    /// Log in to an existing account.
-    LogIn(Client, login::Req),
-}
-
-impl Effect {
-    /// Perform the side-effectful portions of this effect, returning the next
-    /// `Action` the application needs to handle
-    pub async fn run(self, conn: &EffectConnections, config: &Config) -> Option<Action> {
-        match self.run_inner(conn, config).await {
-            Ok(action) => action,
-            Err(problem) => {
-                tracing::error!(?problem, "problem running effect");
-                Some(Action::Problem(problem.to_string()))
-            }
-        }
-    }
-
-    /// The actual implementation of `run`, but with a `Result` wrapper to make
-    /// it more ergonomic to write.
-    async fn run_inner(
-        self,
-        conn: &EffectConnections,
-        config: &Config,
-    ) -> Result<Option<Action>, Problem> {
-        match self {
-            Self::SaveReplica(replica) => {
-                tracing::debug!("saving replica");
-
-                let base = config.data_dir();
-                fs::create_dir_all(&base).await?;
-
-                let store = base.join("store.json");
-
-                let data = serde_json::to_vec(&replica)?;
-                fs::write(&store, &data).await?;
-
-                Ok(Some(Action::SavedReplica))
-            }
-
-            Self::SaveSyncClientAuth(client) => {
-                tracing::info!("saving client auth");
-
-                let base = config.data_dir();
-                fs::create_dir_all(&base).await?;
-
-                let store = base.join("auth.json");
-
-                let data = serde_json::to_vec(&client)?;
-                fs::write(&store, &data).await?;
-
-                Ok(Some(Action::SavedSyncClientAuth))
-            }
-
-            Self::NotifyAboutNewPing => {
-                tracing::debug!("notifying about new ping");
-
-                // We don't care if the notification failed to show.
-                let _ = Notification::new()
-                    .summary("New ping!")
-                    .body("What are you up to? Tag it!")
-                    .show();
-
-                Ok(None)
-            }
-
-            Self::Register(mut client, req) => {
-                tracing::info!("registering");
-
-                let resp = client.register(&conn.http, &req).await?;
-
-                client.auth = Some(resp.jwt);
-
-                Ok(Some(Action::LoggedIn(client)))
-            }
-
-            Self::LogIn(mut client, req) => {
-                tracing::info!("logging in");
-
-                let resp = client.login(&conn.http, &req).await?;
-
-                client.auth = Some(resp.jwt);
-
-                Ok(Some(Action::LoggedIn(client)))
-            }
-        }
-    }
-}
-
-/// Problems that can happen while running an `Effect`.
-#[derive(Debug, thiserror::Error)]
-pub enum Problem {
-    /// We had a problem writing to disk, for example with permissions or
-    /// missing files.
-    #[error("IO error: {0}")]
-    IO(#[from] io::Error),
-
-    /// We had a problem loading or saving JSON.
-    #[error("JSON error: {0}")]
-    Json(#[from] serde_json::Error),
-
-    /// We had a problem communicating with the server, for example due to a bad
-    /// URL or expired credentials.
-    #[error("Problem communicating with the server: {0}")]
-    Server(#[from] sync::Error),
 }

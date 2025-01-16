@@ -9,7 +9,7 @@ mod config;
 /// `form_fields!` macro
 mod form_fields;
 
-use app::{App, EffectConnections};
+use app::{effect::EffectContext, App};
 use clap::Parser;
 use crossterm::event::{Event, EventStream};
 use futures::StreamExt;
@@ -48,7 +48,7 @@ async fn run(
     mut terminal: DefaultTerminal,
     config: Arc<config::Config>,
 ) -> Result<ExitCode, app::Problem> {
-    let conn = Arc::new(EffectConnections::new());
+    let conn = Arc::new(EffectContext::new());
 
     // We expect side-effectful behaviors (that is, things like FS or network
     // access) to take place via async tasks. Once those tasks are done, we read
@@ -142,7 +142,7 @@ async fn run(
 /// Spawn a task to run an effect and send the next action to the app.
 fn spawn_effect_task(
     effect_tx: UnboundedSender<app::Action>,
-    state: Arc<EffectConnections>,
+    state: Arc<EffectContext>,
     config: Arc<config::Config>,
     effect: app::Effect,
 ) -> JoinHandle<()> {
