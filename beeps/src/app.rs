@@ -241,14 +241,7 @@ impl App {
         match &mut self.popover {
             None => {
                 match key.code {
-                    KeyCode::Char('q') => {
-                        self.exiting = Some(ExitCode::SUCCESS);
-
-                        effects.push(Effect::SaveReplica(self.replica.clone()));
-                        if let Some(client) = &self.client {
-                            effects.push(Effect::SaveSyncClientAuth(client.clone()));
-                        }
-                    }
+                    KeyCode::Char('q') => effects.append(&mut self.quit()),
                     KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
                     KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
                     KeyCode::Char('c') => {
@@ -342,6 +335,19 @@ impl App {
                 }
                 _ => auth.handle_event(key),
             },
+        }
+
+        effects
+    }
+
+    fn quit(&mut self) -> Vec<Effect> {
+        self.exiting = Some(ExitCode::SUCCESS);
+
+        let mut effects = Vec::with_capacity(2);
+        effects.push(Effect::SaveReplica(self.replica.clone()));
+
+        if let Some(client) = &self.client {
+            effects.push(Effect::SaveSyncClientAuth(client.clone()));
         }
 
         effects
