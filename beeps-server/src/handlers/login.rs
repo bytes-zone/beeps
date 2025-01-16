@@ -38,11 +38,7 @@ pub async fn handler(
     }
 
     Ok(Json(Resp {
-        jwt: jwt::issue(
-            &encoding_key,
-            &account.email,
-            0, // TODO
-        )?,
+        jwt: jwt::issue(&encoding_key, &account.email)?,
     }))
 }
 

@@ -59,11 +59,7 @@ pub async fn handler(
     tx.commit().await?;
 
     Ok(Json(Resp {
-        jwt: jwt::issue(
-            &encoding_key,
-            &req.email,
-            0, // TODO
-        )?,
+        jwt: jwt::issue(&encoding_key, &req.email)?,
     }))
 }
 
