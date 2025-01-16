@@ -59,8 +59,17 @@ impl Client {
     pub async fn whoami(&self, client: &reqwest::Client) -> error::Result<whoami::Resp> {
         let url = Url::parse(&self.server)?.join(whoami::PATH)?;
 
+        self.authenticated(|jwt| client.get(url).bearer_auth(jwt))
+            .await
+    }
+
+    async fn authenticated<CB, T>(&self, cb: CB) -> Result<T, Error>
+    where
+        CB: FnOnce(&str) -> reqwest::RequestBuilder,
+        T: DeserializeOwned,
+    {
         match &self.auth {
-            Some(auth) => Self::handle_response(client.get(url).bearer_auth(auth)).await,
+            Some(auth) => Self::handle_response(cb(auth)).await,
             None => Err(Error::Client("Unauthorized".to_string())),
         }
     }
@@ -75,7 +84,7 @@ impl Client {
     /// - `Error::Server` if the server returned a server error (5xx)
     /// - `Error::Unexpected` if the server returned something else (the server is
     ///   not supposed to issue redirects or informational responses.)
-    pub async fn handle_response<T>(resp: reqwest::RequestBuilder) -> error::Result<T>
+    async fn handle_response<T>(resp: reqwest::RequestBuilder) -> error::Result<T>
     where
         T: DeserializeOwned,
     {
