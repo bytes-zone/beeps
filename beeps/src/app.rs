@@ -257,17 +257,17 @@ impl App {
                 };
             }
             Some(Popover::Help) => match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => self.popover = None,
+                KeyCode::Char('q') | KeyCode::Esc => self.dismiss_popover(),
                 _ => (),
             },
             Some(Popover::Editing(ping, tag_input)) => match key.code {
                 KeyCode::Enter => {
                     self.replica.tag_ping(*ping, tag_input.value().to_string());
 
-                    self.popover = None;
+                    self.dismiss_popover();
                     effects.push(Effect::SaveReplica(self.replica.clone()));
                 }
-                KeyCode::Esc => self.popover = None,
+                KeyCode::Esc => self.dismiss_popover(),
                 _ => {
                     tag_input.handle_event(&Event::Key(key));
                 }
@@ -299,13 +299,17 @@ impl App {
                         }
                     }
 
-                    self.popover = None;
+                    self.dismiss_popover();
                 }
                 _ => auth.handle_event(key),
             },
         }
 
         effects
+    }
+
+    fn dismiss_popover(&mut self) {
+        self.popover = None
     }
 
     fn register(&mut self) {
