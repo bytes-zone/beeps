@@ -1,3 +1,7 @@
+/// Things that can happen in the app
+mod action;
+pub use action::Action;
+
 /// The form to register or log in
 mod auth_form;
 
@@ -344,28 +348,6 @@ impl App {
     pub fn should_exit(&self) -> Option<ExitCode> {
         self.exiting
     }
-}
-
-/// Things that can happen to this app
-#[derive(Debug)]
-pub enum Action {
-    /// We successfully saved the replica
-    SavedReplica,
-
-    /// We successfully saved the sync client
-    SavedSyncClientAuth,
-
-    /// We logged in successfully and got a new JWT
-    LoggedIn(Client),
-
-    /// The user did something on the keyboard
-    Key(KeyEvent),
-
-    /// Something bad happened; display it to the user
-    Problem(String),
-
-    /// Some amount of time passed and we should do clock things
-    TimePassed,
 }
 
 /// Connections to external services that effect use. We keep these around to
