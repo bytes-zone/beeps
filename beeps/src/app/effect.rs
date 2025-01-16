@@ -9,12 +9,12 @@ use tokio::{fs, io};
 
 /// Connections to external services that effect use. We keep these around to
 /// have some level of connection sharing for the app as a whole.
-pub struct EffectConnections {
+pub struct EffectContext {
     /// an HTTP client with reqwest
     http: reqwest::Client,
 }
 
-impl EffectConnections {
+impl EffectContext {
     /// Get a new `EffectConnections`
     pub fn new() -> Self {
         Self {
@@ -45,7 +45,7 @@ pub enum Effect {
 impl Effect {
     /// Perform the side-effectful portions of this effect, returning the next
     /// `Action` the application needs to handle
-    pub async fn run(self, conn: &EffectConnections, config: &Config) -> Option<Action> {
+    pub async fn run(self, conn: &EffectContext, config: &Config) -> Option<Action> {
         match self.run_inner(conn, config).await {
             Ok(action) => action,
             Err(problem) => {
@@ -59,7 +59,7 @@ impl Effect {
     /// it more ergonomic to write.
     async fn run_inner(
         self,
-        conn: &EffectConnections,
+        conn: &EffectContext,
         config: &Config,
     ) -> Result<Option<Action>, Problem> {
         match self {
