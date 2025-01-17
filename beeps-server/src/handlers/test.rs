@@ -2,12 +2,13 @@ use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHasher,
 };
-use sqlx::{pool::PoolConnection, query, Acquire, Postgres};
+use sqlx::{pool::PoolConnection, query, Acquire, Postgres, Row};
 
 /// A document for use in testing
 pub struct TestDoc {
     pub email: String,
     pub password: String,
+    pub document_id: i64,
 }
 
 impl TestDoc {
@@ -24,15 +25,29 @@ impl TestDoc {
 
         let mut tx = pool.begin().await.unwrap();
 
-        query("INSERT INTO accounts (email, password) VALUES ($1, $2) RETURNING id::BIGINT")
-            .bind(&email)
-            .bind(&hash)
-            .fetch_one(&mut *tx)
-            .await
-            .expect("failed to insert account");
+        let account_id: i64 =
+            query("INSERT INTO accounts (email, password) VALUES ($1, $2) RETURNING id::BIGINT")
+                .bind(&email)
+                .bind(&hash)
+                .fetch_one(&mut *tx)
+                .await
+                .expect("failed to insert account")
+                .get("id");
+
+        let document_id =
+            query("INSERT INTO documents (owner_id) VALUES ($1) RETURNING id::BIGINT")
+                .bind(&account_id)
+                .fetch_one(&mut *tx)
+                .await
+                .expect("failed to insert document")
+                .get("id");
 
         tx.commit().await.expect("failed to commit transaction");
 
-        TestDoc { email, password }
+        TestDoc {
+            email,
+            password,
+            document_id,
+        }
     }
 }
