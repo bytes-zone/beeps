@@ -12,13 +12,13 @@ pub struct Resp {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Document {
     /// The ID of the document for use in later calls
-    pub id: usize,
+    pub id: i32,
 
     /// When the document was created, to differentiate between documents.
-    pub created: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
 
     /// When the document was last updated, to differentiate between documents.
-    pub update: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Where the whoami endpoint lives.
