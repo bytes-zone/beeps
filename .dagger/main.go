@@ -256,18 +256,16 @@ func (m *Beeps) Typos(
 	// +ignore=["target", ".git", ".dagger", "pgdata"]
 	source *dagger.Directory,
 ) *dagger.Container {
+	release := dag.HTTP(fmt.Sprintf(
+		"https://github.com/crate-ci/typos/releases/download/v%s/typos-v%s-x86_64-unknown-linux-musl.tar.gz",
+		TYPOS_VERSION,
+		TYPOS_VERSION,
+	))
+
 	return dag.Container().
 		From("alpine:3.21.2").
-		WithExec([]string{"apk", "add", "--update", "wget"}).
-		WithExec([]string{
-			"wget",
-			fmt.Sprintf(
-				"https://github.com/crate-ci/typos/releases/download/v%s/typos-v%s-x86_64-unknown-linux-musl.tar.gz",
-				TYPOS_VERSION,
-				TYPOS_VERSION,
-			),
-		}).
-		WithExec([]string{"tar", "-xzf", fmt.Sprintf("typos-v%s-x86_64-unknown-linux-musl.tar.gz", TYPOS_VERSION)}).
+		WithFile("release.tgz", release).
+		WithExec([]string{"tar", "-xzf", "release.tgz"}).
 		WithExec([]string{"mv", "typos", "/bin/typos"}).
 		// done installing typos, now we can check!
 		With(userSource(source)).
@@ -315,20 +313,19 @@ func (m *Beeps) WasmBuild(
 	// +default="bundler"
 	target string,
 ) *dagger.Container {
+	release := dag.HTTP(fmt.Sprintf(
+		"https://github.com/rustwasm/wasm-pack/releases/download/v%s/wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz",
+		WASM_PACK_VERSION,
+		WASM_PACK_VERSION,
+	))
+
 	return m.rustBase("wasm-pack").
 		WithExec([]string{"rustup", "component", "add", "rust-std", "--target", "wasm32-unknown-unknown"}).
 
 		// install wasm-pack
-		WithExec([]string{
-			"wget",
-			fmt.Sprintf(
-				"https://github.com/rustwasm/wasm-pack/releases/download/v%s/wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz",
-				WASM_PACK_VERSION,
-				WASM_PACK_VERSION,
-			),
-		}).
-		WithExec([]string{"tar", "-xzf", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz", WASM_PACK_VERSION)}).
-		WithExec([]string{"mv", fmt.Sprintf("wasm-pack-v%s-x86_64-unknown-linux-musl/wasm-pack", WASM_PACK_VERSION), "/bin"}).
+		WithFile("release.tgz", release).
+		WithExec([]string{"tar", "-xz", "--strip-components=1", "--file=release.tgz"}).
+		WithExec([]string{"mv", "wasm-pack", "/bin"}).
 
 		// build the WASM package
 		With(userSource(source)).
