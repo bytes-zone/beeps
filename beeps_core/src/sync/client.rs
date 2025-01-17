@@ -1,5 +1,5 @@
 use super::error::{self, Error};
-use super::{document_push, documents, login, register, whoami};
+use super::{documents, login, push, register, whoami};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -84,9 +84,9 @@ impl Client {
         &self,
         client: &reqwest::Client,
         document_id: i64,
-        req: &document_push::Req,
-    ) -> error::Result<document_push::Resp> {
-        let url = Url::parse(&self.server)?.join(&document_push::make_path(document_id))?;
+        req: &push::Req,
+    ) -> error::Result<push::Resp> {
+        let url = Url::parse(&self.server)?.join(&push::make_path(document_id))?;
 
         self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
             .await
