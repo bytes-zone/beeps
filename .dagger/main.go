@@ -362,5 +362,5 @@ func (m *Beeps) Squawk(
 		WithFile("/bin/squawk", bin).
 		WithExec([]string{"chmod", "+x", "/bin/squawk"}).
 		WithDirectory("/migrations", source).
-		WithExec([]string{"squawk", "/migrations/*.sql"})
+		WithExec([]string{"squawk", "--assume-in-transaction", "/migrations/*.sql"})
 }
