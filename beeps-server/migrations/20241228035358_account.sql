@@ -1,6 +1,24 @@
-CREATE TABLE accounts (
-    id SERIAL PRIMARY KEY,
-    email TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS accounts (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    email CITEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
-    UNIQUE (email)
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_accounts_email ON documents (email);
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_accounts_updated_at
+BEFORE UPDATE ON accounts
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
