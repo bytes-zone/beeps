@@ -114,7 +114,12 @@ func (m *Beeps) All(
 	})
 
 	eg.Go(func() error {
-		out, err := m.Squawk(ctx, source.Directory("beeps-server/migrations")).Stdout(ctx)
+		squawk, err := m.Squawk(ctx, source.Directory("beeps-server/migrations"))
+		if err != nil {
+			return err
+		}
+
+		out, err := squawk.Stdout(ctx)
 		nice.squawk = out
 		return err
 	})
@@ -349,18 +354,36 @@ func (m *Beeps) WasmSize(
 		Stdout(ctx)
 }
 
+const SQUAWK_VERSION = "1.5.4"
+
 // Check migrations
 func (m *Beeps) Squawk(
 	ctx context.Context,
 	// +defaultPath=beeps-server/migrations
 	source *dagger.Directory,
-) *dagger.Container {
-	bin := dag.HTTP("https://github.com/sbdchd/squawk/releases/download/v1.5.4/squawk-linux-arm64")
+) (*dagger.Container, error) {
+	plat, err := dag.DefaultPlatform(ctx)
 
-	return dag.Container().
+	if err != nil {
+		return nil, err
+	}
+
+	var osArch string
+
+	if strings.Contains(string(plat), "arm") {
+		osArch = "linux-arm64"
+	} else {
+		osArch = "linux-x86"
+	}
+
+	bin := dag.HTTP(fmt.Sprintf("https://github.com/sbdchd/squawk/releases/download/v%s/squawk-%s", SQUAWK_VERSION, osArch))
+
+	container := dag.Container().
 		From(RUST_CONTAINER_IMAGE).
 		WithFile("/bin/squawk", bin).
 		WithExec([]string{"chmod", "+x", "/bin/squawk"}).
 		WithDirectory("/migrations", source).
 		WithExec([]string{"squawk", "--assume-in-transaction", "/migrations/*.sql"})
+
+	return container, nil
 }
