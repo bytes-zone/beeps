@@ -21,5 +21,5 @@ pub struct Document {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Where the whoami endpoint lives.
+/// Where the documents endpoint lives.
 pub const PATH: &str = "/api/v1/documents";
