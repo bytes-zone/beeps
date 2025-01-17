@@ -117,6 +117,10 @@ async fn main() {
         .route(sync::login::PATH, post(handlers::login::handler))
         .route(sync::whoami::PATH, get(handlers::whoami::handler))
         .route(sync::documents::PATH, get(handlers::documents::handler))
+        .route(
+            sync::document_push::PATH,
+            post(handlers::document_push::handler),
+        )
         // STATE
         .with_state(state)
         // MIDDLEWARE
