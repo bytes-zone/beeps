@@ -39,7 +39,7 @@ impl TestDoc {
 
         let document_id =
             query("INSERT INTO documents (owner_id) VALUES ($1) RETURNING id::BIGINT")
-                .bind(&account_id)
+                .bind(account_id)
                 .fetch_one(&mut *tx)
                 .await
                 .expect("failed to insert document")
