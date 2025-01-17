@@ -2,7 +2,10 @@ use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHasher,
 };
+use chrono::{Duration, Utc};
 use sqlx::{pool::PoolConnection, query, Acquire, Postgres, Row};
+
+use crate::jwt::Claims;
 
 /// A document for use in testing
 pub struct TestDoc {
@@ -48,6 +51,15 @@ impl TestDoc {
             email,
             password,
             document_id,
+        }
+    }
+
+    /// Get appropriate claims for this doc
+    pub fn claims(&self) -> Claims {
+        Claims {
+            sub: self.email.clone(),
+            iat: Utc::now().timestamp(),
+            exp: (Utc::now() + Duration::days(90)).timestamp(),
         }
     }
 }

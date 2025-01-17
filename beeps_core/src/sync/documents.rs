@@ -12,7 +12,7 @@ pub struct Resp {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Document {
     /// The ID of the document for use in later calls
-    pub id: i32,
+    pub id: i64,
 
     /// When the document was created, to differentiate between documents.
     pub created_at: DateTime<Utc>,
