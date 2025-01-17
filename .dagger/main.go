@@ -373,7 +373,7 @@ func (m *Beeps) Squawk(
 	if strings.Contains(string(plat), "arm") {
 		osArch = "linux-arm64"
 	} else {
-		osArch = "linux-x86"
+		osArch = "linux-x64"
 	}
 
 	bin := dag.HTTP(fmt.Sprintf("https://github.com/sbdchd/squawk/releases/download/v%s/squawk-%s", SQUAWK_VERSION, osArch))
