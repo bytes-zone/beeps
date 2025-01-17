@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS documents (
     FOREIGN KEY (owner_id) REFERENCES accounts (id) ON DELETE CASCADE
 );
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_documents_owner_id ON documents (owner_id);
+CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON documents (owner_id);
 
 CREATE TRIGGER update_documents_updated_at BEFORE
 UPDATE ON documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column ();
