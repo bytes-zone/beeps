@@ -4,6 +4,7 @@
 mod conn;
 
 /// Common error handling
+#[macro_use]
 mod error;
 
 /// Handlers for the routes the server responds to.
