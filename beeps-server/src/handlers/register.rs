@@ -46,24 +46,24 @@ pub async fn handler(
     let argon2 = Argon2::default();
     let salt = SaltString::generate(&mut OsRng);
 
-    sqlx::query!(
-        "INSERT INTO accounts (email, password) VALUES ($1, $2)",
+    let inserted = sqlx::query!(
+        "INSERT INTO accounts (email, password) VALUES ($1, $2) RETURNING id",
         req.email,
         argon2
             .hash_password(req.password.as_bytes(), &salt)?
             .to_string(),
     )
-    .execute(&mut *tx)
+    .fetch_one(&mut *tx)
     .await?;
+
+    sqlx::query!("INSERT INTO documents (owner_id) VALUES ($1)", inserted.id)
+        .execute(&mut *tx)
+        .await?;
 
     tx.commit().await?;
 
     Ok(Json(Resp {
-        jwt: jwt::issue(
-            &encoding_key,
-            &req.email,
-            0, // TODO
-        )?,
+        jwt: jwt::issue(&encoding_key, &req.email)?,
     }))
 }
 
@@ -72,7 +72,7 @@ mod test {
     use super::*;
     use crate::jwt::Claims;
     use jsonwebtoken::{DecodingKey, Validation};
-    use sqlx::{pool::PoolConnection, query, Postgres};
+    use sqlx::{pool::PoolConnection, query, Pool, Postgres};
 
     fn encoding_key() -> EncodingKey {
         EncodingKey::from_secret(b"secret".as_ref())
@@ -105,6 +105,35 @@ mod test {
                 .unwrap();
 
         assert_eq!(token.claims.sub, email);
+    }
+
+    #[test_log::test(sqlx::test)]
+    async fn test_creates_document(conn: Pool<Postgres>) {
+        let email = "test@example.com".to_string();
+
+        let req = Req {
+            email: email.clone(),
+            password: "test".to_string(),
+        };
+
+        let resp = handler(
+            Conn(conn.acquire().await.unwrap()),
+            State(AllowRegistration(true)),
+            State(encoding_key()),
+            Json(req),
+        )
+        .await;
+        assert!(resp.is_ok(), "{resp:?} was not OK!");
+
+        let doc = sqlx::query!(
+            "SELECT * FROM documents WHERE owner_id = (SELECT id FROM accounts WHERE email = $1)",
+            email
+        )
+        .fetch_optional(&mut *conn.acquire().await.unwrap())
+        .await
+        .unwrap();
+
+        assert!(doc.is_some());
     }
 
     #[test_log::test(sqlx::test)]
