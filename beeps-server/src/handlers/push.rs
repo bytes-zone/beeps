@@ -9,6 +9,7 @@ use beeps_core::sync::push;
 use sqlx::{Acquire, QueryBuilder};
 
 #[tracing::instrument]
+#[expect(clippy::cast_lossless)]
 pub async fn handler(
     Conn(mut conn): Conn,
     claims: Claims,
