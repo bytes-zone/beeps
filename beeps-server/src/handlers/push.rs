@@ -102,7 +102,6 @@ pub async fn handler(
                 .push_bind(node);
         });
         query.push("ON CONFLICT DO NOTHING");
-        tracing::error!(query = query.sql(), "q");
         query.build().execute(&mut *tx).await?;
     }
 
