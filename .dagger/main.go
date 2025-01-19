@@ -69,7 +69,6 @@ type NiceOutput struct {
 	build     string
 	test      string
 	clippy    string
-	squawk    string
 	typos     string
 	fmt       string
 	machete   string
@@ -86,7 +85,6 @@ func (n *NiceOutput) Format() string {
 		section("Build", n.build),
 		section("Test", n.test),
 		section("Clippy", n.clippy),
-		section("Squawk", n.squawk),
 		section("Typos", n.typos),
 		section("Fmt", n.fmt),
 		section("Machete", n.machete),
@@ -110,17 +108,6 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
 		nice.clippy = out
-		return err
-	})
-
-	eg.Go(func() error {
-		squawk, err := m.Squawk(ctx, source.Directory("beeps-server/migrations"))
-		if err != nil {
-			return err
-		}
-
-		out, err := squawk.Stdout(ctx)
-		nice.squawk = out
 		return err
 	})
 
@@ -352,38 +339,4 @@ func (m *Beeps) WasmSize(
 		WithExec([]string{"bash", "-c", "for target in /pkg/*.js /pkg/*.wasm; do gzip -9c $target > $target.gz; done"}).
 		WithExec([]string{"ls", "-lh", "/pkg"}).
 		Stdout(ctx)
-}
-
-const SQUAWK_VERSION = "1.5.4"
-
-// Check migrations
-func (m *Beeps) Squawk(
-	ctx context.Context,
-	// +defaultPath=beeps-server/migrations
-	source *dagger.Directory,
-) (*dagger.Container, error) {
-	plat, err := dag.DefaultPlatform(ctx)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var osArch string
-
-	if strings.Contains(string(plat), "arm") {
-		osArch = "linux-arm64"
-	} else {
-		osArch = "linux-x64"
-	}
-
-	bin := dag.HTTP(fmt.Sprintf("https://github.com/sbdchd/squawk/releases/download/v%s/squawk-%s", SQUAWK_VERSION, osArch))
-
-	container := dag.Container().
-		From(RUST_CONTAINER_IMAGE).
-		WithFile("/bin/squawk", bin).
-		WithExec([]string{"chmod", "+x", "/bin/squawk"}).
-		WithDirectory("/migrations", source).
-		WithExec([]string{"squawk", "--assume-in-transaction", "/migrations/*.sql"})
-
-	return container, nil
 }
