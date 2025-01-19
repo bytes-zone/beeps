@@ -132,6 +132,21 @@ impl Hlc {
     pub fn receive(&self, other: &Self) -> Self {
         self.receive_at(other, Utc::now())
     }
+
+    /// Get the timestamp of this HLC.
+    pub fn timestamp(&self) -> DateTime<Utc> {
+        self.timestamp
+    }
+
+    /// Get the counter of this HLC.
+    pub fn counter(&self) -> u64 {
+        self.counter
+    }
+
+    /// Get the node ID of this HLC.
+    pub fn node(&self) -> NodeId {
+        self.node
+    }
 }
 
 impl Ord for Hlc {

@@ -8,7 +8,7 @@ use std::fmt::{self, Display};
     Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize,
 )]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] u16);
+pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] pub u16);
 
 impl NodeId {
     /// Get a random node ID based on the current time. When assigning, you
