@@ -155,8 +155,8 @@ mod test {
 
         assert_eq!(inserted.minutes_per_ping, 60);
         assert_eq_timestamps!(inserted.clock, clock.timestamp());
-        assert_eq!(inserted.counter, i64::from(clock.counter()));
-        assert_eq!(inserted.node_id, i64::from(*clock.node()));
+        assert_eq!(inserted.counter, i32::from(clock.counter()));
+        assert_eq!(inserted.node_id, i32::from(*clock.node()));
     }
 
     #[test_log::test(sqlx::test)]
@@ -221,8 +221,8 @@ mod test {
         assert_eq_timestamps!(inserted.ping, now);
         assert_eq!(inserted.tag, "test".to_string());
         assert_eq_timestamps!(inserted.clock, clock.timestamp());
-        assert_eq!(inserted.counter, i64::from(clock.counter()));
-        assert_eq!(inserted.node_id, i64::from(*clock.node()));
+        assert_eq!(inserted.counter, i32::from(clock.counter()));
+        assert_eq!(inserted.node_id, i32::from(*clock.node()));
     }
 
     macro_rules! table_size {

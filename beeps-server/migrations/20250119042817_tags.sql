@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS tags (
     tag TEXT NOT NULL,
     -- clock
     clock TIMESTAMPTZ NOT NULL,
-    counter BIGINT NOT NULL,
-    node_id BIGINT NOT NULL,
+    counter INTEGER NOT NULL,
+    node_id INTEGER NOT NULL,
     -- references
     FOREIGN KEY (document_id) REFERENCES accounts (id) ON DELETE CASCADE,
     UNIQUE (document_id, clock, counter, node_id)
