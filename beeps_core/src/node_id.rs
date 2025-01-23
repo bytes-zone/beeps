@@ -2,6 +2,7 @@ use chrono::Utc;
 use rand::Rng;
 use rand_pcg::Pcg32;
 use std::fmt::{self, Display};
+use std::ops::Deref;
 
 /// A unique identifier for a node in the network.
 #[derive(
@@ -40,6 +41,14 @@ impl NodeId {
 impl Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl Deref for NodeId {
+    type Target = u16;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
