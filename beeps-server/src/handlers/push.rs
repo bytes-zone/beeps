@@ -56,15 +56,11 @@ pub async fn handler(
         query.push_values(minutes_per_pings, |mut b, value| {
             let clock = value.clock();
 
-            let value: i32 = (*value.value()).into();
-            let counter: i32 = clock.counter().into();
-            let node: i32 = clock.node().0.into();
-
             b.push_bind(req.document_id)
-                .push_bind(value)
+                .push_bind(i32::from(*value.value()))
                 .push_bind(clock.timestamp())
-                .push_bind(counter)
-                .push_bind(node);
+                .push_bind(i32::from(clock.counter()))
+                .push_bind(i32::from(*clock.node()));
         });
         query.push("ON CONFLICT DO NOTHING");
         query.build().execute(&mut *tx).await?;
@@ -85,15 +81,12 @@ pub async fn handler(
         query.push_values(tags, |mut b, (ping, tag)| {
             let clock = tag.clock();
 
-            let counter: i32 = clock.counter().into();
-            let node: i32 = clock.node().0.into();
-
             b.push_bind(req.document_id)
                 .push_bind(ping)
                 .push_bind(tag.value().clone())
                 .push_bind(clock.timestamp())
-                .push_bind(counter)
-                .push_bind(node);
+                .push_bind(i32::from(clock.counter()))
+                .push_bind(i32::from(*clock.node()));
         });
         query.push("ON CONFLICT DO NOTHING");
         query.build().execute(&mut *tx).await?;
