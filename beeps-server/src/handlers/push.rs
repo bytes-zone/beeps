@@ -117,7 +117,7 @@ mod test {
     use crate::handlers::test::TestDoc;
     use beeps_core::{Document, Hlc, NodeId};
     use chrono::Utc;
-    use sqlx::{pool::PoolConnection, query, Pool, Postgres};
+    use sqlx::{pool::PoolConnection, query, Pool, Postgres, Row};
 
     #[test_log::test(sqlx::test)]
     fn test_unknown_document_not_authorized(mut conn: PoolConnection<Postgres>) {
@@ -239,6 +239,20 @@ mod test {
         assert_eq!(inserted.node_id as u16, clock.node().0);
     }
 
+    macro_rules! table_size {
+        ($table:expr, $document_id:expr, $pool:expr) => {
+            query(&format!(
+                "SELECT COUNT(*) FROM {} WHERE document_id = $1",
+                $table
+            ))
+            .bind($document_id)
+            .fetch_one(&mut *$pool.acquire().await.unwrap())
+            .await
+            .unwrap()
+            .get("count")
+        };
+    }
+
     #[test_log::test(sqlx::test)]
     fn test_idempotent(pool: Pool<Postgres>) {
         let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
@@ -261,29 +275,10 @@ mod test {
         .await
         .unwrap();
 
-        let num_minutes_per_ping_before = query!(
-            "SELECT COUNT(*) FROM minutes_per_pings WHERE document_id = $1",
-            doc.document_id
-        )
-        .fetch_one(&mut *pool.acquire().await.unwrap())
-        .await
-        .unwrap();
-
-        let num_pings_before = query!(
-            "SELECT COUNT(*) FROM pings WHERE document_id = $1",
-            doc.document_id
-        )
-        .fetch_one(&mut *pool.acquire().await.unwrap())
-        .await
-        .unwrap();
-
-        let num_tags_before = query!(
-            "SELECT COUNT(*) FROM tags WHERE document_id = $1",
-            doc.document_id
-        )
-        .fetch_one(&mut *pool.acquire().await.unwrap())
-        .await
-        .unwrap();
+        let num_minutes_per_ping_before: i64 =
+            table_size!("minutes_per_pings", doc.document_id, pool);
+        let num_pings_before: i64 = table_size!("pings", doc.document_id, pool);
+        let num_tags_before: i64 = table_size!("tags", doc.document_id, pool);
 
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
@@ -296,35 +291,13 @@ mod test {
         .await
         .unwrap();
 
-        let num_minutes_per_ping_after = query!(
-            "SELECT COUNT(*) FROM minutes_per_pings WHERE document_id = $1",
-            doc.document_id
-        )
-        .fetch_one(&mut *pool.acquire().await.unwrap())
-        .await
-        .unwrap();
+        let num_minutes_per_ping_after: i64 =
+            table_size!("minutes_per_pings", doc.document_id, pool);
+        let num_pings_after: i64 = table_size!("pings", doc.document_id, pool);
+        let num_tags_after: i64 = table_size!("tags", doc.document_id, pool);
 
-        let num_pings_after = query!(
-            "SELECT COUNT(*) FROM pings WHERE document_id = $1",
-            doc.document_id
-        )
-        .fetch_one(&mut *pool.acquire().await.unwrap())
-        .await
-        .unwrap();
-
-        let num_tags_after = query!(
-            "SELECT COUNT(*) FROM tags WHERE document_id = $1",
-            doc.document_id
-        )
-        .fetch_one(&mut *pool.acquire().await.unwrap())
-        .await
-        .unwrap();
-
-        assert_eq!(
-            num_minutes_per_ping_before.count,
-            num_minutes_per_ping_after.count
-        );
-        assert_eq!(num_pings_before.count, num_pings_after.count);
-        assert_eq!(num_tags_before.count, num_tags_after.count);
+        assert_eq!(num_minutes_per_ping_before, num_minutes_per_ping_after);
+        assert_eq!(num_pings_before, num_pings_after);
+        assert_eq!(num_tags_before, num_tags_after);
     }
 }
