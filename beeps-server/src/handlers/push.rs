@@ -9,7 +9,6 @@ use beeps_core::sync::push;
 use sqlx::{Acquire, QueryBuilder};
 
 #[tracing::instrument]
-#[expect(clippy::cast_lossless)]
 pub async fn handler(
     Conn(mut conn): Conn,
     claims: Claims,
@@ -57,12 +56,12 @@ pub async fn handler(
         query.push_values(minutes_per_pings, |mut b, value| {
             let clock = value.clock();
 
-            let value = *value.value() as i32;
+            let value: i32 = (*value.value()).into();
             let counter: i64 = clock
                 .counter()
                 .try_into()
                 .expect("counter should fit in i64");
-            let node = clock.node().0 as i32;
+            let node: i32 = clock.node().0.into();
 
             b.push_bind(req.document_id)
                 .push_bind(value)
@@ -93,7 +92,7 @@ pub async fn handler(
                 .counter()
                 .try_into()
                 .expect("counter should fit in i64");
-            let node = clock.node().0 as i32;
+            let node: i32 = clock.node().0.into();
 
             b.push_bind(req.document_id)
                 .push_bind(ping)
