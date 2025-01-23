@@ -1,7 +1,7 @@
+use crate::document::Document;
 use crate::hlc::Hlc;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
-use crate::state::State;
 use chrono::{DateTime, Utc};
 
 /// The local state of a replica ("who am I" and "what do I know"). Reading the
@@ -12,7 +12,7 @@ pub struct Replica {
     clock: Hlc,
 
     /// Data that this replica will write to and sync with peers.
-    state: State,
+    state: Document,
 }
 
 impl Replica {
@@ -20,7 +20,7 @@ impl Replica {
     pub fn new(node_id: NodeId) -> Self {
         Self {
             clock: Hlc::new(node_id),
-            state: State::default(),
+            state: Document::default(),
         }
     }
 
@@ -34,7 +34,7 @@ impl Replica {
     }
 
     /// Read the current state.
-    pub fn state(&self) -> &State {
+    pub fn state(&self) -> &Document {
         &self.state
     }
 

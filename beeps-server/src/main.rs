@@ -4,6 +4,7 @@
 mod conn;
 
 /// Common error handling
+#[macro_use]
 mod error;
 
 /// Handlers for the routes the server responds to.
@@ -117,6 +118,7 @@ async fn main() {
         .route(sync::login::PATH, post(handlers::login::handler))
         .route(sync::whoami::PATH, get(handlers::whoami::handler))
         .route(sync::documents::PATH, get(handlers::documents::handler))
+        .route(sync::push::PATH, post(handlers::push::handler))
         // STATE
         .with_state(state)
         // MIDDLEWARE

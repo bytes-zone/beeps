@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 /// The state that gets synced between replicas.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct State {
+pub struct Document {
     /// The average number of minutes between each ping.
     pub minutes_per_ping: Lww<u16>,
 
@@ -21,7 +21,7 @@ pub struct State {
     pub tags: GMap<DateTime<Utc>, Lww<Option<String>>>,
 }
 
-impl State {
+impl Document {
     /// Create a new, empty state. It has a default `minutes_per_ping`, but with
     /// a zero clock so that overwriting is always possible.
     pub fn new() -> Self {
@@ -77,7 +77,7 @@ impl State {
     }
 }
 
-impl Default for State {
+impl Default for Document {
     fn default() -> Self {
         Self::new()
     }
@@ -95,7 +95,7 @@ pub enum Part {
     Tag((DateTime<Utc>, Lww<Option<String>>)),
 }
 
-impl Merge for State {
+impl Merge for Document {
     type Part = Part;
 
     fn split(self) -> impl Iterator<Item = Self::Part> {
@@ -149,18 +149,18 @@ mod test {
 
         proptest::proptest! {
             #[test]
-            fn test_idempotent(a: State) {
+            fn test_idempotent(a: Document) {
                 crate::merge::test_idempotent(a);
             }
 
             #[test]
-            fn test_commutative(a: State, b: State) {
+            fn test_commutative(a: Document, b: Document) {
                 println!("{a:#?}");
                 crate::merge::test_commutative(a, b);
             }
 
             #[test]
-            fn test_associative(a: State, b: State, c: State) {
+            fn test_associative(a: Document, b: Document, c: Document) {
                 crate::merge::test_associative(a, b, c);
             }
         }
@@ -171,7 +171,7 @@ mod test {
 
         #[test]
         fn set() {
-            let mut state = State::new();
+            let mut state = Document::new();
 
             state.set_minutes_per_ping(60, state.minutes_per_ping.clock().next());
             assert_eq!(*state.minutes_per_ping.value(), 60);
@@ -183,7 +183,7 @@ mod test {
 
         #[test]
         fn add_ping() {
-            let mut state = State::new();
+            let mut state = Document::new();
 
             let when = Utc::now();
             state.add_ping(when);
@@ -196,7 +196,7 @@ mod test {
 
         #[test]
         fn when_ping_exists() {
-            let mut state = State::new();
+            let mut state = Document::new();
 
             let when = Utc::now();
             state.add_ping(when);
@@ -210,7 +210,7 @@ mod test {
 
         #[test]
         fn when_ping_does_not_exist() {
-            let mut state = State::new();
+            let mut state = Document::new();
 
             assert!(
                 !state.tag_ping(Utc::now(), "test".to_string(), Hlc::zero()),
@@ -298,14 +298,14 @@ mod test {
         struct StateStateMachine {}
 
         impl StateMachineTest for StateStateMachine {
-            type SystemUnderTest = State;
+            type SystemUnderTest = Document;
 
             type Reference = RefState;
 
             fn init_test(
                 _: &<Self::Reference as proptest_state_machine::ReferenceStateMachine>::State,
             ) -> Self::SystemUnderTest {
-                State::new()
+                Document::new()
             }
 
             fn apply(

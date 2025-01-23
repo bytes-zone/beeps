@@ -3,6 +3,7 @@
 pub mod documents;
 pub mod health;
 pub mod login;
+pub mod push;
 pub mod register;
 pub mod whoami;
 

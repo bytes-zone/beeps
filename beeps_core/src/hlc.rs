@@ -17,8 +17,8 @@ pub struct Hlc {
 
     /// A counter we increment if the new physical time is equal to or less than
     /// the previous. Second to break ties.
-    #[cfg_attr(test, proptest(strategy = "0..=10u64"))]
-    counter: u64,
+    #[cfg_attr(test, proptest(strategy = "0..=10u16"))]
+    counter: u16,
 
     /// The node ID of the replica that generated this HLC. Third to break ties.
     node: NodeId,
@@ -131,6 +131,21 @@ impl Hlc {
     #[must_use]
     pub fn receive(&self, other: &Self) -> Self {
         self.receive_at(other, Utc::now())
+    }
+
+    /// Get the timestamp of this HLC.
+    pub fn timestamp(&self) -> DateTime<Utc> {
+        self.timestamp
+    }
+
+    /// Get the counter of this HLC.
+    pub fn counter(&self) -> u16 {
+        self.counter
+    }
+
+    /// Get the node ID of this HLC.
+    pub fn node(&self) -> NodeId {
+        self.node
     }
 }
 

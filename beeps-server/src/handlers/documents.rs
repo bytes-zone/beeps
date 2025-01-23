@@ -9,7 +9,7 @@ use sqlx::query_as;
 pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<documents::Resp>, Error> {
     let documents = query_as!(
         documents::Document,
-        "SELECT documents.id as id, updated_at, created_at \
+        "SELECT documents.id, documents.updated_at, documents.created_at \
         FROM documents \
         JOIN accounts ON accounts.id = documents.owner_id \
         WHERE accounts.email = $1",

@@ -1,5 +1,9 @@
 //! Common code across all beeps clients (TUI, WASM in the browser)
 
+/// The state that gets synced between nodes.
+pub mod document;
+pub use document::Document;
+
 /// A grow-only map (G-Map.) Values must be mergeable.
 pub mod gmap;
 pub use gmap::GMap;
@@ -26,10 +30,6 @@ pub use node_id::NodeId;
 /// A replica (that is, state + node ID)
 pub mod replica;
 pub use replica::Replica;
-
-/// The state that gets synced between nodes.
-pub mod state;
-pub use state::State;
 
 /// Sync with the sync server.
 pub mod sync;

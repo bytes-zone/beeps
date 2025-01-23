@@ -2,6 +2,9 @@
 pub mod client;
 pub use client::Client;
 
+/// Push an update to a document
+pub mod push;
+
 /// Documents associated with the user's account
 pub mod documents;
 

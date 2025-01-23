@@ -63,3 +63,11 @@ impl TestDoc {
         }
     }
 }
+
+/// Assert two timestamps are equal at the resolution we care about (seconds)
+#[macro_export]
+macro_rules! assert_eq_timestamps {
+    ($a:expr, $b:expr) => {
+        assert_eq!($a.timestamp(), $b.timestamp())
+    };
+}

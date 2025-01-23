@@ -1,5 +1,5 @@
 use super::error::{self, Error};
-use super::{documents, login, register, whoami};
+use super::{documents, login, push, register, whoami};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -72,6 +72,22 @@ impl Client {
         let url = Url::parse(&self.server)?.join(documents::PATH)?;
 
         self.authenticated(|jwt| client.get(url).bearer_auth(jwt))
+            .await
+    }
+
+    /// Push a document to the server
+    ///
+    /// ## Errors
+    ///
+    /// Errors are the same as `handle_response`.
+    pub async fn push(
+        &self,
+        client: &reqwest::Client,
+        req: &push::Req,
+    ) -> error::Result<push::Resp> {
+        let url = Url::parse(&self.server)?.join(push::PATH)?;
+
+        self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
             .await
     }
 

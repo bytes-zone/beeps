@@ -15,4 +15,4 @@ jobs:
         with:
           version: "latest"
           verb: call
-          args: all
+          args: all > $GITHUB_STEP_SUMMARY
