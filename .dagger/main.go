@@ -28,6 +28,7 @@ type Beeps struct{}
 // Start a postgres server
 func (m *Beeps) Postgres() *dagger.Service {
 	return dag.Postgres(dagger.PostgresOpts{
+		Version:  "17.2",
 		User:     dag.SetSecret("postgres-user", "beeps"),
 		Password: dag.SetSecret("postgres-password", "beeps"),
 	}).Service()
