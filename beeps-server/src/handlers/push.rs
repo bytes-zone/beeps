@@ -114,7 +114,7 @@ pub async fn handler(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::handlers::test::TestDoc;
+    use crate::{assert_eq_timestamps, handlers::test::TestDoc};
     use beeps_core::{Document, Hlc, NodeId};
     use chrono::Utc;
     use sqlx::{pool::PoolConnection, query, Pool, Postgres, Row};
@@ -168,7 +168,7 @@ mod test {
         .unwrap();
 
         assert_eq!(inserted.minutes_per_ping, 60);
-        assert_eq!(inserted.clock, clock.timestamp());
+        assert_eq_timestamps!(inserted.clock, clock.timestamp());
         assert_eq!(inserted.counter as u64, clock.counter());
         assert_eq!(inserted.node_id as u16, clock.node().0);
     }
@@ -200,7 +200,7 @@ mod test {
         .await
         .unwrap();
 
-        assert_eq!(inserted.ping, now);
+        assert_eq_timestamps!(inserted.ping, now);
     }
 
     #[test_log::test(sqlx::test)]
@@ -232,9 +232,9 @@ mod test {
         .await
         .unwrap();
 
-        assert_eq!(inserted.ping, now);
+        assert_eq_timestamps!(inserted.ping, now);
         assert_eq!(inserted.tag, "test".to_string());
-        assert_eq!(inserted.clock, clock.timestamp());
+        assert_eq_timestamps!(inserted.clock, clock.timestamp());
         assert_eq!(inserted.counter as u64, clock.counter());
         assert_eq!(inserted.node_id as u16, clock.node().0);
     }
