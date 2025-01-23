@@ -57,10 +57,7 @@ pub async fn handler(
             let clock = value.clock();
 
             let value: i32 = (*value.value()).into();
-            let counter: i64 = clock
-                .counter()
-                .try_into()
-                .expect("counter should fit in i64");
+            let counter: i32 = clock.counter().into();
             let node: i32 = clock.node().0.into();
 
             b.push_bind(req.document_id)
@@ -88,10 +85,7 @@ pub async fn handler(
         query.push_values(tags, |mut b, (ping, tag)| {
             let clock = tag.clock();
 
-            let counter: i64 = clock
-                .counter()
-                .try_into()
-                .expect("counter should fit in i64");
+            let counter: i32 = clock.counter().into();
             let node: i32 = clock.node().0.into();
 
             b.push_bind(req.document_id)
@@ -168,8 +162,8 @@ mod test {
 
         assert_eq!(inserted.minutes_per_ping, 60);
         assert_eq_timestamps!(inserted.clock, clock.timestamp());
-        assert_eq!(inserted.counter as u64, clock.counter());
-        assert_eq!(inserted.node_id as u16, clock.node().0);
+        assert_eq!(inserted.counter, i64::from(clock.counter()));
+        assert_eq!(inserted.node_id, i64::from(clock.node().0));
     }
 
     #[test_log::test(sqlx::test)]
@@ -234,8 +228,8 @@ mod test {
         assert_eq_timestamps!(inserted.ping, now);
         assert_eq!(inserted.tag, "test".to_string());
         assert_eq_timestamps!(inserted.clock, clock.timestamp());
-        assert_eq!(inserted.counter as u64, clock.counter());
-        assert_eq!(inserted.node_id as u16, clock.node().0);
+        assert_eq!(inserted.counter, i64::from(clock.counter()));
+        assert_eq!(inserted.node_id, i64::from(clock.node().0));
     }
 
     macro_rules! table_size {
