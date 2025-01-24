@@ -82,10 +82,11 @@ impl Client {
     /// Errors are the same as `handle_response`.
     pub async fn push(
         &self,
+        document_id: i64,
         client: &reqwest::Client,
         req: &push::Req,
     ) -> error::Result<push::Resp> {
-        let url = Url::parse(&self.server)?.join(push::PATH)?;
+        let url = Url::parse(&self.server)?.join(&push::path(document_id))?;
 
         self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
             .await
