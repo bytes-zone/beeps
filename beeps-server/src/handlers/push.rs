@@ -1,7 +1,7 @@
 use crate::conn::Conn;
 use crate::error::Error;
 use crate::jwt::Claims;
-use axum::{extract::Path, http::StatusCode, Json};
+use axum::{http::StatusCode, Json};
 use beeps_core::document::Part;
 use beeps_core::merge::Merge;
 use beeps_core::sync::push;
@@ -11,7 +11,6 @@ use sqlx::{Acquire, QueryBuilder};
 pub async fn handler(
     Conn(mut conn): Conn,
     claims: Claims,
-    Path(document_id): Path<i64>,
     Json(req): Json<push::Req>,
 ) -> Result<Json<push::Resp>, Error> {
     // Validate that the user owns the document
@@ -20,7 +19,7 @@ pub async fn handler(
         JOIN accounts ON accounts.id = documents.owner_id \
         WHERE accounts.email = $1 AND documents.id = $2",
         claims.sub,
-        document_id,
+        claims.document_id,
     )
     .fetch_optional(&mut *conn)
     .await?;
@@ -56,7 +55,7 @@ pub async fn handler(
         query.push_values(minutes_per_pings, |mut b, value| {
             let clock = value.clock();
 
-            b.push_bind(document_id)
+            b.push_bind(claims.document_id)
                 .push_bind(i32::from(*value.value()))
                 .push_bind(clock.timestamp())
                 .push_bind(i32::from(clock.counter()))
@@ -69,7 +68,7 @@ pub async fn handler(
     if !pings.is_empty() {
         let mut query = QueryBuilder::new("INSERT INTO pings (document_id, ping)");
         query.push_values(pings, |mut b, value| {
-            b.push_bind(document_id).push_bind(value);
+            b.push_bind(claims.document_id).push_bind(value);
         });
         query.push("ON CONFLICT DO NOTHING");
         query.build().execute(&mut *tx).await?;
@@ -81,7 +80,7 @@ pub async fn handler(
         query.push_values(tags, |mut b, (ping, tag)| {
             let clock = tag.clock();
 
-            b.push_bind(document_id)
+            b.push_bind(claims.document_id)
                 .push_bind(ping)
                 .push_bind(tag.value().clone())
                 .push_bind(clock.timestamp())
@@ -109,14 +108,9 @@ mod test {
     fn test_unknown_document_not_authorized(mut conn: PoolConnection<Postgres>) {
         let doc = TestDoc::create(&mut conn).await;
 
-        let err = handler(
-            Conn(conn),
-            doc.claims(),
-            Path(doc.document_id + 1),
-            Json(Document::default()),
-        )
-        .await
-        .unwrap_err();
+        let err = handler(Conn(conn), doc.claims(), Json(Document::default()))
+            .await
+            .unwrap_err();
 
         assert_eq!(
             err.unwrap_custom(),
@@ -135,7 +129,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
@@ -166,7 +159,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
@@ -196,7 +188,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
@@ -245,7 +236,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document.clone()),
         )
         .await
@@ -259,7 +249,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
