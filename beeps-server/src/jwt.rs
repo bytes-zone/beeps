@@ -21,6 +21,9 @@ pub struct Claims {
 
     /// When the token expires.
     pub exp: i64,
+
+    /// The document that this person should push to
+    pub document_id: i64,
 }
 
 impl Claims {
@@ -30,6 +33,7 @@ impl Claims {
             sub: sub.to_string(),
             iat: 0,
             exp: (chrono::Utc::now() + chrono::Duration::days(30)).timestamp(),
+            document_id: 0,
         }
     }
 
@@ -44,11 +48,16 @@ impl Claims {
 }
 
 /// Issue a new JWT with the given subject and document ID
-pub fn issue(encoding_key: &EncodingKey, sub: &str) -> jsonwebtoken::errors::Result<String> {
+pub fn issue(
+    encoding_key: &EncodingKey,
+    sub: &str,
+    document_id: i64,
+) -> jsonwebtoken::errors::Result<String> {
     let claims = Claims {
         sub: sub.to_string(),
         iat: 0,
         exp: (chrono::Utc::now() + chrono::Duration::days(90)).timestamp(),
+        document_id,
     };
 
     jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, encoding_key)
@@ -94,6 +103,7 @@ mod test {
             sub: "test@example.com".to_string(),
             iat: 0,
             exp: 0,
+            document_id: 0,
         };
         let key = EncodingKey::from_secret(b"secret");
         let token = encode(&jsonwebtoken::Header::default(), &claims, &key).unwrap();

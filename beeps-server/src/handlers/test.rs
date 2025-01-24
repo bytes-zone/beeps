@@ -60,6 +60,7 @@ impl TestDoc {
             sub: self.email.clone(),
             iat: Utc::now().timestamp(),
             exp: (Utc::now() + Duration::days(90)).timestamp(),
+            document_id: self.document_id,
         }
     }
 }
