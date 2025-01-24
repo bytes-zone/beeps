@@ -13,12 +13,19 @@ pub struct Client {
 
     /// Auth. Set this by logging in or registering.
     pub auth: Option<String>,
+
+    /// Which document ID to work with by default.
+    pub document_id: Option<i64>,
 }
 
 impl Client {
     /// Construct a new client
     pub fn new(server: String) -> Self {
-        Self { server, auth: None }
+        Self {
+            server,
+            auth: None,
+            document_id: None,
+        }
     }
 
     /// Register with the server.
@@ -82,14 +89,18 @@ impl Client {
     /// Errors are the same as `handle_response`.
     pub async fn push(
         &self,
-        document_id: i64,
         client: &reqwest::Client,
         req: &push::Req,
     ) -> error::Result<push::Resp> {
-        let url = Url::parse(&self.server)?.join(&push::path(document_id))?;
+        match self.document_id {
+            Some(document_id) => {
+                let url = Url::parse(&self.server)?.join(&push::path(document_id))?;
 
-        self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
-            .await
+                self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
+                    .await
+            }
+            None => Err(Error::Client("No document ID set".to_string())),
+        }
     }
 
     /// Make an authenticated request to the server with the provided JWT,
