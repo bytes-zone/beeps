@@ -54,6 +54,9 @@ pub struct App {
 
     /// Exit code
     exiting: Option<ExitCode>,
+
+    /// When did we last sync?
+    last_sync: Option<DateTime<Utc>>,
 }
 
 impl App {
@@ -83,6 +86,7 @@ impl App {
                 status_line: Some("Loaded replica".to_string()),
                 replica,
                 client: auth,
+                last_sync: None,
                 table_state: TableState::new().with_selected(0),
                 popover: None,
                 copied: None,
@@ -95,6 +99,7 @@ impl App {
                 status_line: None,
                 replica: Replica::new(NodeId::random()),
                 client: auth,
+                last_sync: None,
                 table_state: TableState::new().with_selected(0),
                 popover: None,
                 copied: None,
@@ -215,15 +220,28 @@ impl App {
                 vec![]
             }
             Action::TimePassed => {
+                let mut effects = Vec::new();
+
                 if self.replica.schedule_pings() {
                     tracing::debug!("handling new ping(s)");
-                    vec![
-                        Effect::NotifyAboutNewPing,
-                        Effect::SaveReplica(self.replica.clone()),
-                    ]
-                } else {
-                    vec![]
+                    effects.push(Effect::NotifyAboutNewPing);
+                    effects.push(Effect::SaveReplica(self.replica.clone()));
                 }
+
+                if let Some(client) = &self.client {
+                    if self
+                        .last_sync
+                        .is_none_or(|last| last < Utc::now() - chrono::Duration::minutes(5))
+                    {
+                        effects.push(Effect::Push(
+                            client.clone(),
+                            self.replica.document().clone(),
+                        ));
+                        self.last_sync = Some(Utc::now());
+                    }
+                }
+
+                effects
             }
             Action::LoggedIn(client) => {
                 self.client = Some(client.clone());
