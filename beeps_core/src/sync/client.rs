@@ -92,15 +92,10 @@ impl Client {
         client: &reqwest::Client,
         req: &push::Req,
     ) -> error::Result<push::Resp> {
-        match self.document_id {
-            Some(document_id) => {
-                let url = Url::parse(&self.server)?.join(&push::path(document_id))?;
+        let url = Url::parse(&self.server)?.join(push::PATH)?;
 
-                self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
-                    .await
-            }
-            None => Err(Error::Client("No document ID set".to_string())),
-        }
+        self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
+            .await
     }
 
     /// Make an authenticated request to the server with the provided JWT,
