@@ -5,7 +5,7 @@ use axum::Json;
 use beeps_core::document::Part;
 use beeps_core::merge::Merge;
 use beeps_core::sync::push;
-use sqlx::{Acquire, QueryBuilder};
+use sqlx::{query, Acquire, QueryBuilder};
 
 #[tracing::instrument]
 pub async fn handler(
@@ -74,6 +74,13 @@ pub async fn handler(
         query.build().execute(&mut *tx).await?;
     }
 
+    query!(
+        "UPDATE documents SET updated_at = NOW() WHERE id = $1",
+        claims.document_id
+    )
+    .execute(&mut *tx)
+    .await?;
+
     tx.commit().await?;
 
     Ok(Json(push::Resp {}))
@@ -85,7 +92,7 @@ mod test {
     use crate::{assert_eq_timestamps, handlers::test::TestDoc};
     use beeps_core::{Document, Hlc, NodeId};
     use chrono::Utc;
-    use sqlx::{query, Pool, Postgres, Row};
+    use sqlx::{Pool, Postgres, Row};
 
     #[test_log::test(sqlx::test)]
     fn test_inserts_minutes_per_ping(pool: Pool<Postgres>) {
@@ -231,5 +238,41 @@ mod test {
         assert_eq!(num_minutes_per_ping_before, num_minutes_per_ping_after);
         assert_eq!(num_pings_before, num_pings_after);
         assert_eq!(num_tags_before, num_tags_after);
+    }
+
+    #[test_log::test(sqlx::test)]
+    fn test_updates_updated_at(pool: Pool<Postgres>) {
+        let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
+
+        let before = query!(
+            "SELECT updated_at FROM documents WHERE id = $1",
+            doc.document_id
+        )
+        .fetch_one(&mut *pool.acquire().await.unwrap())
+        .await
+        .unwrap();
+
+        let _ = handler(
+            Conn(pool.acquire().await.unwrap()),
+            doc.claims(),
+            Json(Document::default()),
+        )
+        .await
+        .unwrap();
+
+        let after = query!(
+            "SELECT updated_at FROM documents WHERE id = $1",
+            doc.document_id
+        )
+        .fetch_one(&mut *pool.acquire().await.unwrap())
+        .await
+        .unwrap();
+
+        assert!(
+            before.updated_at < after.updated_at,
+            "updated_at was not updated: {} (before) is not greater than {} (after)",
+            before.updated_at,
+            after.updated_at
+        );
     }
 }
