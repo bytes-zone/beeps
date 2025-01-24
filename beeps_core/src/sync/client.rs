@@ -87,7 +87,7 @@ impl Client {
     }
 
     /// Make an authenticated request to the server with the provided JWT,
-    /// bailing out if we're not logge in.
+    /// bailing out if we're not logged in.
     async fn authenticated<CB, T>(&self, cb: CB) -> Result<T, Error>
     where
         CB: FnOnce(&str) -> reqwest::RequestBuilder,
