@@ -12,7 +12,7 @@ pub struct Replica {
     clock: Hlc,
 
     /// Data that this replica will write to and sync with peers.
-    state: Document,
+    document: Document,
 }
 
 impl Replica {
@@ -20,7 +20,7 @@ impl Replica {
     pub fn new(node_id: NodeId) -> Self {
         Self {
             clock: Hlc::new(node_id),
-            state: Document::default(),
+            document: Document::default(),
         }
     }
 
@@ -35,32 +35,32 @@ impl Replica {
 
     /// Read the current state.
     pub fn state(&self) -> &Document {
-        &self.state
+        &self.document
     }
 
     /// Set the average number of minutes between pings.
     pub fn set_minutes_per_ping(&mut self, new: u16) {
         let clock = self.next_clock();
-        self.state.set_minutes_per_ping(new, clock);
+        self.document.set_minutes_per_ping(new, clock);
     }
 
     /// Add a ping, likely in coordination with a `Scheduler`.
     pub fn add_ping(&mut self, when: DateTime<Utc>) {
-        self.state.add_ping(when);
+        self.document.add_ping(when);
     }
 
     /// Tag an existing ping (returns false if the ping cannot be tagged because
     /// it does not exist.)
     pub fn tag_ping(&mut self, when: DateTime<Utc>, tag: String) -> bool {
         let clock = self.next_clock();
-        self.state.tag_ping(when, tag, clock)
+        self.document.tag_ping(when, tag, clock)
     }
 
     /// Untag an existing ping (returns false if the ping cannot be tagged
     /// because it does not exist.)
     pub fn untag_ping(&mut self, when: DateTime<Utc>) -> bool {
         let clock = self.next_clock();
-        self.state.untag_ping(when, clock)
+        self.document.untag_ping(when, clock)
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
@@ -68,11 +68,11 @@ impl Replica {
     fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) -> bool {
         let mut any_scheduled = false;
 
-        let latest_ping = if let Some(ping) = self.state.latest_ping().copied() {
+        let latest_ping = if let Some(ping) = self.document.latest_ping().copied() {
             ping
         } else {
             let now = Utc::now();
-            self.state.pings.insert(now);
+            self.document.pings.insert(now);
             any_scheduled = true;
 
             now
@@ -84,10 +84,10 @@ impl Replica {
             return any_scheduled;
         }
 
-        let scheduler = Scheduler::new(*self.state.minutes_per_ping.value(), latest_ping);
+        let scheduler = Scheduler::new(*self.document.minutes_per_ping.value(), latest_ping);
 
         for next in scheduler {
-            self.state.pings.insert(next);
+            self.document.pings.insert(next);
             any_scheduled = true;
 
             // accepting one past the cutoff gets us into the future
@@ -109,12 +109,17 @@ impl Replica {
 
     /// Get the current value of the given ping.
     pub fn get_tag(&self, ping: &DateTime<Utc>) -> Option<&String> {
-        self.state.get_tag(ping)
+        self.document.get_tag(ping)
     }
 
     /// Get all the pings that have been scheduled.
     pub fn pings(&self) -> impl DoubleEndedIterator<Item = &DateTime<Utc>> {
-        self.state.pings.iter()
+        self.document.pings.iter()
+    }
+
+    /// Get the document (for syncing)
+    pub fn document(&self) -> &Document {
+        &self.document
     }
 }
 
@@ -280,17 +285,17 @@ mod test {
                 // this gives us a way to reason about which update happened first, as
                 // well as letting us overcome clock drift.
                 debug_assert!(
-                    &state.clock >= state.state.minutes_per_ping.clock(),
+                    &state.clock >= state.document.minutes_per_ping.clock(),
                     "{} < {}",
                     state.clock,
-                    state.state.minutes_per_ping.clock()
+                    state.document.minutes_per_ping.clock()
                 );
-                for (_, lww) in &state.state.tags {
+                for (_, lww) in &state.document.tags {
                     debug_assert!(
                         &state.clock >= lww.clock(),
                         "{} < {}",
                         state.clock,
-                        state.state.minutes_per_ping.clock()
+                        state.document.minutes_per_ping.clock()
                     );
                 }
             }

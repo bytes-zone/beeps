@@ -6,6 +6,7 @@ use argon2::{password_hash, Argon2, PasswordHash, PasswordVerifier};
 use axum::{extract::State, Json};
 use beeps_core::sync::login::{Req, Resp};
 use jsonwebtoken::EncodingKey;
+use sqlx::query;
 
 /// This should be the same for both missing accounts and incorrect passwords so
 /// as not to give additional information about what accounts exist to someone
@@ -19,7 +20,7 @@ pub async fn handler(
     Json(req): Json<Req>,
 ) -> Result<Json<Resp>, Error> {
     let account = sqlx::query!(
-        "SELECT email, password FROM accounts WHERE email = $1 LIMIT 1",
+        "SELECT id, email, password FROM accounts WHERE email = $1 LIMIT 1",
         req.email
     )
     .fetch_optional(&mut *conn)
@@ -37,8 +38,15 @@ pub async fn handler(
         return Err(Error::Internal);
     }
 
+    let document = query!(
+        "SELECT id FROM documents WHERE owner_id = $1 LIMIT 1",
+        account.id,
+    )
+    .fetch_one(&mut *conn)
+    .await?;
+
     Ok(Json(Resp {
-        jwt: jwt::issue(&encoding_key, &account.email)?,
+        jwt: jwt::issue(&encoding_key, &account.email, document.id)?,
     }))
 }
 

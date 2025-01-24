@@ -46,7 +46,7 @@ pub async fn handler(
     let argon2 = Argon2::default();
     let salt = SaltString::generate(&mut OsRng);
 
-    let inserted = sqlx::query!(
+    let account = sqlx::query!(
         "INSERT INTO accounts (email, password) VALUES ($1, $2) RETURNING id",
         req.email,
         argon2
@@ -56,14 +56,17 @@ pub async fn handler(
     .fetch_one(&mut *tx)
     .await?;
 
-    sqlx::query!("INSERT INTO documents (owner_id) VALUES ($1)", inserted.id)
-        .execute(&mut *tx)
-        .await?;
+    let document = sqlx::query!(
+        "INSERT INTO documents (owner_id) VALUES ($1) RETURNING id",
+        account.id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
 
     tx.commit().await?;
 
     Ok(Json(Resp {
-        jwt: jwt::issue(&encoding_key, &req.email)?,
+        jwt: jwt::issue(&encoding_key, &req.email, document.id)?,
     }))
 }
 

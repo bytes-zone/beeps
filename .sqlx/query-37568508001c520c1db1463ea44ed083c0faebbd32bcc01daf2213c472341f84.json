@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT documents.id, documents.updated_at, documents.created_at FROM documents JOIN accounts ON accounts.id = documents.owner_id WHERE accounts.email = $1",
+  "query": "SELECT id, email, password FROM accounts WHERE email = $1 LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -10,13 +10,18 @@
       },
       {
         "ordinal": 1,
-        "name": "updated_at",
-        "type_info": "Timestamptz"
+        "name": "email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
       },
       {
         "ordinal": 2,
-        "name": "created_at",
-        "type_info": "Timestamptz"
+        "name": "password",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -35,5 +40,5 @@
       false
     ]
   },
-  "hash": "04c22120943d9750eb831bc2eed49404c442a7e037c13b6d02853eec8fc5b631"
+  "hash": "37568508001c520c1db1463ea44ed083c0faebbd32bcc01daf2213c472341f84"
 }

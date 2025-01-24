@@ -17,6 +17,7 @@ mod test {
             sub: "test@example.com".to_string(),
             iat: 0,
             exp: 1,
+            document_id: 1,
         };
 
         let Json(resp) = handler(claims.clone()).await;

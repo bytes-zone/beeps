@@ -1,36 +1,18 @@
 use crate::conn::Conn;
 use crate::error::Error;
 use crate::jwt::Claims;
-use axum::{extract::Path, http::StatusCode, Json};
+use axum::Json;
 use beeps_core::document::Part;
 use beeps_core::merge::Merge;
 use beeps_core::sync::push;
-use sqlx::{Acquire, QueryBuilder};
+use sqlx::{query, Acquire, QueryBuilder};
 
 #[tracing::instrument]
 pub async fn handler(
     Conn(mut conn): Conn,
     claims: Claims,
-    Path(document_id): Path<i64>,
     Json(req): Json<push::Req>,
 ) -> Result<Json<push::Resp>, Error> {
-    // Validate that the user owns the document
-    let authed_document = sqlx::query!(
-        "SELECT documents.id FROM documents \
-        JOIN accounts ON accounts.id = documents.owner_id \
-        WHERE accounts.email = $1 AND documents.id = $2",
-        claims.sub,
-        document_id,
-    )
-    .fetch_optional(&mut *conn)
-    .await?;
-
-    bail_if!(
-        authed_document.is_none(),
-        "Document not found",
-        StatusCode::NOT_FOUND
-    );
-
     let mut minutes_per_pings = vec![];
     let mut pings = vec![];
     let mut tags = vec![];
@@ -56,7 +38,7 @@ pub async fn handler(
         query.push_values(minutes_per_pings, |mut b, value| {
             let clock = value.clock();
 
-            b.push_bind(document_id)
+            b.push_bind(claims.document_id)
                 .push_bind(i32::from(*value.value()))
                 .push_bind(clock.timestamp())
                 .push_bind(i32::from(clock.counter()))
@@ -69,7 +51,7 @@ pub async fn handler(
     if !pings.is_empty() {
         let mut query = QueryBuilder::new("INSERT INTO pings (document_id, ping)");
         query.push_values(pings, |mut b, value| {
-            b.push_bind(document_id).push_bind(value);
+            b.push_bind(claims.document_id).push_bind(value);
         });
         query.push("ON CONFLICT DO NOTHING");
         query.build().execute(&mut *tx).await?;
@@ -81,7 +63,7 @@ pub async fn handler(
         query.push_values(tags, |mut b, (ping, tag)| {
             let clock = tag.clock();
 
-            b.push_bind(document_id)
+            b.push_bind(claims.document_id)
                 .push_bind(ping)
                 .push_bind(tag.value().clone())
                 .push_bind(clock.timestamp())
@@ -91,6 +73,13 @@ pub async fn handler(
         query.push("ON CONFLICT DO NOTHING");
         query.build().execute(&mut *tx).await?;
     }
+
+    query!(
+        "UPDATE documents SET updated_at = NOW() WHERE id = $1",
+        claims.document_id
+    )
+    .execute(&mut *tx)
+    .await?;
 
     tx.commit().await?;
 
@@ -103,26 +92,7 @@ mod test {
     use crate::{assert_eq_timestamps, handlers::test::TestDoc};
     use beeps_core::{Document, Hlc, NodeId};
     use chrono::Utc;
-    use sqlx::{pool::PoolConnection, query, Pool, Postgres, Row};
-
-    #[test_log::test(sqlx::test)]
-    fn test_unknown_document_not_authorized(mut conn: PoolConnection<Postgres>) {
-        let doc = TestDoc::create(&mut conn).await;
-
-        let err = handler(
-            Conn(conn),
-            doc.claims(),
-            Path(doc.document_id + 1),
-            Json(Document::default()),
-        )
-        .await
-        .unwrap_err();
-
-        assert_eq!(
-            err.unwrap_custom(),
-            (StatusCode::NOT_FOUND, "Document not found".to_string())
-        )
-    }
+    use sqlx::{Pool, Postgres, Row};
 
     #[test_log::test(sqlx::test)]
     fn test_inserts_minutes_per_ping(pool: Pool<Postgres>) {
@@ -135,7 +105,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
@@ -166,7 +135,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
@@ -196,7 +164,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
@@ -245,7 +212,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document.clone()),
         )
         .await
@@ -259,7 +225,6 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Path(doc.document_id),
             Json(document),
         )
         .await
@@ -273,5 +238,41 @@ mod test {
         assert_eq!(num_minutes_per_ping_before, num_minutes_per_ping_after);
         assert_eq!(num_pings_before, num_pings_after);
         assert_eq!(num_tags_before, num_tags_after);
+    }
+
+    #[test_log::test(sqlx::test)]
+    fn test_updates_updated_at(pool: Pool<Postgres>) {
+        let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
+
+        let before = query!(
+            "SELECT updated_at FROM documents WHERE id = $1",
+            doc.document_id
+        )
+        .fetch_one(&mut *pool.acquire().await.unwrap())
+        .await
+        .unwrap();
+
+        let _ = handler(
+            Conn(pool.acquire().await.unwrap()),
+            doc.claims(),
+            Json(Document::default()),
+        )
+        .await
+        .unwrap();
+
+        let after = query!(
+            "SELECT updated_at FROM documents WHERE id = $1",
+            doc.document_id
+        )
+        .fetch_one(&mut *pool.acquire().await.unwrap())
+        .await
+        .unwrap();
+
+        assert!(
+            before.updated_at < after.updated_at,
+            "updated_at was not updated: {} (before) is not greater than {} (after)",
+            before.updated_at,
+            after.updated_at
+        );
     }
 }

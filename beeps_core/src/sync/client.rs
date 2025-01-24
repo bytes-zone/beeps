@@ -1,5 +1,5 @@
 use super::error::{self, Error};
-use super::{documents, login, push, register, whoami};
+use super::{login, push, register, whoami};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -13,12 +13,19 @@ pub struct Client {
 
     /// Auth. Set this by logging in or registering.
     pub auth: Option<String>,
+
+    /// Which document ID to work with by default.
+    pub document_id: Option<i64>,
 }
 
 impl Client {
     /// Construct a new client
     pub fn new(server: String) -> Self {
-        Self { server, auth: None }
+        Self {
+            server,
+            auth: None,
+            document_id: None,
+        }
     }
 
     /// Register with the server.
@@ -63,18 +70,6 @@ impl Client {
             .await
     }
 
-    /// Get the documents associated with your account
-    ///
-    /// ## Errors
-    ///
-    /// Errors are the same as `handle_response`.
-    pub async fn documents(&self, client: &reqwest::Client) -> error::Result<documents::Resp> {
-        let url = Url::parse(&self.server)?.join(documents::PATH)?;
-
-        self.authenticated(|jwt| client.get(url).bearer_auth(jwt))
-            .await
-    }
-
     /// Push a document to the server
     ///
     /// ## Errors
@@ -82,11 +77,10 @@ impl Client {
     /// Errors are the same as `handle_response`.
     pub async fn push(
         &self,
-        document_id: i64,
         client: &reqwest::Client,
         req: &push::Req,
     ) -> error::Result<push::Resp> {
-        let url = Url::parse(&self.server)?.join(&push::path(document_id))?;
+        let url = Url::parse(&self.server)?.join(push::PATH)?;
 
         self.authenticated(|jwt| client.post(url).bearer_auth(jwt).json(req))
             .await
