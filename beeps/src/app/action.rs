@@ -24,4 +24,7 @@ pub enum Action {
 
     /// Some amount of time passed and we should do clock things
     TimePassed,
+
+    /// We pushed our document to the server
+    Pushed,
 }

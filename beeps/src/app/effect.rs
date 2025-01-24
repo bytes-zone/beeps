@@ -2,7 +2,7 @@ use super::Action;
 use crate::config::Config;
 use beeps_core::{
     sync::{self, login, register, Client},
-    Replica,
+    Document, Replica,
 };
 use notify_rust::Notification;
 use tokio::{fs, io};
@@ -43,6 +43,9 @@ pub enum Effect {
 
     /// Check login status
     WhoAmI(Client),
+
+    /// Push our replica to the server
+    Push(Client, Document),
 }
 
 impl Effect {
@@ -132,6 +135,14 @@ impl Effect {
                 let resp = client.whoami(&conn.http).await?;
 
                 Ok(Some(Action::GotWhoAmI(resp)))
+            }
+
+            Self::Push(client, document) => {
+                tracing::info!("pushing document");
+
+                let _ = client.push(&conn.http, &document).await?;
+
+                Ok(Some(Action::Pushed))
             }
         }
     }

@@ -235,6 +235,11 @@ impl App {
 
                 vec![]
             }
+            Action::Pushed => {
+                self.status_line = Some(format!("Pushed to the server"));
+
+                vec![]
+            }
         }
     }
 
