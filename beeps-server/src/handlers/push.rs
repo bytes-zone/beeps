@@ -1,7 +1,7 @@
 use crate::conn::Conn;
 use crate::error::Error;
 use crate::jwt::Claims;
-use axum::{http::StatusCode, Json};
+use axum::Json;
 use beeps_core::document::Part;
 use beeps_core::merge::Merge;
 use beeps_core::sync::push;
@@ -13,23 +13,6 @@ pub async fn handler(
     claims: Claims,
     Json(req): Json<push::Req>,
 ) -> Result<Json<push::Resp>, Error> {
-    // Validate that the user owns the document
-    let authed_document = sqlx::query!(
-        "SELECT documents.id FROM documents \
-        JOIN accounts ON accounts.id = documents.owner_id \
-        WHERE accounts.email = $1 AND documents.id = $2",
-        claims.sub,
-        claims.document_id,
-    )
-    .fetch_optional(&mut *conn)
-    .await?;
-
-    bail_if!(
-        authed_document.is_none(),
-        "Document not found",
-        StatusCode::NOT_FOUND
-    );
-
     let mut minutes_per_pings = vec![];
     let mut pings = vec![];
     let mut tags = vec![];
@@ -102,21 +85,7 @@ mod test {
     use crate::{assert_eq_timestamps, handlers::test::TestDoc};
     use beeps_core::{Document, Hlc, NodeId};
     use chrono::Utc;
-    use sqlx::{pool::PoolConnection, query, Pool, Postgres, Row};
-
-    #[test_log::test(sqlx::test)]
-    fn test_unknown_document_not_authorized(mut conn: PoolConnection<Postgres>) {
-        let doc = TestDoc::create(&mut conn).await;
-
-        let err = handler(Conn(conn), doc.claims(), Json(Document::default()))
-            .await
-            .unwrap_err();
-
-        assert_eq!(
-            err.unwrap_custom(),
-            (StatusCode::NOT_FOUND, "Document not found".to_string())
-        )
-    }
+    use sqlx::{query, Pool, Postgres, Row};
 
     #[test_log::test(sqlx::test)]
     fn test_inserts_minutes_per_ping(pool: Pool<Postgres>) {
