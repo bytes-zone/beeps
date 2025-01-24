@@ -1,5 +1,5 @@
 use super::error::{self, Error};
-use super::{documents, login, push, register, whoami};
+use super::{login, push, register, whoami};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -65,18 +65,6 @@ impl Client {
     /// Errors are the same as `handle_response`.
     pub async fn whoami(&self, client: &reqwest::Client) -> error::Result<whoami::Resp> {
         let url = Url::parse(&self.server)?.join(whoami::PATH)?;
-
-        self.authenticated(|jwt| client.get(url).bearer_auth(jwt))
-            .await
-    }
-
-    /// Get the documents associated with your account
-    ///
-    /// ## Errors
-    ///
-    /// Errors are the same as `handle_response`.
-    pub async fn documents(&self, client: &reqwest::Client) -> error::Result<documents::Resp> {
-        let url = Url::parse(&self.server)?.join(documents::PATH)?;
 
         self.authenticated(|jwt| client.get(url).bearer_auth(jwt))
             .await
