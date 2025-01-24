@@ -116,6 +116,11 @@ impl Replica {
     pub fn pings(&self) -> impl DoubleEndedIterator<Item = &DateTime<Utc>> {
         self.document.pings.iter()
     }
+
+    /// Get the document (for syncing)
+    pub fn document(&self) -> &Document {
+        &self.document
+    }
 }
 
 #[cfg(test)]
