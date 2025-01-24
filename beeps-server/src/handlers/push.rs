@@ -35,7 +35,7 @@ pub async fn handler(
     let mut pings = vec![];
     let mut tags = vec![];
 
-    req.document.split().for_each(|item| match item {
+    req.split().for_each(|item| match item {
         Part::MinutesPerPing(minutes) => {
             minutes_per_pings.push(minutes);
         }
@@ -113,10 +113,7 @@ mod test {
             Conn(conn),
             doc.claims(),
             Path(doc.document_id + 1),
-            Json(push::Req {
-                document_id: doc.document_id + 1,
-                document: Document::default(),
-            }),
+            Json(Document::default()),
         )
         .await
         .unwrap_err();
@@ -139,10 +136,7 @@ mod test {
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
             Path(doc.document_id),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Json(document),
         )
         .await
         .unwrap();
@@ -173,10 +167,7 @@ mod test {
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
             Path(doc.document_id),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Json(document),
         )
         .await
         .unwrap();
@@ -206,10 +197,7 @@ mod test {
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
             Path(doc.document_id),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Json(document),
         )
         .await
         .unwrap();
@@ -258,10 +246,7 @@ mod test {
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
             Path(doc.document_id),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document: document.clone(),
-            }),
+            Json(document.clone()),
         )
         .await
         .unwrap();
@@ -275,10 +260,7 @@ mod test {
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
             Path(doc.document_id),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Json(document),
         )
         .await
         .unwrap();
