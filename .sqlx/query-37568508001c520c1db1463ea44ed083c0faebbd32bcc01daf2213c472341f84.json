@@ -1,10 +1,15 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT email, password FROM accounts WHERE email = $1 LIMIT 1",
+  "query": "SELECT id, email, password FROM accounts WHERE email = $1 LIMIT 1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
         "name": "email",
         "type_info": {
           "Custom": {
@@ -14,7 +19,7 @@
         }
       },
       {
-        "ordinal": 1,
+        "ordinal": 2,
         "name": "password",
         "type_info": "Text"
       }
@@ -31,8 +36,9 @@
     },
     "nullable": [
       false,
+      false,
       false
     ]
   },
-  "hash": "4fe582040f61558905ca70ea6f9675ddab5e6aff68c4b02fdf81e7f442b304c8"
+  "hash": "37568508001c520c1db1463ea44ed083c0faebbd32bcc01daf2213c472341f84"
 }
