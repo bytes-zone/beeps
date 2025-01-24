@@ -1,8 +1,7 @@
 use crate::conn::Conn;
 use crate::error::Error;
 use crate::jwt::Claims;
-use axum::http::StatusCode;
-use axum::Json;
+use axum::{extract::Path, http::StatusCode, Json};
 use beeps_core::document::Part;
 use beeps_core::merge::Merge;
 use beeps_core::sync::push;
@@ -12,6 +11,7 @@ use sqlx::{Acquire, QueryBuilder};
 pub async fn handler(
     Conn(mut conn): Conn,
     claims: Claims,
+    Path(document_id): Path<i64>,
     Json(req): Json<push::Req>,
 ) -> Result<Json<push::Resp>, Error> {
     // Validate that the user owns the document
@@ -20,7 +20,7 @@ pub async fn handler(
         JOIN accounts ON accounts.id = documents.owner_id \
         WHERE accounts.email = $1 AND documents.id = $2",
         claims.sub,
-        req.document_id,
+        document_id,
     )
     .fetch_optional(&mut *conn)
     .await?;
@@ -35,7 +35,7 @@ pub async fn handler(
     let mut pings = vec![];
     let mut tags = vec![];
 
-    req.document.split().for_each(|item| match item {
+    req.split().for_each(|item| match item {
         Part::MinutesPerPing(minutes) => {
             minutes_per_pings.push(minutes);
         }
@@ -56,7 +56,7 @@ pub async fn handler(
         query.push_values(minutes_per_pings, |mut b, value| {
             let clock = value.clock();
 
-            b.push_bind(req.document_id)
+            b.push_bind(document_id)
                 .push_bind(i32::from(*value.value()))
                 .push_bind(clock.timestamp())
                 .push_bind(i32::from(clock.counter()))
@@ -69,7 +69,7 @@ pub async fn handler(
     if !pings.is_empty() {
         let mut query = QueryBuilder::new("INSERT INTO pings (document_id, ping)");
         query.push_values(pings, |mut b, value| {
-            b.push_bind(req.document_id).push_bind(value);
+            b.push_bind(document_id).push_bind(value);
         });
         query.push("ON CONFLICT DO NOTHING");
         query.build().execute(&mut *tx).await?;
@@ -81,7 +81,7 @@ pub async fn handler(
         query.push_values(tags, |mut b, (ping, tag)| {
             let clock = tag.clock();
 
-            b.push_bind(req.document_id)
+            b.push_bind(document_id)
                 .push_bind(ping)
                 .push_bind(tag.value().clone())
                 .push_bind(clock.timestamp())
@@ -112,10 +112,8 @@ mod test {
         let err = handler(
             Conn(conn),
             doc.claims(),
-            Json(push::Req {
-                document_id: doc.document_id + 1,
-                document: Document::default(),
-            }),
+            Path(doc.document_id + 1),
+            Json(Document::default()),
         )
         .await
         .unwrap_err();
@@ -137,10 +135,8 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Path(doc.document_id),
+            Json(document),
         )
         .await
         .unwrap();
@@ -170,10 +166,8 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Path(doc.document_id),
+            Json(document),
         )
         .await
         .unwrap();
@@ -202,10 +196,8 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Path(doc.document_id),
+            Json(document),
         )
         .await
         .unwrap();
@@ -253,10 +245,8 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document: document.clone(),
-            }),
+            Path(doc.document_id),
+            Json(document.clone()),
         )
         .await
         .unwrap();
@@ -269,10 +259,8 @@ mod test {
         let _ = handler(
             Conn(pool.acquire().await.unwrap()),
             doc.claims(),
-            Json(push::Req {
-                document_id: doc.document_id,
-                document,
-            }),
+            Path(doc.document_id),
+            Json(document),
         )
         .await
         .unwrap();
