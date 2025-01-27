@@ -1,5 +1,5 @@
 use super::error::{self, Error};
-use super::{login, push, register, whoami};
+use super::{login, pull, push, register, whoami};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -86,8 +86,20 @@ impl Client {
             .await
     }
 
+    /// Pull a document from the server
+    ///
+    /// ## Errors
+    ///
+    /// Errors are the same as `handle_response`.
+    pub async fn pull(&self, client: &reqwest::Client) -> error::Result<pull::Resp> {
+        let url = Url::parse(&self.server)?.join(pull::PATH)?;
+
+        self.authenticated(|jwt| client.get(url).bearer_auth(jwt))
+            .await
+    }
+
     /// Make an authenticated request to the server with the provided JWT,
-    /// bailing out if we're not logge in.
+    /// bailing out if we're not logged in.
     async fn authenticated<CB, T>(&self, cb: CB) -> Result<T, Error>
     where
         CB: FnOnce(&str) -> reqwest::RequestBuilder,

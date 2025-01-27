@@ -1,3 +1,5 @@
+use std::num::TryFromIntError;
+
 use argon2::password_hash;
 use axum::{
     http::StatusCode,
@@ -81,6 +83,13 @@ impl From<password_hash::Error> for Error {
 impl From<jsonwebtoken::errors::Error> for Error {
     fn from(err: jsonwebtoken::errors::Error) -> Self {
         tracing::error!(?err, "JWT error");
+        Self::Internal
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(err: TryFromIntError) -> Self {
+        tracing::error!(?err, "try from int error");
         Self::Internal
     }
 }

@@ -2,6 +2,7 @@
 
 pub mod health;
 pub mod login;
+pub mod pull;
 pub mod push;
 pub mod register;
 pub mod whoami;

@@ -1,9 +1,7 @@
 use crate::node_id::NodeId;
 use chrono::{DateTime, TimeZone, Utc};
-use std::{
-    cmp::Ordering,
-    fmt::{self, Display},
-};
+use std::cmp::Ordering;
+use std::fmt::{self, Display};
 
 /// A Hybrid Logical Clock (HLC.) Builds on a Lamport clock by adding a
 /// timestamp. This allows us to get a monotonically-increasing clock despite
@@ -34,13 +32,13 @@ impl Hlc {
         }
     }
 
-    /// Create a new HLC with the given node ID and timestamp. Only for testing,
-    /// because we don't want to be able to create HLCs in the past otherwise!
-    #[cfg(test)]
-    pub fn new_at(node: NodeId, timestamp: DateTime<Utc>) -> Self {
+    /// Create a new HLC with the given node ID and timestamp. Only for testing
+    /// and loading data from the database. Otherwise always use `.next` or
+    /// `.increment` to avoid creating timestamps in the past.
+    pub fn new_at(node: NodeId, timestamp: DateTime<Utc>, counter: u16) -> Self {
         Self {
             timestamp,
-            counter: 0,
+            counter,
             node,
         }
     }
@@ -169,6 +167,16 @@ impl Display for Hlc {
         write!(f, "{}::{}::{}", self.timestamp, self.counter, self.node)
     }
 }
+
+// impl FromRow for Hlc {
+//     fn from_row<R: sqlx::Row>(row: &R) -> Result<Self, sqlx::Error> {
+//         Ok(Self {
+//             timestamp: row.try_get("timestamp")?,
+//             counter: row.try_get("counter")?,
+//             node: row.try_get("node")?,
+//         })
+//     }
+// }
 
 #[cfg(test)]
 mod test {

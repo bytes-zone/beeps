@@ -6,7 +6,16 @@ use std::ops::Deref;
 
 /// A unique identifier for a node in the network.
 #[derive(
-    Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize,
+    Debug,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    sqlx::Type,
 )]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] pub u16);
@@ -49,6 +58,14 @@ impl Deref for NodeId {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl TryFrom<i32> for NodeId {
+    type Error = std::num::TryFromIntError;
+
+    fn try_from(id: i32) -> Result<NodeId, Self::Error> {
+        id.try_into().map(NodeId)
     }
 }
 

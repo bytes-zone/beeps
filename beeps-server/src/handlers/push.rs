@@ -33,7 +33,7 @@ pub async fn handler(
 
     if !minutes_per_pings.is_empty() {
         let mut query = QueryBuilder::new(
-            "INSERT INTO minutes_per_pings (document_id, minutes_per_ping, clock, counter, node_id)",
+            "INSERT INTO minutes_per_pings (document_id, minutes_per_ping, timestamp, counter, node)",
         );
         query.push_values(minutes_per_pings, |mut b, value| {
             let clock = value.clock();
@@ -58,8 +58,9 @@ pub async fn handler(
     }
 
     if !tags.is_empty() {
-        let mut query =
-            QueryBuilder::new("INSERT INTO tags (document_id, ping, tag, clock, counter, node_id)");
+        let mut query = QueryBuilder::new(
+            "INSERT INTO tags (document_id, ping, tag, timestamp, counter, node)",
+        );
         query.push_values(tags, |mut b, (ping, tag)| {
             let clock = tag.clock();
 
@@ -89,9 +90,9 @@ pub async fn handler(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{assert_eq_timestamps, handlers::test::TestDoc};
+    use crate::handlers::test::TestDoc;
     use beeps_core::{Document, Hlc, NodeId};
-    use chrono::Utc;
+    use chrono::{SubsecRound, Utc};
     use sqlx::{Pool, Postgres, Row};
 
     #[test_log::test(sqlx::test)]
@@ -99,7 +100,8 @@ mod test {
         let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
 
         let mut document = Document::default();
-        let clock = Hlc::new(NodeId::min());
+        let now = Utc::now().round_subsecs(6);
+        let clock = Hlc::new_at(NodeId::min(), now, 0);
         document.set_minutes_per_ping(60, clock);
 
         let _ = handler(
@@ -111,7 +113,7 @@ mod test {
         .unwrap();
 
         let inserted = query!(
-            "SELECT minutes_per_ping, clock, counter, node_id FROM minutes_per_pings WHERE document_id = $1",
+            "SELECT minutes_per_ping, timestamp, counter, node FROM minutes_per_pings WHERE document_id = $1",
             doc.document_id
         )
         .fetch_one(&mut *pool.acquire().await.unwrap())
@@ -119,9 +121,9 @@ mod test {
         .unwrap();
 
         assert_eq!(inserted.minutes_per_ping, 60);
-        assert_eq_timestamps!(inserted.clock, clock.timestamp());
+        assert_eq!(inserted.timestamp, clock.timestamp());
         assert_eq!(inserted.counter, i32::from(clock.counter()));
-        assert_eq!(inserted.node_id, i32::from(*clock.node()));
+        assert_eq!(inserted.node, i32::from(*clock.node()));
     }
 
     #[test_log::test(sqlx::test)]
@@ -129,7 +131,7 @@ mod test {
         let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
 
         let mut document = Document::default();
-        let now = Utc::now();
+        let now = Utc::now().round_subsecs(6);
         document.add_ping(now);
 
         let _ = handler(
@@ -148,7 +150,7 @@ mod test {
         .await
         .unwrap();
 
-        assert_eq_timestamps!(inserted.ping, now);
+        assert_eq!(inserted.ping, now);
     }
 
     #[test_log::test(sqlx::test)]
@@ -156,8 +158,8 @@ mod test {
         let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
 
         let mut document = Document::default();
-        let now = Utc::now();
-        let clock = Hlc::new(NodeId::min());
+        let now = Utc::now().round_subsecs(6);
+        let clock = Hlc::new_at(NodeId::min(), now, 0);
         document.add_ping(now);
         document.tag_ping(now, "test".to_string(), clock);
 
@@ -170,18 +172,18 @@ mod test {
         .unwrap();
 
         let inserted = query!(
-            "SELECT ping, tag, clock, counter, node_id FROM tags WHERE document_id = $1",
+            "SELECT ping, tag, timestamp, counter, node FROM tags WHERE document_id = $1",
             doc.document_id
         )
         .fetch_one(&mut *pool.acquire().await.unwrap())
         .await
         .unwrap();
 
-        assert_eq_timestamps!(inserted.ping, now);
-        assert_eq!(inserted.tag, "test".to_string());
-        assert_eq_timestamps!(inserted.clock, clock.timestamp());
+        assert_eq!(inserted.ping, now);
+        assert_eq!(inserted.tag, Some("test".to_string()));
+        assert_eq!(inserted.timestamp, clock.timestamp());
         assert_eq!(inserted.counter, i32::from(clock.counter()));
-        assert_eq!(inserted.node_id, i32::from(*clock.node()));
+        assert_eq!(inserted.node, i32::from(*clock.node()));
     }
 
     macro_rules! table_size {

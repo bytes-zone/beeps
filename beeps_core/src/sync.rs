@@ -5,6 +5,9 @@ pub use client::Client;
 /// Push an update to a document
 pub mod push;
 
+/// Pull the latest version of a document
+pub mod pull;
+
 /// Things that can go wrong in the API
 pub mod error;
 pub use error::Error;
