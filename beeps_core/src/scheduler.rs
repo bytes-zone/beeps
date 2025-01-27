@@ -51,7 +51,7 @@ impl Iterator for Scheduler {
         // few much longer ones.) To get there, we'll start with a uniform
         // distribution and use inverse transform sampling to transform it into what
         // we want.
-        let uniform: f64 = rng.gen(); // 0.0f64..1.0f64
+        let uniform: f64 = rng.random(); // 0.0f64..1.0f64
         let exponential = uniform.ln() / -self.average_pings_per_minute;
 
         // The exponential distribution above gives us fractional minutes. We'll
