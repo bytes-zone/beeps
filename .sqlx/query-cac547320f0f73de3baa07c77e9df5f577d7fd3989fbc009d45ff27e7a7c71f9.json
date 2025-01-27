@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT minutes_per_ping, timestamp, counter, node FROM minutes_per_pings WHERE document_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "minutes_per_ping",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "timestamp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "counter",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "node",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cac547320f0f73de3baa07c77e9df5f577d7fd3989fbc009d45ff27e7a7c71f9"
+}
