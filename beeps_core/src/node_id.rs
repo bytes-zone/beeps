@@ -61,11 +61,11 @@ impl Deref for NodeId {
     }
 }
 
-impl TryInto<NodeId> for i32 {
+impl TryFrom<i32> for NodeId {
     type Error = std::num::TryFromIntError;
 
-    fn try_into(self) -> Result<NodeId, Self::Error> {
-        self.try_into().map(NodeId)
+    fn try_from(id: i32) -> Result<NodeId, Self::Error> {
+        id.try_into().map(NodeId)
     }
 }
 

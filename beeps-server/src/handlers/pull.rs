@@ -21,7 +21,7 @@ pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<pull::
         .fetch(&mut *conn);
 
         while let Some(row) = minutes_per_pings.try_next().await? {
-            doc.merge_part(row.try_into()?)
+            doc.merge_part(row.try_into()?);
         }
     }
 
@@ -35,7 +35,7 @@ pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<pull::
         .fetch(&mut *conn);
 
         while let Some(row) = pings.try_next().await? {
-            doc.merge_part(row.into())
+            doc.merge_part(row.into());
         }
     }
 
@@ -49,7 +49,7 @@ pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<pull::
         .fetch(&mut *conn);
 
         while let Some(row) = tags.try_next().await? {
-            doc.merge_part(row.try_into()?)
+            doc.merge_part(row.try_into()?);
         }
     }
 
@@ -64,17 +64,13 @@ struct MinutesPerPingRow {
     node: i32,
 }
 
-impl TryInto<Part> for MinutesPerPingRow {
+impl TryFrom<MinutesPerPingRow> for Part {
     type Error = Error;
 
-    fn try_into(self) -> Result<Part, Self::Error> {
-        Ok(Part::MinutesPerPing(Lww::new(
-            self.minutes_per_ping.try_into()?,
-            Hlc::new_at(
-                self.node.try_into()?,
-                self.timestamp,
-                self.counter.try_into()?,
-            ),
+    fn try_from(row: MinutesPerPingRow) -> Result<Part, Self::Error> {
+        Ok(Self::MinutesPerPing(Lww::new(
+            row.minutes_per_ping.try_into()?,
+            Hlc::new_at(row.node.try_into()?, row.timestamp, row.counter.try_into()?),
         )))
     }
 }
@@ -84,9 +80,9 @@ struct PingRow {
     ping: DateTime<Utc>,
 }
 
-impl Into<Part> for PingRow {
-    fn into(self) -> Part {
-        Part::Ping(self.ping)
+impl From<PingRow> for Part {
+    fn from(val: PingRow) -> Self {
+        Part::Ping(val.ping)
     }
 }
 
@@ -99,19 +95,15 @@ struct TagRow {
     node: i32,
 }
 
-impl TryInto<Part> for TagRow {
+impl TryFrom<TagRow> for Part {
     type Error = Error;
 
-    fn try_into(self) -> Result<Part, Self::Error> {
-        Ok(Part::Tag((
-            self.ping,
+    fn try_from(row: TagRow) -> Result<Part, Self::Error> {
+        Ok(Self::Tag((
+            row.ping,
             Lww::new(
-                self.tag,
-                Hlc::new_at(
-                    self.node.try_into()?,
-                    self.timestamp,
-                    self.counter.try_into()?,
-                ),
+                row.tag,
+                Hlc::new_at(row.node.try_into()?, row.timestamp, row.counter.try_into()?),
             ),
         )))
     }
