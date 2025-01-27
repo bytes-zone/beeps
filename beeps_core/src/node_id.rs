@@ -23,7 +23,7 @@ impl NodeId {
                 Utc::now().timestamp() as u64, // Seed (we're OK with underflow if timestamp is somehow pre-1970)
                 0xa02_bdbf_7bb3_c0a7,          // Stream (default)
             )
-            .gen(),
+            .random(),
         )
     }
 
