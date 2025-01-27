@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS minutes_per_pings (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     document_id BIGINT NOT NULL,
     -- value
-    minutes_per_ping BIGINT NOT NULL,
+    minutes_per_ping INTEGER NOT NULL,
     -- clock
     clock TIMESTAMPTZ NOT NULL,
     counter INTEGER NOT NULL,
