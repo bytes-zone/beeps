@@ -179,7 +179,7 @@ mod test {
         .unwrap();
 
         assert_eq_timestamps!(inserted.ping, now);
-        assert_eq!(inserted.tag, "test".to_string());
+        assert_eq!(inserted.tag, Some("test".to_string()));
         assert_eq_timestamps!(inserted.timestamp, clock.timestamp());
         assert_eq!(inserted.counter, i32::from(clock.counter()));
         assert_eq!(inserted.node, i32::from(*clock.node()));

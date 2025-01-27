@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS tags (
     document_id BIGINT NOT NULL,
     -- value
     ping TIMESTAMPTZ NOT NULL,
-    tag TEXT NOT NULL,
+    tag TEXT,
     -- clock
     timestamp TIMESTAMPTZ NOT NULL,
     counter INTEGER NOT NULL,
