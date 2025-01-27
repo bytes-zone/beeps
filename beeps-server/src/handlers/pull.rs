@@ -11,15 +11,32 @@ use tokio_stream::StreamExt;
 pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<pull::Resp>, Error> {
     let mut doc = Document::default();
 
-    let mut minutes_per_pings = query_as!(
-        MinutesPerPingRow,
-        "SELECT minutes_per_ping, timestamp, counter, node FROM minutes_per_pings WHERE document_id = $1",
-        claims.document_id,
-    )
-    .fetch(&mut *conn);
+    // minutes per ping
+    {
+        let mut minutes_per_pings = query_as!(
+            MinutesPerPingRow,
+            "SELECT minutes_per_ping, timestamp, counter, node FROM minutes_per_pings WHERE document_id = $1",
+            claims.document_id,
+        )
+        .fetch(&mut *conn);
 
-    while let Some(row) = minutes_per_pings.try_next().await? {
-        doc.merge_part(row.try_into()?)
+        while let Some(row) = minutes_per_pings.try_next().await? {
+            doc.merge_part(row.try_into()?)
+        }
+    }
+
+    // pings
+    {
+        let mut pings = query_as!(
+            PingRow,
+            "SELECT ping FROM pings WHERE document_id = $1",
+            claims.document_id
+        )
+        .fetch(&mut *conn);
+
+        while let Some(row) = pings.try_next().await? {
+            doc.merge_part(row.into())
+        }
     }
 
     Ok(Json(doc))
@@ -45,6 +62,17 @@ impl TryInto<Part> for MinutesPerPingRow {
                 self.counter.try_into()?,
             ),
         )))
+    }
+}
+
+#[derive(FromRow)]
+struct PingRow {
+    ping: DateTime<Utc>,
+}
+
+impl Into<Part> for PingRow {
+    fn into(self) -> Part {
+        Part::Ping(self.ping)
     }
 }
 
@@ -81,5 +109,27 @@ mod test {
             pulled.minutes_per_ping.value(),
             document.minutes_per_ping.value()
         );
+    }
+
+    #[test_log::test(sqlx::test)]
+    async fn test_pulls_pings(pool: Pool<Postgres>) {
+        let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
+
+        let mut document = Document::default();
+        document.add_ping(Utc::now());
+
+        let _ = push::handler(
+            Conn(pool.acquire().await.unwrap()),
+            doc.claims(),
+            Json(document.clone()),
+        )
+        .await
+        .unwrap();
+
+        let Json(pulled) = handler(Conn(pool.acquire().await.unwrap()), doc.claims())
+            .await
+            .unwrap();
+
+        assert_eq!(pulled.pings, document.pings);
     }
 }
