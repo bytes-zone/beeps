@@ -114,6 +114,7 @@ mod test {
     use super::*;
     use crate::handlers::{push, test::TestDoc};
     use beeps_core::NodeId;
+    use chrono::SubsecRound;
     use sqlx::{Pool, Postgres};
 
     #[test_log::test(sqlx::test)]
@@ -149,7 +150,8 @@ mod test {
         let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
 
         let mut document = Document::default();
-        document.add_ping(Utc::now());
+        let now = Utc::now().round_subsecs(6);
+        document.add_ping(now);
 
         let _ = push::handler(
             Conn(pool.acquire().await.unwrap()),
@@ -171,9 +173,9 @@ mod test {
         let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
 
         let mut document = Document::default();
-        let now = Utc::now();
+        let now = Utc::now().round_subsecs(6);
         document.add_ping(now);
-        document.tag_ping(now, "tag".to_string(), Hlc::new(NodeId::min()));
+        document.tag_ping(now, "tag".to_string(), Hlc::new_at(NodeId::min(), now, 0));
 
         let _ = push::handler(
             Conn(pool.acquire().await.unwrap()),
