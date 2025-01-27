@@ -1,15 +1,12 @@
 use crate::node_id::NodeId;
 use chrono::{DateTime, TimeZone, Utc};
-use sqlx::FromRow;
-use std::{
-    cmp::Ordering,
-    fmt::{self, Display},
-};
+use std::cmp::Ordering;
+use std::fmt::{self, Display};
 
 /// A Hybrid Logical Clock (HLC.) Builds on a Lamport clock by adding a
 /// timestamp. This allows us to get a monotonically-increasing clock despite
 /// the fact that wall time can go backwards or smear for leap seconds.
-#[derive(PartialEq, Eq, Copy, Clone, Debug, serde::Serialize, serde::Deserialize, FromRow)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Hlc {
     /// The physical time component. First to break ties.
@@ -18,12 +15,8 @@ pub struct Hlc {
 
     /// A counter we increment if the new physical time is equal to or less than
     /// the previous. Second to break ties.
-    ///
-    /// This is an `i16` instead of a `u16` to make it possible to store in a
-    /// Postgres database without casting. In practice, this value should never
-    /// go below 0.
-    #[cfg_attr(test, proptest(strategy = "0..=10i16"))]
-    counter: i16,
+    #[cfg_attr(test, proptest(strategy = "0..=10u16"))]
+    counter: u16,
 
     /// The node ID of the replica that generated this HLC. Third to break ties.
     node: NodeId,
@@ -39,13 +32,13 @@ impl Hlc {
         }
     }
 
-    /// Create a new HLC with the given node ID and timestamp. Only for testing,
-    /// because we don't want to be able to create HLCs in the past otherwise!
-    #[cfg(test)]
-    pub fn new_at(node: NodeId, timestamp: DateTime<Utc>) -> Self {
+    /// Create a new HLC with the given node ID and timestamp. Only for testing
+    /// and loading data from the database. Otherwise always use `.next` or
+    /// `.increment` to avoid creating timestamps in the past.
+    pub fn new_at(node: NodeId, timestamp: DateTime<Utc>, counter: u16) -> Self {
         Self {
             timestamp,
-            counter: 0,
+            counter,
             node,
         }
     }
@@ -144,7 +137,7 @@ impl Hlc {
     }
 
     /// Get the counter of this HLC.
-    pub fn counter(&self) -> i16 {
+    pub fn counter(&self) -> u16 {
         self.counter
     }
 

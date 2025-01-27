@@ -61,6 +61,14 @@ impl Deref for NodeId {
     }
 }
 
+impl TryInto<NodeId> for i32 {
+    type Error = std::num::TryFromIntError;
+
+    fn try_into(self) -> Result<NodeId, Self::Error> {
+        self.try_into().map(NodeId)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
