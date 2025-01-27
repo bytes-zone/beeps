@@ -5,12 +5,12 @@ CREATE TABLE IF NOT EXISTS tags (
     ping TIMESTAMPTZ NOT NULL,
     tag TEXT NOT NULL,
     -- clock
-    clock TIMESTAMPTZ NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL,
     counter INTEGER NOT NULL,
-    node_id INTEGER NOT NULL,
+    node INTEGER NOT NULL,
     -- references
     FOREIGN KEY (document_id) REFERENCES accounts (id) ON DELETE CASCADE,
-    UNIQUE (document_id, clock, counter, node_id)
+    UNIQUE (document_id, timestamp, counter, node)
 );
 
 CREATE INDEX IF NOT EXISTS idx_tags_document_id ON minutes_per_pings (document_id);

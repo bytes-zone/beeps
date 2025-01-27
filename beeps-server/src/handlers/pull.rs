@@ -11,7 +11,7 @@ pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<pull::
     let mut doc = Document::default();
 
     let mut minutes_per_pings = query(
-        "SELECT minutes_per_ping, clock, counter, node_id FROM minutes_per_pings WHERE document_id = $1",
+        "SELECT minutes_per_ping, timestamp, counter, node FROM minutes_per_pings WHERE document_id = $1",
     ).bind(claims.document_id)
     .fetch(&mut *conn);
 
