@@ -39,6 +39,20 @@ pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<pull::
         }
     }
 
+    // tags
+    {
+        let mut tags = query_as!(
+            TagRow,
+            "SELECT ping, tag, timestamp, counter, node FROM tags WHERE document_id = $1",
+            claims.document_id,
+        )
+        .fetch(&mut *conn);
+
+        while let Some(row) = tags.try_next().await? {
+            doc.merge_part(row.try_into()?)
+        }
+    }
+
     Ok(Json(doc))
 }
 
@@ -73,6 +87,33 @@ struct PingRow {
 impl Into<Part> for PingRow {
     fn into(self) -> Part {
         Part::Ping(self.ping)
+    }
+}
+
+#[derive(FromRow)]
+struct TagRow {
+    ping: DateTime<Utc>,
+    tag: Option<String>,
+    timestamp: DateTime<Utc>,
+    counter: i32,
+    node: i32,
+}
+
+impl TryInto<Part> for TagRow {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Part, Self::Error> {
+        Ok(Part::Tag((
+            self.ping,
+            Lww::new(
+                self.tag,
+                Hlc::new_at(
+                    self.node.try_into()?,
+                    self.timestamp,
+                    self.counter.try_into()?,
+                ),
+            ),
+        )))
     }
 }
 
@@ -131,5 +172,29 @@ mod test {
             .unwrap();
 
         assert_eq!(pulled.pings, document.pings);
+    }
+
+    #[test_log::test(sqlx::test)]
+    async fn test_pulls_tags(pool: Pool<Postgres>) {
+        let doc = TestDoc::create(&mut pool.acquire().await.unwrap()).await;
+
+        let mut document = Document::default();
+        let now = Utc::now();
+        document.add_ping(now);
+        document.tag_ping(now, "tag".to_string(), Hlc::new(NodeId::min()));
+
+        let _ = push::handler(
+            Conn(pool.acquire().await.unwrap()),
+            doc.claims(),
+            Json(document.clone()),
+        )
+        .await
+        .unwrap();
+
+        let Json(pulled) = handler(Conn(pool.acquire().await.unwrap()), doc.claims())
+            .await
+            .unwrap();
+
+        assert_eq!(pulled.tags, document.tags);
     }
 }
