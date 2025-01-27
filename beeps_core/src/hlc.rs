@@ -1,5 +1,6 @@
 use crate::node_id::NodeId;
 use chrono::{DateTime, TimeZone, Utc};
+use sqlx::FromRow;
 use std::{
     cmp::Ordering,
     fmt::{self, Display},
@@ -8,7 +9,7 @@ use std::{
 /// A Hybrid Logical Clock (HLC.) Builds on a Lamport clock by adding a
 /// timestamp. This allows us to get a monotonically-increasing clock despite
 /// the fact that wall time can go backwards or smear for leap seconds.
-#[derive(PartialEq, Eq, Copy, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, serde::Serialize, serde::Deserialize, FromRow)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Hlc {
     /// The physical time component. First to break ties.
@@ -17,8 +18,12 @@ pub struct Hlc {
 
     /// A counter we increment if the new physical time is equal to or less than
     /// the previous. Second to break ties.
-    #[cfg_attr(test, proptest(strategy = "0..=10u16"))]
-    counter: u16,
+    ///
+    /// This is an `i16` instead of a `u16` to make it possible to store in a
+    /// Postgres database without casting. In practice, this value should never
+    /// go below 0.
+    #[cfg_attr(test, proptest(strategy = "0..=10i16"))]
+    counter: i16,
 
     /// The node ID of the replica that generated this HLC. Third to break ties.
     node: NodeId,
@@ -139,7 +144,7 @@ impl Hlc {
     }
 
     /// Get the counter of this HLC.
-    pub fn counter(&self) -> u16 {
+    pub fn counter(&self) -> i16 {
         self.counter
     }
 
@@ -169,6 +174,16 @@ impl Display for Hlc {
         write!(f, "{}::{}::{}", self.timestamp, self.counter, self.node)
     }
 }
+
+// impl FromRow for Hlc {
+//     fn from_row<R: sqlx::Row>(row: &R) -> Result<Self, sqlx::Error> {
+//         Ok(Self {
+//             timestamp: row.try_get("timestamp")?,
+//             counter: row.try_get("counter")?,
+//             node: row.try_get("node")?,
+//         })
+//     }
+// }
 
 #[cfg(test)]
 mod test {

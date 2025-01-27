@@ -6,10 +6,19 @@ use std::ops::Deref;
 
 /// A unique identifier for a node in the network.
 #[derive(
-    Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize,
+    Debug,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    sqlx::Type,
 )]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] pub u16);
+pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3i16"))] pub i16);
 
 impl NodeId {
     /// Get a random node ID based on the current time. When assigning, you
@@ -29,12 +38,12 @@ impl NodeId {
 
     /// The least possible `NodeId`.
     pub fn min() -> Self {
-        Self(u16::MIN)
+        Self(i16::MIN)
     }
 
     /// The greatest possible `NodeId`.
     pub fn max() -> Self {
-        Self(u16::MAX)
+        Self(i16::MAX)
     }
 }
 
@@ -45,7 +54,7 @@ impl Display for NodeId {
 }
 
 impl Deref for NodeId {
-    type Target = u16;
+    type Target = i16;
 
     fn deref(&self) -> &Self::Target {
         &self.0
