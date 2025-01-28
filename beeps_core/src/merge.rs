@@ -24,16 +24,23 @@ where
     /// when we load data from the database.)
     fn merge_part(&mut self, part: Self::Part);
 
+    /// Merge one `Merge` into another. This happens when we sync state between
+    /// replicas. In order for CRDT semantics to hold, this operation must be
+    /// commutative, associative, and idempotent. There are tests to help
+    /// guarantee this below.
+    fn merge_mut(&mut self, other: Self) {
+        for part in other.split() {
+            self.merge_part(part);
+        }
+    }
+
     /// Merge two `Merge`s into one. This happens when we sync state between
     /// replicas. In order for CRDT semantics to hold, this operation must be
     /// commutative, associative, and idempotent. There are tests to help
     /// guarantee this below.
     #[must_use]
     fn merge(mut self, other: Self) -> Self {
-        for part in other.split() {
-            self.merge_part(part);
-        }
-
+        self.merge_mut(other);
         self
     }
 }

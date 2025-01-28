@@ -124,7 +124,7 @@ impl Replica {
 
     /// Merge another document into ours (for syncing)
     pub fn merge(&mut self, other: Document) {
-        self.document = std::mem::take(&mut self.document).merge(other);
+        self.document.merge_mut(other);
     }
 }
 
