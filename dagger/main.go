@@ -181,6 +181,7 @@ func (m *Beeps) ServerContainerImage(
 ) *dagger.Container {
 	return dag.Container().
 		From("bitnami/minideb:bookworm").
+		WithExec([]string{"/bin/bash", "-c", "apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*"}).
 		WithFile(
 			"/bin/beeps-server",
 			m.Build(ctx, source, true, "beeps-server").
