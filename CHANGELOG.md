@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.5.1 (Unreleased)
+
 ## 0.5.0 (2025-01-27)
 
 - Shortcut listing is now available in the TUI (`?`)

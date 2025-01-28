@@ -1,6 +1,6 @@
 [package]
 name = "beeps-server"
-version = "0.5.0"
+version = "0.5.1-pre"
 edition = "2021"
 
 [dependencies]
