@@ -124,11 +124,13 @@ impl Replica {
 
     /// Merge another document into ours (for syncing)
     pub fn merge(&mut self, other: Document) {
+        // TODO: make sure that our clock is higher than any clock in this document.
         self.document.merge_mut(other);
     }
 
     /// Replace our document with another (for initial syncs)
     pub fn replace_doc(&mut self, other: Document) {
+        // TODO: make sure that our clock is higher than any clock in this document.
         self.document = other;
     }
 }
