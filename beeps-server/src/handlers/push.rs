@@ -7,7 +7,7 @@ use beeps_core::merge::Merge;
 use beeps_core::sync::push;
 use sqlx::{query, Acquire, QueryBuilder};
 
-#[tracing::instrument]
+#[tracing::instrument(skip(req))]
 pub async fn handler(
     Conn(mut conn): Conn,
     claims: Claims,
