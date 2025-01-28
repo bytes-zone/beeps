@@ -1,7 +1,7 @@
-use crate::document::Document;
 use crate::hlc::Hlc;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
+use crate::{document::Document, merge::Merge};
 use chrono::{DateTime, Utc};
 
 /// The local state of a replica ("who am I" and "what do I know"). Reading the
@@ -120,6 +120,11 @@ impl Replica {
     /// Get the document (for syncing)
     pub fn document(&self) -> &Document {
         &self.document
+    }
+
+    /// Merge another document into ours (for syncing)
+    pub fn merge(&mut self, other: Document) {
+        self.document = std::mem::take(&mut self.document).merge(other);
     }
 }
 

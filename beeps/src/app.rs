@@ -237,6 +237,8 @@ impl App {
                             client.clone(),
                             self.replica.document().clone(),
                         ));
+                        effects.push(Effect::Pull(client.clone()));
+
                         self.last_sync = Some(Utc::now());
                     }
                 }
@@ -255,6 +257,13 @@ impl App {
             }
             Action::Pushed => {
                 self.status_line = Some("Pushed to the server".to_string());
+
+                vec![]
+            }
+            Action::Pulled(resp) => {
+                self.status_line = Some("Got a new doc from the server".to_string());
+
+                self.replica.merge(resp.document);
 
                 vec![]
             }
