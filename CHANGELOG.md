@@ -3,6 +3,7 @@
 ## 0.5.0 (Unreleased)
 
 - Shortcut listing is now available in the TUI (`?`)
+- You can now push and pull documents to the server. The client knows how to do this, and will do so regularly once you log in (`l`) or register (`r`.)
 
 ## 0.4.3 (2025-01-05)
 
