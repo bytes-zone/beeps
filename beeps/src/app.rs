@@ -40,6 +40,10 @@ pub struct App {
     /// The replica we're working with
     replica: Replica,
 
+    /// If we're replacing the entire replica on the next sync (for example when
+    /// initially logging in.)
+    replace_on_next_sync: bool,
+
     /// State of the pings table
     table_state: TableState,
 
@@ -85,6 +89,7 @@ impl App {
             Ok(Self {
                 status_line: Some("Loaded replica".to_string()),
                 replica,
+                replace_on_next_sync: false,
                 client: auth,
                 last_sync: None,
                 table_state: TableState::new().with_selected(0),
@@ -99,6 +104,7 @@ impl App {
                 status_line: None,
                 replica: Replica::new(NodeId::random()),
                 client: auth,
+                replace_on_next_sync: false,
                 last_sync: None,
                 table_state: TableState::new().with_selected(0),
                 popover: None,
@@ -247,8 +253,12 @@ impl App {
             }
             Action::LoggedIn(client) => {
                 self.client = Some(client.clone());
+                self.replace_on_next_sync = true;
 
-                vec![Effect::SaveSyncClientAuth(client)]
+                vec![
+                    Effect::SaveSyncClientAuth(client.clone()),
+                    Effect::Pull(client),
+                ]
             }
             Action::GotWhoAmI(resp) => {
                 self.status_line = Some(format!("Logged in as \"{}\"", resp.email));
@@ -263,7 +273,12 @@ impl App {
             Action::Pulled(resp) => {
                 self.status_line = Some("Got a new doc from the server".to_string());
 
-                self.replica.merge(resp.document);
+                if self.replace_on_next_sync {
+                    self.replica.replace_doc(resp.document);
+                    self.replace_on_next_sync = false;
+                } else {
+                    self.replica.merge(resp.document);
+                }
 
                 vec![]
             }

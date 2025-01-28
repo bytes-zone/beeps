@@ -126,6 +126,11 @@ impl Replica {
     pub fn merge(&mut self, other: Document) {
         self.document.merge_mut(other);
     }
+
+    /// Replace our document with another (for initial syncs)
+    pub fn replace_doc(&mut self, other: Document) {
+        self.document = other;
+    }
 }
 
 #[cfg(test)]
