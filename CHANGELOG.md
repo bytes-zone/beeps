@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.2 (Unreleased)
+## 0.5.2 (2025-01-28)
 
 - Logging in no longer replaces your document. Instead, it asks if you'd like to merge or replace.
 
