@@ -16,7 +16,7 @@ use popover::{AuthIntent, Popover};
 use crate::config::Config;
 use beeps_core::{
     sync::{login, register, Client},
-    NodeId, Replica,
+    Document, NodeId, Replica,
 };
 use chrono::{DateTime, Local, Utc};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
@@ -42,7 +42,12 @@ pub struct App {
 
     /// If we're replacing the entire replica on the next sync (for example when
     /// initially logging in.)
-    replace_on_next_sync: bool,
+    in_first_sync: bool,
+
+    /// The document we got on our first sync. We keep this separate to decide
+    /// whether to replace our current document with this or merge them
+    /// together.
+    first_sync_document: Option<Document>,
 
     /// State of the pings table
     table_state: TableState,
@@ -89,7 +94,8 @@ impl App {
             Ok(Self {
                 status_line: Some("Loaded replica".to_string()),
                 replica,
-                replace_on_next_sync: false,
+                in_first_sync: false,
+                first_sync_document: None,
                 client: auth,
                 last_sync: None,
                 table_state: TableState::new().with_selected(0),
@@ -104,7 +110,8 @@ impl App {
                 status_line: None,
                 replica: Replica::new(NodeId::random()),
                 client: auth,
-                replace_on_next_sync: false,
+                in_first_sync: false,
+                first_sync_document: None,
                 last_sync: None,
                 table_state: TableState::new().with_selected(0),
                 popover: None,
@@ -253,7 +260,7 @@ impl App {
             }
             Action::LoggedIn(client) => {
                 self.client = Some(client.clone());
-                self.replace_on_next_sync = true;
+                self.in_first_sync = true;
 
                 vec![
                     Effect::SaveSyncClientAuth(client.clone()),
@@ -273,12 +280,12 @@ impl App {
             Action::Pulled(resp) => {
                 self.status_line = Some("Got a new doc from the server".to_string());
 
-                if self.replace_on_next_sync {
-                    self.replica.replace_doc(resp.document);
-                    self.replace_on_next_sync = false;
+                if self.in_first_sync {
+                    self.first_sync_document = Some(resp.document);
+                    self.popover = Some(Popover::ConfirmReplaceOrMerge);
                 } else {
                     self.replica.merge(resp.document);
-                }
+                };
 
                 vec![]
             }
@@ -354,6 +361,25 @@ impl App {
                     self.dismiss_popover();
                 }
                 _ => auth.handle_event(key),
+            },
+            Some(Popover::ConfirmReplaceOrMerge) => match key.code {
+                KeyCode::Char('r') => {
+                    self.dismiss_popover();
+                    self.in_first_sync = false;
+                    if let Some(document) = self.first_sync_document.take() {
+                        self.replica.replace_doc(document);
+                        effects.push(Effect::SaveReplica(self.replica.clone()));
+                    }
+                }
+                KeyCode::Char('m') => {
+                    self.dismiss_popover();
+                    self.in_first_sync = false;
+                    if let Some(document) = self.first_sync_document.take() {
+                        self.replica.merge(document);
+                        effects.push(Effect::SaveReplica(self.replica.clone()));
+                    }
+                }
+                _ => (),
             },
         }
 
