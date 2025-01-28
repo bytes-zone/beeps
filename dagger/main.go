@@ -53,7 +53,7 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 }
 
 type NiceOutput struct {
-	build     string
+	container string
 	test      string
 	clippy    string
 	typos     string
@@ -69,7 +69,7 @@ func section(title string, body string) string {
 
 func (n *NiceOutput) Format() string {
 	arr := []string{
-		section("Build", n.build),
+		section("Container", n.container),
 		section("Test", n.test),
 		section("Clippy", n.clippy),
 		section("Typos", n.typos),
@@ -91,6 +91,12 @@ func (m *Beeps) All(
 	eg, ctx := errgroup.WithContext(ctx)
 
 	nice := NiceOutput{}
+
+	eg.Go(func() error {
+		out, err := m.TestServerContainerImage(ctx, source).Stdout(ctx)
+		nice.container = out
+		return err
+	})
 
 	eg.Go(func() error {
 		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
@@ -184,6 +190,18 @@ func (m *Beeps) ServerContainerImage(
 		WithEntrypoint([]string{"/bin/beeps-server"}).
 		WithLabel("org.opencontainers.image.description", "the Beeps server").
 		WithExposedPort(3000)
+}
+
+// Test the server container image
+func (m *Beeps) TestServerContainerImage(
+	ctx context.Context,
+	// +optional
+	// +defaultPath=.
+	// +ignore=["target", ".git", ".dagger", "pgdata"]
+	source *dagger.Directory,
+) *dagger.Container {
+	return m.ServerContainerImage(ctx, source).
+		WithExec([]string{"/bin/beeps-server", "--version"})
 }
 
 // Run unit and integration tests for the project
