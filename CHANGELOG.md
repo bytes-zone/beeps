@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.5.1 (Unreleased)
+## 0.5.2 (Unreleased)
+
+## 0.5.1 (2025-01-28)
+
+- Fixes a missing dependency in the container image.
+
+This release is available as a container image at `ghcr.io/bytes-zone/beeps:v0.5.1`.
 
 ## 0.5.0 (2025-01-27)
 
