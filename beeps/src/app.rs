@@ -366,7 +366,6 @@ impl App {
             Some(Popover::ConfirmReplaceOrMerge) => match key.code {
                 KeyCode::Char('r') => {
                     self.dismiss_popover();
-                    self.in_first_sync = true;
                     if let Some(document) = self.first_sync_document.take() {
                         self.replica.replace_doc(document);
                         effects.push(Effect::SaveReplica(self.replica.clone()));
@@ -374,7 +373,6 @@ impl App {
                 }
                 KeyCode::Char('m') => {
                     self.dismiss_popover();
-                    self.in_first_sync = false;
                     if let Some(document) = self.first_sync_document.take() {
                         self.replica.merge(document);
                         effects.push(Effect::SaveReplica(self.replica.clone()));
