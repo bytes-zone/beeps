@@ -1,17 +1,3 @@
-// A generated module for Beeps functions
-//
-// This module has been generated via dagger init and serves as a reference to
-// basic module structure as you get started with Dagger.
-//
-// Two functions have been pre-created. You can modify, delete, or add to them,
-// as needed. They demonstrate usage of arguments and return types using simple
-// echo and grep commands. The functions can be called from the dagger CLI or
-// from one of the SDKs.
-//
-// The first line in this comment block is a short description line and the
-// rest is a long description with more detail on the module's purpose or usage,
-// if appropriate. All modules should have a short description.
-
 package main
 
 import (
@@ -67,7 +53,7 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 }
 
 type NiceOutput struct {
-	build     string
+	container string
 	test      string
 	clippy    string
 	typos     string
@@ -83,7 +69,7 @@ func section(title string, body string) string {
 
 func (n *NiceOutput) Format() string {
 	arr := []string{
-		section("Build", n.build),
+		section("Container", n.container),
 		section("Test", n.test),
 		section("Clippy", n.clippy),
 		section("Typos", n.typos),
@@ -105,6 +91,12 @@ func (m *Beeps) All(
 	eg, ctx := errgroup.WithContext(ctx)
 
 	nice := NiceOutput{}
+
+	eg.Go(func() error {
+		out, err := m.TestServerContainerImage(ctx, source).Stdout(ctx)
+		nice.container = out
+		return err
+	})
 
 	eg.Go(func() error {
 		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
@@ -189,6 +181,7 @@ func (m *Beeps) ServerContainerImage(
 ) *dagger.Container {
 	return dag.Container().
 		From("bitnami/minideb:bookworm").
+		WithExec([]string{"/bin/bash", "-c", "apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*"}).
 		WithFile(
 			"/bin/beeps-server",
 			m.Build(ctx, source, true, "beeps-server").
@@ -198,6 +191,18 @@ func (m *Beeps) ServerContainerImage(
 		WithEntrypoint([]string{"/bin/beeps-server"}).
 		WithLabel("org.opencontainers.image.description", "the Beeps server").
 		WithExposedPort(3000)
+}
+
+// Test the server container image
+func (m *Beeps) TestServerContainerImage(
+	ctx context.Context,
+	// +optional
+	// +defaultPath=.
+	// +ignore=["target", ".git", ".dagger", "pgdata"]
+	source *dagger.Directory,
+) *dagger.Container {
+	return m.ServerContainerImage(ctx, source).
+		WithExec([]string{"/bin/beeps-server", "--version"})
 }
 
 // Run unit and integration tests for the project
