@@ -19,6 +19,9 @@ pub enum Popover {
 
     /// Register with the server
     Authenticating(auth_form::AuthForm, AuthIntent),
+
+    /// Confirm whether or not we want to replace the full sync information or merge it.
+    ConfirmReplaceOrMerge,
 }
 
 /// When we're working with an Authenticating popover, what do we intend to do
@@ -103,6 +106,28 @@ impl Popover {
                 ));
             }
             Popover::Authenticating(auth, _) => auth.render(body_area, frame),
+            Popover::ConfirmReplaceOrMerge => {
+                let popup_vert = Layout::vertical([Constraint::Percentage(50)]).flex(Flex::Center);
+                let popup_horiz =
+                    Layout::horizontal([Constraint::Percentage(50)]).flex(Flex::Center);
+
+                let [popup_area] = popup_vert.areas(body_area);
+                let [popup_area] = popup_horiz.areas(popup_area);
+
+                let popup = Paragraph::new(
+                    "You've successfully logged in! Do you want to replace your local data with the server's data, or merge local and remote data?\n\nPress 'r' to replace, or 'm' to merge.",
+                )
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("Replace or Merge?")
+                        .padding(Padding::horizontal(1))
+                        .border_style(Style::new().blue()),
+                );
+
+                frame.render_widget(Clear, popup_area);
+                frame.render_widget(popup, popup_area);
+            }
         }
     }
 }
