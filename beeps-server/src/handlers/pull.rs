@@ -53,7 +53,7 @@ pub async fn handler(Conn(mut conn): Conn, claims: Claims) -> Result<Json<pull::
         }
     }
 
-    Ok(Json(doc))
+    Ok(Json(pull::Resp { document: doc }))
 }
 
 #[derive(FromRow)]
@@ -140,7 +140,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            pulled.minutes_per_ping.value(),
+            pulled.document.minutes_per_ping.value(),
             document.minutes_per_ping.value()
         );
     }
@@ -165,7 +165,7 @@ mod test {
             .await
             .unwrap();
 
-        assert_eq!(pulled.pings, document.pings);
+        assert_eq!(pulled.document.pings, document.pings);
     }
 
     #[test_log::test(sqlx::test)]
@@ -189,6 +189,6 @@ mod test {
             .await
             .unwrap();
 
-        assert_eq!(pulled.tags, document.tags);
+        assert_eq!(pulled.document.tags, document.tags);
     }
 }

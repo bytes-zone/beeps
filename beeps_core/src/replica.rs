@@ -1,7 +1,7 @@
-use crate::document::Document;
 use crate::hlc::Hlc;
 use crate::node_id::NodeId;
 use crate::scheduler::Scheduler;
+use crate::{document::Document, merge::Merge};
 use chrono::{DateTime, Utc};
 
 /// The local state of a replica ("who am I" and "what do I know"). Reading the
@@ -120,6 +120,18 @@ impl Replica {
     /// Get the document (for syncing)
     pub fn document(&self) -> &Document {
         &self.document
+    }
+
+    /// Merge another document into ours (for syncing)
+    pub fn merge(&mut self, other: Document) {
+        // TODO: make sure that our clock is higher than any clock in this document.
+        self.document.merge_mut(other);
+    }
+
+    /// Replace our document with another (for initial syncs)
+    pub fn replace_doc(&mut self, other: Document) {
+        // TODO: make sure that our clock is higher than any clock in this document.
+        self.document = other;
     }
 }
 

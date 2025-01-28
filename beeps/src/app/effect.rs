@@ -46,6 +46,9 @@ pub enum Effect {
 
     /// Push our replica to the server
     Push(Client, Document),
+
+    /// Pull the latest replica from the server
+    Pull(Client),
 }
 
 impl Effect {
@@ -143,6 +146,14 @@ impl Effect {
                 let _ = client.push(&conn.http, &document).await?;
 
                 Ok(Some(Action::Pushed))
+            }
+
+            Self::Pull(client) => {
+                tracing::info!("pulling document");
+
+                let document = client.pull(&conn.http).await?;
+
+                Ok(Some(Action::Pulled(document)))
             }
         }
     }
