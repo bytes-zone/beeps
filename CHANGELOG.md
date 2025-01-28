@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.5.2 (Unreleased)
+
 ## 0.5.1 (2025-01-28)
 
 - Fixes a missing dependency in the container image.
