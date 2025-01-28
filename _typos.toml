@@ -1,3 +1,6 @@
+[files]
+extend-exclude = ["dagger/internal/**"]
+
 [default.extend-words]
 ba = "ba"           # as in merge_ab/merge_ba
 ratatui = "ratatui" # library name
