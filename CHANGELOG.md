@@ -2,6 +2,10 @@
 
 ## 0.5.2 (Unreleased)
 
+- Logging in no longer replaces your document. Instead, it asks if you'd like to merge or replace.
+
+This release is available as a container image at `ghcr.io/bytes-zone/beeps:v0.5.2`.
+
 ## 0.5.1 (2025-01-28)
 
 - Fixes a missing dependency in the container image.
