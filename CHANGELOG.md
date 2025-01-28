@@ -3,7 +3,7 @@
 ## 0.5.0 (Unreleased)
 
 - Shortcut listing is now available in the TUI (`?`)
-- You can now push and pull documents to the server. The client knows how to do this, and will do so regularly once you log in (`l`) or register (`r`.)
+- You can now push and pull documents to the server. The client knows how to do this, and will do so regularly once you log in (`l`) or register (`r`.) Note that logging in will replace your entire document (registering won't.) If you've somehow been using this README-less software on two separate replicas without manually merging, get in touch before trying to use the server.
 
 ## 0.4.3 (2025-01-05)
 
