@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "ignorePaths": [".dagger/**"],
+  "ignorePaths": ["dagger/**"],
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch"],
