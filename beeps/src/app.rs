@@ -281,7 +281,6 @@ impl App {
                 self.status_line = Some("Got a new doc from the server".to_string());
 
                 if self.in_first_sync {
-                    self.in_first_sync = false;
                     self.first_sync_document = Some(resp.document);
                     self.popover = Some(Popover::ConfirmReplaceOrMerge);
                 } else {
@@ -366,6 +365,7 @@ impl App {
             Some(Popover::ConfirmReplaceOrMerge) => match key.code {
                 KeyCode::Char('r') => {
                     self.dismiss_popover();
+                    self.in_first_sync = false;
                     if let Some(document) = self.first_sync_document.take() {
                         self.replica.replace_doc(document);
                         effects.push(Effect::SaveReplica(self.replica.clone()));
@@ -373,6 +373,7 @@ impl App {
                 }
                 KeyCode::Char('m') => {
                     self.dismiss_popover();
+                    self.in_first_sync = false;
                     if let Some(document) = self.first_sync_document.take() {
                         self.replica.merge(document);
                         effects.push(Effect::SaveReplica(self.replica.clone()));
