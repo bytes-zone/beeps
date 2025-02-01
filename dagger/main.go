@@ -20,7 +20,7 @@ func (m *Beeps) Postgres() *dagger.Service {
 	}).Service()
 }
 
-const RUST_CONTAINER_IMAGE = "rust:1.84.0"
+const RUST_CONTAINER_IMAGE = "rust:1.84.1"
 
 func (m *Beeps) rustBase(cacheKey string) *dagger.Container {
 	return dag.Container().
