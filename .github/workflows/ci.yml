@@ -3,16 +3,12 @@ name: CI
 on:
   push:
 
+env:
+  CLICOLOR: 1
+
 jobs:
-  dagger:
-    name: dagger
-    runs-on: dagger
+  typos:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Test
-        uses: dagger/dagger-for-github@v7
-        with:
-          version: "latest"
-          verb: call
-          args: all > $GITHUB_STEP_SUMMARY
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.29.5

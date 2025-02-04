@@ -56,7 +56,6 @@ type NiceOutput struct {
 	container string
 	test      string
 	clippy    string
-	typos     string
 	fmt       string
 	machete   string
 	wasmBuild string
@@ -72,7 +71,6 @@ func (n *NiceOutput) Format() string {
 		section("Container", n.container),
 		section("Test", n.test),
 		section("Clippy", n.clippy),
-		section("Typos", n.typos),
 		section("Fmt", n.fmt),
 		section("Machete", n.machete),
 		section("WASM Build", n.wasmBuild),
@@ -101,12 +99,6 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
 		nice.clippy = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.Typos(ctx, source).Stdout(ctx)
-		nice.typos = out
 		return err
 	})
 
@@ -243,31 +235,6 @@ func (m *Beeps) Clippy(
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		With(userSource(source)).
 		WithExec(command)
-}
-
-const TYPOS_VERSION = "1.29.4"
-
-// Find typos with Typos
-func (m *Beeps) Typos(
-	ctx context.Context,
-	// +defaultPath=.
-	// +ignore=["target", ".git", ".dagger", "pgdata"]
-	source *dagger.Directory,
-) *dagger.Container {
-	release := dag.HTTP(fmt.Sprintf(
-		"https://github.com/crate-ci/typos/releases/download/v%s/typos-v%s-x86_64-unknown-linux-musl.tar.gz",
-		TYPOS_VERSION,
-		TYPOS_VERSION,
-	))
-
-	return dag.Container().
-		From("alpine:3.21.2").
-		WithFile("release.tgz", release).
-		WithExec([]string{"tar", "-xzf", "release.tgz"}).
-		WithExec([]string{"mv", "typos", "/bin/typos"}).
-		// done installing typos, now we can check!
-		With(userSource(source)).
-		WithExec([]string{"typos"})
 }
 
 // Lint source code with `cargo fmt`
