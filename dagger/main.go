@@ -56,7 +56,6 @@ type NiceOutput struct {
 	container string
 	test      string
 	clippy    string
-	fmt       string
 	machete   string
 	wasmBuild string
 	wasmSize  string
@@ -71,7 +70,6 @@ func (n *NiceOutput) Format() string {
 		section("Container", n.container),
 		section("Test", n.test),
 		section("Clippy", n.clippy),
-		section("Fmt", n.fmt),
 		section("Machete", n.machete),
 		section("WASM Build", n.wasmBuild),
 		section("WASM Size", n.wasmSize),
@@ -99,12 +97,6 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
 		nice.clippy = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.Fmt(ctx, source).Stderr(ctx)
-		nice.fmt = out
 		return err
 	})
 
@@ -235,19 +227,6 @@ func (m *Beeps) Clippy(
 		WithExec([]string{"rustup", "component", "add", "clippy"}).
 		With(userSource(source)).
 		WithExec(command)
-}
-
-// Lint source code with `cargo fmt`
-func (m *Beeps) Fmt(
-	ctx context.Context,
-	// +defaultPath=.
-	// +ignore=["target", ".git", ".dagger", "pgdata"]
-	source *dagger.Directory,
-) *dagger.Container {
-	return m.rustBase("fmt").
-		WithExec([]string{"rustup", "component", "add", "rustfmt"}).
-		With(userSource(source)).
-		WithExec([]string{"cargo", "fmt", "--check"})
 }
 
 // Lint source code with `cargo machete`
