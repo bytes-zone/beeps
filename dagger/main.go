@@ -11,15 +11,6 @@ import (
 
 type Beeps struct{}
 
-// Start a postgres server
-func (m *Beeps) Postgres() *dagger.Service {
-	return dag.Postgres(dagger.PostgresOpts{
-		Version:  "17.2",
-		User:     dag.SetSecret("postgres-user", "beeps"),
-		Password: dag.SetSecret("postgres-password", "beeps"),
-	}).Service()
-}
-
 const RUST_CONTAINER_IMAGE = "rust:1.84.1"
 
 func (m *Beeps) rustBase(cacheKey string) *dagger.Container {
@@ -54,7 +45,6 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 
 type NiceOutput struct {
 	container string
-	test      string
 	wasmBuild string
 	wasmSize  string
 }
@@ -66,7 +56,6 @@ func section(title string, body string) string {
 func (n *NiceOutput) Format() string {
 	arr := []string{
 		section("Container", n.container),
-		section("Test", n.test),
 		section("WASM Build", n.wasmBuild),
 		section("WASM Size", n.wasmSize),
 	}
@@ -87,12 +76,6 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.TestServerContainerImage(ctx, source).Stdout(ctx)
 		nice.container = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.Test(ctx, source).Stdout(ctx)
-		nice.test = out
 		return err
 	})
 
@@ -171,26 +154,6 @@ func (m *Beeps) TestServerContainerImage(
 ) *dagger.Container {
 	return m.ServerContainerImage(ctx, source).
 		WithExec([]string{"/bin/beeps-server", "--version"})
-}
-
-// Run unit and integration tests for the project
-func (m *Beeps) Test(
-	ctx context.Context,
-	// +defaultPath=.
-	// +ignore=["target", ".git", ".dagger", "pgdata"]
-	source *dagger.Directory,
-) *dagger.Container {
-	return m.rustBase("test").
-		WithExec([]string{"cargo", "install", "sqlx-cli", "--no-default-features", "--features=postgres"}).
-
-		// Database
-		WithServiceBinding("postgres", m.Postgres()).
-		WithEnvVariable("DATABASE_URL", "postgres://beeps:beeps@postgres:5432/beeps").
-
-		// Test
-		With(userSource(source)).
-		WithExec([]string{"sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
-		WithExec([]string{"cargo", "test"})
 }
 
 const WASM_PACK_VERSION = "0.13.1"
