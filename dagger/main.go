@@ -55,7 +55,6 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 type NiceOutput struct {
 	container string
 	test      string
-	machete   string
 	wasmBuild string
 	wasmSize  string
 }
@@ -68,7 +67,6 @@ func (n *NiceOutput) Format() string {
 	arr := []string{
 		section("Container", n.container),
 		section("Test", n.test),
-		section("Machete", n.machete),
 		section("WASM Build", n.wasmBuild),
 		section("WASM Size", n.wasmSize),
 	}
@@ -89,12 +87,6 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.TestServerContainerImage(ctx, source).Stdout(ctx)
 		nice.container = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.Machete(ctx, source).Stdout(ctx)
-		nice.machete = out
 		return err
 	})
 
@@ -199,19 +191,6 @@ func (m *Beeps) Test(
 		With(userSource(source)).
 		WithExec([]string{"sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
 		WithExec([]string{"cargo", "test"})
-}
-
-// Lint source code with `cargo machete`
-func (m *Beeps) Machete(
-	ctx context.Context,
-	// +defaultPath=.
-	// +ignore=["target", ".git", ".dagger", "pgdata"]
-	source *dagger.Directory,
-) *dagger.Container {
-	return dag.Container().
-		From("ghcr.io/bnjbvr/cargo-machete:v0.7.0").
-		With(userSource(source)).
-		WithExec([]string{}, dagger.ContainerWithExecOpts{UseEntrypoint: true})
 }
 
 const WASM_PACK_VERSION = "0.13.1"
