@@ -45,8 +45,6 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 
 type NiceOutput struct {
 	container string
-	wasmBuild string
-	wasmSize  string
 }
 
 func section(title string, body string) string {
@@ -56,8 +54,6 @@ func section(title string, body string) string {
 func (n *NiceOutput) Format() string {
 	arr := []string{
 		section("Container", n.container),
-		section("WASM Build", n.wasmBuild),
-		section("WASM Size", n.wasmSize),
 	}
 	return strings.Join(arr, "\n\n")
 }
@@ -76,18 +72,6 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.TestServerContainerImage(ctx, source).Stdout(ctx)
 		nice.container = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.WasmBuild(ctx, source, "browser", "bundler").Stderr(ctx)
-		nice.wasmBuild = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.WasmSize(ctx, source, "browser", "bundler")
-		nice.wasmSize = out
 		return err
 	})
 
@@ -154,55 +138,4 @@ func (m *Beeps) TestServerContainerImage(
 ) *dagger.Container {
 	return m.ServerContainerImage(ctx, source).
 		WithExec([]string{"/bin/beeps-server", "--version"})
-}
-
-const WASM_PACK_VERSION = "0.13.1"
-
-const WASM_BINDGEN_VERSION = "0.2.100"
-
-// Build WASM package
-func (m *Beeps) WasmBuild(
-	ctx context.Context,
-	// +defaultPath=.
-	// +ignore=["target", ".git", ".dagger", "pgdata"]
-	source *dagger.Directory,
-	// +default="browser"
-	crate string,
-	// +default="bundler"
-	target string,
-) *dagger.Container {
-	release := dag.HTTP(fmt.Sprintf(
-		"https://github.com/rustwasm/wasm-pack/releases/download/v%s/wasm-pack-v%s-x86_64-unknown-linux-musl.tar.gz",
-		WASM_PACK_VERSION,
-		WASM_PACK_VERSION,
-	))
-
-	return m.rustBase("wasm-pack").
-		WithExec([]string{"rustup", "component", "add", "rust-std", "--target", "wasm32-unknown-unknown"}).
-
-		// install wasm-pack
-		WithFile("release.tgz", release).
-		WithExec([]string{"tar", "-xz", "--strip-components=1", "--file=release.tgz"}).
-		WithExec([]string{"mv", "wasm-pack", "/bin"}).
-
-		// build the WASM package
-		With(userSource(source)).
-		WithExec([]string{"wasm-pack", "build", crate, "--out-dir=/pkg"})
-}
-
-// Check WASM sizes
-func (m *Beeps) WasmSize(
-	ctx context.Context,
-	// +defaultPath=.
-	// +ignore=["target", ".git", ".dagger", "pgdata"]
-	source *dagger.Directory,
-	// +default="browser"
-	crate string,
-	// +default="bundler"
-	target string,
-) (string, error) {
-	return m.WasmBuild(ctx, source, crate, target).
-		WithExec([]string{"bash", "-c", "for target in /pkg/*.js /pkg/*.wasm; do gzip -9c $target > $target.gz; done"}).
-		WithExec([]string{"ls", "-lh", "/pkg"}).
-		Stdout(ctx)
 }

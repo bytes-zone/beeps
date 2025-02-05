@@ -72,3 +72,17 @@ jobs:
 
       # Test
       - run: cargo test
+
+  wasmBuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-unknown-unknown
+      - run: cargo install wasm-pack
+      - run: cd browser && wasm-pack build --out-dir $GITHUB_WORKSPACE/pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm
+          path: pkg/*
