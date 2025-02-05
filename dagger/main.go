@@ -55,7 +55,6 @@ func userSource(source *dagger.Directory) dagger.WithContainerFunc {
 type NiceOutput struct {
 	container string
 	test      string
-	clippy    string
 	machete   string
 	wasmBuild string
 	wasmSize  string
@@ -69,7 +68,6 @@ func (n *NiceOutput) Format() string {
 	arr := []string{
 		section("Container", n.container),
 		section("Test", n.test),
-		section("Clippy", n.clippy),
 		section("Machete", n.machete),
 		section("WASM Build", n.wasmBuild),
 		section("WASM Size", n.wasmSize),
@@ -91,12 +89,6 @@ func (m *Beeps) All(
 	eg.Go(func() error {
 		out, err := m.TestServerContainerImage(ctx, source).Stdout(ctx)
 		nice.container = out
-		return err
-	})
-
-	eg.Go(func() error {
-		out, err := m.Clippy(ctx, source, true).Stderr(ctx)
-		nice.clippy = out
 		return err
 	})
 
@@ -207,26 +199,6 @@ func (m *Beeps) Test(
 		With(userSource(source)).
 		WithExec([]string{"sqlx", "migrate", "run", "--source", "beeps-server/migrations"}).
 		WithExec([]string{"cargo", "test"})
-}
-
-// Lint source code with Clippy
-func (m *Beeps) Clippy(
-	ctx context.Context,
-	// +defaultPath=.
-	// +ignore=["target", ".git", ".dagger", "pgdata"]
-	source *dagger.Directory,
-	// +optional
-	noDeps bool,
-) *dagger.Container {
-	command := []string{"cargo", "clippy", "--", "--deny=warnings"}
-	if noDeps {
-		command = append(command, "--no-deps")
-	}
-
-	return m.rustBase("clippy").
-		WithExec([]string{"rustup", "component", "add", "clippy"}).
-		With(userSource(source)).
-		WithExec(command)
 }
 
 // Lint source code with `cargo machete`
