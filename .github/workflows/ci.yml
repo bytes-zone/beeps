@@ -3,16 +3,105 @@ name: CI
 on:
   push:
 
+env:
+  CLICOLOR: 1
+
 jobs:
-  dagger:
-    name: dagger
-    runs-on: dagger
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.29.5
+
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+      - uses: actions-rust-lang/rustfmt@v1
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy
+      - run: cargo clippy -- --deny=warnings
+
+  machete:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Test
-        uses: dagger/dagger-for-github@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Machete
+        uses: bnjbvr/cargo-machete@main
+
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: beeps
+          POSTGRES_PASSWORD: beeps
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgres://beeps:beeps@localhost:5432/beeps
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      # DB prep
+      - run: cargo install sqlx-cli --no-default-features --features=postgres
+      - run: sqlx migrate run --source beeps-server/migrations
+
+      # Test
+      - run: cargo test
+
+  wasm-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          version: "latest"
-          verb: call
-          args: all > $GITHUB_STEP_SUMMARY
+          target: wasm32-unknown-unknown
+          cache-directories: |
+            target/wasm32-unknown-unknown
+      - run: cargo install wasm-pack
+      - run: wasm-pack build browser --out-dir $GITHUB_WORKSPACE/pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm
+          path: pkg/*
+
+  server-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      # Build
+      - run: cargo build --release --bin beeps-server
+
+      # Container
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
