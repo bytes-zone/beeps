@@ -35,10 +35,6 @@ const openReadmeInEditor = () => fetch('/__open-in-editor?file=README.md')
     <a href="https://github.com/johnsoncodehk/volar" target="_blank" rel="noopener">Volar</a>. If
     you need to test your components and web pages, check out
     <a href="https://vitest.dev/" target="_blank" rel="noopener">Vite</a>
-    and
-    <a href="https://www.cypress.io/" target="_blank" rel="noopener">Cypress</a>
-    /
-    <a href="https://playwright.dev/" target="_blank" rel="noopener">Playwright</a>.
 
     <br />
 
