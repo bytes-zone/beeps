@@ -147,6 +147,9 @@ jobs:
     container: mcr.microsoft.com/playwright:v1.50.1-noble
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: unzip
       - uses: oven-sh/setup-bun@v2
       - run: bun install
         working-directory: ui
