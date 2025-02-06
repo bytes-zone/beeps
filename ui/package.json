@@ -40,7 +40,7 @@
     "jiti": "2.4.2",
     "jsdom": "26.0.0",
     "npm-run-all2": "7.0.2",
-    "oxlint": "0.15.8",
+    "oxlint": "0.15.10",
     "prettier": "3.4.2",
     "typescript": "~5.7.3",
     "vite": "6.0.11",
