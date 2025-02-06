@@ -73,7 +73,7 @@ jobs:
       # Test
       - run: cargo test
 
-  wasmBuild:
+  wasm-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +89,7 @@ jobs:
           name: wasm
           path: pkg/*
 
-  serverRelease:
+  server-container:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
