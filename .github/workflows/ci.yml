@@ -149,7 +149,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
         working-directory: ui
-      - run: bunx playwright install
+      - run: bunx playwright install --with-deps
         working-directory: ui
       - run: bun run test:e2e
         working-directory: ui
