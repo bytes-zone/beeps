@@ -112,6 +112,56 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  ui-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: ui
+      - run: bun run build
+        working-directory: ui
+
+  ui-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: ui
+      - run: bun run lint
+        working-directory: ui
+
+  ui-test-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: ui
+      - run: bun run test:unit
+        working-directory: ui
+
+  ui-test-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: ui
+      - run: bun run test:e2e
+        working-directory: ui
+
+  ui-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: ui
+      - run: bunx prettier --check src/
+        working-directory: ui
+
   app:
     runs-on: ubuntu-latest
     steps:
@@ -126,7 +176,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       # Install frontend deps
-      - run: cd ui; bun install
+      - run: cd ui
+        working-directory: ui
 
       # Build!
       - run: cargo tauri build
