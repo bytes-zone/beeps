@@ -144,6 +144,7 @@ jobs:
 
   ui-test-e2e:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.50.1-noble
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
