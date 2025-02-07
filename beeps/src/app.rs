@@ -92,11 +92,11 @@ impl App {
             let replica: Replica = serde_json::from_slice(&data)?;
 
             Ok(Self {
-                status_line: Some("Loaded replica".to_string()),
+                status_line: None,
                 replica,
+                client: auth,
                 in_first_sync: false,
                 first_sync_document: None,
-                client: auth,
                 last_sync: None,
                 table_state: TableState::new().with_selected(0),
                 popover: None,
