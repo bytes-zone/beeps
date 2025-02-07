@@ -66,6 +66,9 @@ pub struct App {
 
     /// When did we last sync?
     last_sync: Option<DateTime<Utc>>,
+
+    /// Do we have changes we haven't pushed yet?
+    have_outstanding_changes: bool,
 }
 
 impl App {
@@ -106,6 +109,10 @@ impl App {
             popover: None,
             copied: None,
             exiting: None,
+
+            // We start out assuming we have changes to push to recover from
+            // crashes smoothly.
+            have_outstanding_changes: true,
         })
     }
 
@@ -234,13 +241,16 @@ impl App {
                         .last_sync
                         .is_none_or(|last| last < Utc::now() - chrono::Duration::minutes(5))
                     {
+                        effects.push(Effect::Pull(client.clone()));
+
+                        self.last_sync = Some(Utc::now());
+                    }
+
+                    if self.have_outstanding_changes {
                         effects.push(Effect::Push(
                             client.clone(),
                             self.replica.document().clone(),
                         ));
-                        effects.push(Effect::Pull(client.clone()));
-
-                        self.last_sync = Some(Utc::now());
                     }
                 }
 
