@@ -1,4 +1,4 @@
-use beeps_core::sync::{pull, whoami, Client};
+use beeps_core::sync::{error, pull, whoami, Client};
 use crossterm::event::KeyEvent;
 
 /// Things that can happen to this app
@@ -29,5 +29,5 @@ pub enum Action {
     Pushed,
 
     /// We got an update from the server
-    Pulled(pull::Resp),
+    Pulled(error::Result<pull::Resp>),
 }

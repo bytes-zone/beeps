@@ -151,9 +151,7 @@ impl Effect {
             Self::Pull(client) => {
                 tracing::info!("pulling document");
 
-                let document = client.pull(&conn.http).await?;
-
-                Ok(Some(Action::Pulled(document)))
+                Ok(Some(Action::Pulled(client.pull(&conn.http).await)))
             }
         }
     }

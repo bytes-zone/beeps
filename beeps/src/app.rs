@@ -275,18 +275,25 @@ impl App {
 
                 vec![]
             }
-            Action::Pulled(resp) => {
-                self.status_line = Some("Got a new doc from the server".to_string());
+            Action::Pulled(resp) => match resp {
+                Ok(pulled) => {
+                    self.status_line = Some("Got a new doc from the server".to_string());
 
-                if self.in_first_sync {
-                    self.first_sync_document = Some(resp.document);
-                    self.popover = Some(Popover::ConfirmReplaceOrMerge);
-                } else {
-                    self.replica.merge(resp.document);
-                };
+                    if self.in_first_sync {
+                        self.first_sync_document = Some(pulled.document);
+                        self.popover = Some(Popover::ConfirmReplaceOrMerge);
+                    } else {
+                        self.replica.merge(pulled.document);
+                    };
 
-                vec![]
-            }
+                    vec![]
+                }
+                Err(err) => {
+                    self.status_line = Some(format!("Error pulling: {}", err));
+
+                    vec![]
+                }
+            },
         }
     }
 
