@@ -85,40 +85,28 @@ impl App {
         tracing::debug!(found = auth.is_some(), "tried to load client auth");
 
         let store_path = config.data_dir().join("store.json");
-        if fs::try_exists(&store_path).await? {
+
+        let replica: Replica = if fs::try_exists(&store_path).await? {
             tracing::debug!(found = true, "tried to load store");
 
             let data = fs::read(&store_path).await?;
-            let replica: Replica = serde_json::from_slice(&data)?;
-
-            Ok(Self {
-                status_line: None,
-                replica,
-                client: auth,
-                in_first_sync: false,
-                first_sync_document: None,
-                last_sync: None,
-                table_state: TableState::new().with_selected(0),
-                popover: None,
-                copied: None,
-                exiting: None,
-            })
+            serde_json::from_slice(&data)?
         } else {
-            tracing::debug!(found = false, "tried to load store");
+            Replica::new(NodeId::random())
+        };
 
-            Ok(Self {
-                status_line: None,
-                replica: Replica::new(NodeId::random()),
-                client: auth,
-                in_first_sync: false,
-                first_sync_document: None,
-                last_sync: None,
-                table_state: TableState::new().with_selected(0),
-                popover: None,
-                copied: None,
-                exiting: None,
-            })
-        }
+        Ok(Self {
+            status_line: None,
+            replica,
+            client: auth,
+            in_first_sync: false,
+            first_sync_document: None,
+            last_sync: None,
+            table_state: TableState::new().with_selected(0),
+            popover: None,
+            copied: None,
+            exiting: None,
+        })
     }
 
     /// Render the app's UI to the screen
