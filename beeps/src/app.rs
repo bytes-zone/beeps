@@ -277,7 +277,7 @@ impl App {
             }
             Action::Pushed(resp) => {
                 if let Err(err) = resp {
-                    self.status_line = Some(format!("Error pushing: {}", err));
+                    self.status_line = Some(format!("Error pushing: {err}"));
 
                     // reset the flag so we try again
                     self.have_changes_to_push = true;
@@ -301,7 +301,7 @@ impl App {
                     vec![]
                 }
                 Err(err) => {
-                    self.status_line = Some(format!("Error pulling: {}", err));
+                    self.status_line = Some(format!("Error pulling: {err}"));
 
                     vec![]
                 }
