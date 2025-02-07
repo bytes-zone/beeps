@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.3 (2025-02-06)
+
+- The client no longer pushes to the server if there is nothing to push. It also does it much more quickly.
+
+This release is available as a container image at `ghcr.io/bytes-zone/beeps:v0.5.3`.
+
 ## 0.5.2 (2025-01-28)
 
 - Logging in no longer replaces your document. Instead, it asks if you'd like to merge or replace.

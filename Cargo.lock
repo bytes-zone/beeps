@@ -148,7 +148,7 @@ checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
 
 [[package]]
 name = "app"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "log",
  "tauri",
@@ -500,7 +500,7 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "beeps"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "beeps_core",
  "chrono",
@@ -522,7 +522,7 @@ dependencies = [
 
 [[package]]
 name = "beeps-server"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "argon2",
  "axum",
@@ -543,7 +543,7 @@ dependencies = [
 
 [[package]]
 name = "beeps_core"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "chrono",
  "proptest",
@@ -691,7 +691,7 @@ dependencies = [
 
 [[package]]
 name = "browser"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "beeps_core",
  "chrono",
