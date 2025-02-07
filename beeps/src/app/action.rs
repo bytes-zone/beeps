@@ -1,4 +1,4 @@
-use beeps_core::sync::{error, pull, whoami, Client};
+use beeps_core::sync::{error, pull, push, whoami, Client};
 use crossterm::event::KeyEvent;
 
 /// Things that can happen to this app
@@ -26,7 +26,7 @@ pub enum Action {
     TimePassed,
 
     /// We pushed our document to the server
-    Pushed,
+    Pushed(error::Result<push::Resp>),
 
     /// We got an update from the server
     Pulled(error::Result<pull::Resp>),

@@ -143,9 +143,9 @@ impl Effect {
             Self::Push(client, document) => {
                 tracing::info!("pushing document");
 
-                let _ = client.push(&conn.http, &document).await?;
-
-                Ok(Some(Action::Pushed))
+                Ok(Some(Action::Pushed(
+                    client.push(&conn.http, &document).await,
+                )))
             }
 
             Self::Pull(client) => {

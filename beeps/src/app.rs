@@ -68,7 +68,7 @@ pub struct App {
     last_sync: Option<DateTime<Utc>>,
 
     /// Do we have changes we haven't pushed yet?
-    have_outstanding_changes: bool,
+    have_changes_to_push: bool,
 }
 
 impl App {
@@ -112,7 +112,7 @@ impl App {
 
             // We start out assuming we have changes to push to recover from
             // crashes smoothly.
-            have_outstanding_changes: true,
+            have_changes_to_push: true,
         })
     }
 
@@ -206,6 +206,10 @@ impl App {
                 tracing::info!("saved replica");
                 self.status_line = Some("Saved replica".to_owned());
 
+                // We save the replica any time we have a change, so we know
+                // that the remote should get it eventually.
+                self.have_changes_to_push = true;
+
                 vec![]
             }
             Action::SavedSyncClientAuth => {
@@ -246,11 +250,12 @@ impl App {
                         self.last_sync = Some(Utc::now());
                     }
 
-                    if self.have_outstanding_changes {
+                    if self.have_changes_to_push {
                         effects.push(Effect::Push(
                             client.clone(),
                             self.replica.document().clone(),
                         ));
+                        self.have_changes_to_push = false;
                     }
                 }
 
@@ -270,8 +275,15 @@ impl App {
 
                 vec![]
             }
-            Action::Pushed => {
-                self.status_line = Some("Pushed to the server".to_string());
+            Action::Pushed(resp) => {
+                if let Err(err) = resp {
+                    self.status_line = Some(format!("Error pushing: {}", err));
+
+                    // reset the flag so we try again
+                    self.have_changes_to_push = true;
+                } else {
+                    self.status_line = Some("Pushed to the server".to_string());
+                }
 
                 vec![]
             }
