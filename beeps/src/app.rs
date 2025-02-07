@@ -66,6 +66,9 @@ pub struct App {
 
     /// When did we last sync?
     last_sync: Option<DateTime<Utc>>,
+
+    /// Do we have changes we haven't pushed yet?
+    have_changes_to_push: bool,
 }
 
 impl App {
@@ -85,40 +88,32 @@ impl App {
         tracing::debug!(found = auth.is_some(), "tried to load client auth");
 
         let store_path = config.data_dir().join("store.json");
-        if fs::try_exists(&store_path).await? {
+
+        let replica: Replica = if fs::try_exists(&store_path).await? {
             tracing::debug!(found = true, "tried to load store");
 
             let data = fs::read(&store_path).await?;
-            let replica: Replica = serde_json::from_slice(&data)?;
-
-            Ok(Self {
-                status_line: Some("Loaded replica".to_string()),
-                replica,
-                in_first_sync: false,
-                first_sync_document: None,
-                client: auth,
-                last_sync: None,
-                table_state: TableState::new().with_selected(0),
-                popover: None,
-                copied: None,
-                exiting: None,
-            })
+            serde_json::from_slice(&data)?
         } else {
-            tracing::debug!(found = false, "tried to load store");
+            Replica::new(NodeId::random())
+        };
 
-            Ok(Self {
-                status_line: None,
-                replica: Replica::new(NodeId::random()),
-                client: auth,
-                in_first_sync: false,
-                first_sync_document: None,
-                last_sync: None,
-                table_state: TableState::new().with_selected(0),
-                popover: None,
-                copied: None,
-                exiting: None,
-            })
-        }
+        Ok(Self {
+            status_line: None,
+            replica,
+            client: auth,
+            in_first_sync: false,
+            first_sync_document: None,
+            last_sync: None,
+            table_state: TableState::new().with_selected(0),
+            popover: None,
+            copied: None,
+            exiting: None,
+
+            // We start out assuming we have changes to push to recover from
+            // crashes smoothly.
+            have_changes_to_push: true,
+        })
     }
 
     /// Render the app's UI to the screen
@@ -211,6 +206,10 @@ impl App {
                 tracing::info!("saved replica");
                 self.status_line = Some("Saved replica".to_owned());
 
+                // We save the replica any time we have a change, so we know
+                // that the remote should get it eventually.
+                self.have_changes_to_push = true;
+
                 vec![]
             }
             Action::SavedSyncClientAuth => {
@@ -246,13 +245,17 @@ impl App {
                         .last_sync
                         .is_none_or(|last| last < Utc::now() - chrono::Duration::minutes(5))
                     {
+                        effects.push(Effect::Pull(client.clone()));
+
+                        self.last_sync = Some(Utc::now());
+                    }
+
+                    if self.have_changes_to_push {
                         effects.push(Effect::Push(
                             client.clone(),
                             self.replica.document().clone(),
                         ));
-                        effects.push(Effect::Pull(client.clone()));
-
-                        self.last_sync = Some(Utc::now());
+                        self.have_changes_to_push = false;
                     }
                 }
 
@@ -272,23 +275,37 @@ impl App {
 
                 vec![]
             }
-            Action::Pushed => {
-                self.status_line = Some("Pushed to the server".to_string());
+            Action::Pushed(resp) => {
+                if let Err(err) = resp {
+                    self.status_line = Some(format!("Error pushing: {err}"));
 
-                vec![]
-            }
-            Action::Pulled(resp) => {
-                self.status_line = Some("Got a new doc from the server".to_string());
-
-                if self.in_first_sync {
-                    self.first_sync_document = Some(resp.document);
-                    self.popover = Some(Popover::ConfirmReplaceOrMerge);
+                    // reset the flag so we try again
+                    self.have_changes_to_push = true;
                 } else {
-                    self.replica.merge(resp.document);
-                };
+                    self.status_line = Some("Pushed to the server".to_string());
+                }
 
                 vec![]
             }
+            Action::Pulled(resp) => match resp {
+                Ok(pulled) => {
+                    self.status_line = Some("Got a new doc from the server".to_string());
+
+                    if self.in_first_sync {
+                        self.first_sync_document = Some(pulled.document);
+                        self.popover = Some(Popover::ConfirmReplaceOrMerge);
+                    } else {
+                        self.replica.merge(pulled.document);
+                    };
+
+                    vec![]
+                }
+                Err(err) => {
+                    self.status_line = Some(format!("Error pulling: {err}"));
+
+                    vec![]
+                }
+            },
         }
     }
 
