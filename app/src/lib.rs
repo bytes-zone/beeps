@@ -1,3 +1,9 @@
+mod app;
+
+use app::App;
+use beeps_core::{Document, Replica};
+use tauri::{AppHandle, Manager};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -9,14 +15,17 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            app.manage(App::load()?);
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![my_custom_command])
+        .invoke_handler(tauri::generate_handler![init])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 #[tauri::command]
-fn my_custom_command() {
-    println!("I was invoked from JS!")
+fn init(app: AppHandle) -> Document {
+    app.state::<App>().document().clone()
 }

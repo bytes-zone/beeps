@@ -2,7 +2,8 @@
 import { invoke } from '@tauri-apps/api/core'
 
 const onClick = async () => {
-  await invoke('my_custom_command')
+  const data = await invoke('init')
+  console.log(data)
 }
 </script>
 
