@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core'
-
-const onClick = async () => {
-  const data = await invoke('init')
-  console.log(data)
-}
+import { store } from './store'
 </script>
 
 <template>
   <p>This is a test!</p>
 
-  <button :onClick>Invoke</button>
+  <pre>{{ store }}</pre>
 </template>
