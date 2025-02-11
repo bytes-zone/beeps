@@ -3,8 +3,6 @@ import { store } from './store'
 </script>
 
 <template>
-  <p>This is a test!</p>
-
   <table>
     <thead>
       <tr>
