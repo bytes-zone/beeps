@@ -5,5 +5,18 @@ import { store } from './store'
 <template>
   <p>This is a test!</p>
 
-  <pre>{{ store }}</pre>
+  <table>
+    <thead>
+      <tr>
+        <th>Ping</th>
+        <th>Tag</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="ping in store" :key="ping.ping.toString()">
+        <td>{{ ping.ping }}</td>
+        <td>{{ ping.tag }}</td>
+      </tr>
+    </tbody>
+  </table>
 </template>
