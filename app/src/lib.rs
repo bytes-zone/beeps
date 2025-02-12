@@ -1,7 +1,7 @@
 mod app;
 
 use app::App;
-use beeps_core::{Document, Replica};
+use beeps_core::Document;
 use tauri::{AppHandle, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

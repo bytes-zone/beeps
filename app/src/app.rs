@@ -3,7 +3,6 @@ use color_eyre::eyre::{Context, Result};
 use std::path::{Path, PathBuf};
 
 pub struct App {
-    data_dir: PathBuf,
     replica: Replica,
 }
 
@@ -12,7 +11,7 @@ impl App {
         let data_dir = data_dir();
         let replica = App::load_replica(&data_dir)?;
 
-        Ok(App { data_dir, replica })
+        Ok(App { replica })
     }
 
     fn load_replica(base: &Path) -> Result<Replica> {
@@ -27,7 +26,7 @@ impl App {
     }
 
     pub fn document(&self) -> &Document {
-        &self.replica.document()
+        self.replica.document()
     }
 }
 
