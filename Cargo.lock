@@ -574,7 +574,6 @@ dependencies = [
  "rand_pcg 0.9.0",
  "reqwest",
  "serde",
- "specta",
  "thiserror 2.0.11",
  "url",
 ]

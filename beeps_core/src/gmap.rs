@@ -8,7 +8,7 @@ use std::hash::Hash;
 
 /// A grow-only map (G-Map.) Allows any hashable type as a key, but values must
 /// implement `Merge`.
-#[derive(Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct GMap<K: Eq + Hash, V: Merge>(pub(crate) HashMap<K, V>);
 

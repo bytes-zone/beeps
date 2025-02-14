@@ -5,7 +5,7 @@ use std::iter;
 
 /// A last-write-wins register. Values can be anything you like. We decide which
 /// writes "win" when merging with a hybrid logical clock.
-#[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+#[derive(PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Lww<T> {
     /// Any value we care to store.
