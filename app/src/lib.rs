@@ -1,13 +1,26 @@
 mod app;
+mod ui_document;
 
 use app::App;
-use beeps_core::Document;
+use specta_typescript::Typescript;
 use tauri::{AppHandle, Manager};
+use tauri_specta::{collect_commands, Builder};
+use ui_document::UiDocument;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let builder = Builder::<tauri::Wry>::new().commands(collect_commands![init]);
+
+    #[cfg(debug_assertions)] // <- Only export on non-release builds
+    builder
+        .export(Typescript::default(), "../ui/src/bindings.ts")
+        .expect("Failed to export typescript bindings");
+
     tauri::Builder::default()
-        .setup(|app| {
+        .invoke_handler(builder.invoke_handler())
+        .setup(move |app| {
+            builder.mount_events(app);
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -26,6 +39,7 @@ pub fn run() {
 }
 
 #[tauri::command]
-fn init(app: AppHandle) -> Document {
-    app.state::<App>().document().clone()
+#[specta::specta]
+fn init(app: AppHandle) -> UiDocument {
+    app.state::<App>().document().into()
 }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { type Ping } from '../store.js'
+import { type PingWithTag } from '@/bindings'
 
 defineProps<{
-  pings: Ping[]
+  pings: PingWithTag[]
 }>()
 </script>
 
