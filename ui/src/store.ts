@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import { commands, type PingWithTag } from './bindings'
-import { invoke } from '@tauri-apps/api/core'
 
 export const store = ref<PingWithTag[]>([])
 
