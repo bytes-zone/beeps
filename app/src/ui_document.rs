@@ -20,7 +20,7 @@ impl From<&Document> for UiDocument {
             .pings
             .iter()
             .map(|ping| PingWithTag {
-                ping: ping.clone(),
+                ping: *ping,
                 tag: doc.get_tag(ping).cloned(),
             })
             .collect();
