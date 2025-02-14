@@ -16,15 +16,19 @@ pub struct PingWithTag {
 
 impl From<&Document> for UiDocument {
     fn from(doc: &Document) -> Self {
-        Self {
-            pings: doc
-                .pings
-                .iter()
-                .map(|ping| PingWithTag {
-                    ping: ping.clone(),
-                    tag: doc.get_tag(ping).cloned(),
-                })
-                .collect(),
-        }
+        let mut pings: Vec<PingWithTag> = doc
+            .pings
+            .iter()
+            .map(|ping| PingWithTag {
+                ping: ping.clone(),
+                tag: doc.get_tag(ping).cloned(),
+            })
+            .collect();
+
+        // We store pings oldest-to-newest, but want to present them
+        // newest-to-oldest in the UI.
+        pings.reverse();
+
+        Self { pings }
     }
 }
