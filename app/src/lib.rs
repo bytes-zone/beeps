@@ -1,10 +1,11 @@
 mod app;
+mod ui_document;
 
 use app::App;
-use beeps_core::Document;
 use specta_typescript::Typescript;
 use tauri::{AppHandle, Manager};
 use tauri_specta::{collect_commands, Builder};
+use ui_document::UiDocument;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,6 +40,6 @@ pub fn run() {
 
 #[tauri::command]
 #[specta::specta]
-fn init(app: AppHandle) -> Document {
-    app.state::<App>().document().clone()
+fn init(app: AppHandle) -> UiDocument {
+    app.state::<App>().document().into()
 }

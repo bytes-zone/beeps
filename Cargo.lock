@@ -163,9 +163,11 @@ name = "app"
 version = "0.5.3"
 dependencies = [
  "beeps_core",
+ "chrono",
  "color-eyre",
  "directories",
  "log",
+ "serde",
  "serde_json",
  "specta",
  "specta-typescript",
