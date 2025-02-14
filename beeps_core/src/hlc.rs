@@ -6,7 +6,7 @@ use std::fmt::{self, Display};
 /// A Hybrid Logical Clock (HLC.) Builds on a Lamport clock by adding a
 /// timestamp. This allows us to get a monotonically-increasing clock despite
 /// the fact that wall time can go backwards or smear for leap seconds.
-#[derive(PartialEq, Eq, Copy, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, serde::Serialize, serde::Deserialize, specta::Type)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Hlc {
     /// The physical time component. First to break ties.

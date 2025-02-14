@@ -6,7 +6,7 @@ use crate::merge::Merge;
 use chrono::{DateTime, Utc};
 
 /// The state that gets synced between replicas.
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone, Debug, PartialEq)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Document {
     /// The average number of minutes between each ping.

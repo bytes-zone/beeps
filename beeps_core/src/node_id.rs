@@ -6,7 +6,16 @@ use std::ops::Deref;
 
 /// A unique identifier for a node in the network.
 #[derive(
-    Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Clone, serde::Serialize, serde::Deserialize,
+    Debug,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    specta::Type,
 )]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct NodeId(#[cfg_attr(test, proptest(strategy = "0..=3u16"))] pub u16);

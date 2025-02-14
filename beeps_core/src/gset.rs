@@ -3,7 +3,7 @@ use core::fmt;
 use std::collections::{btree_set, BTreeSet};
 
 /// A Grow-Only Set (G-Set) CRDT.
-#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct GSet<T: Ord>(pub(crate) BTreeSet<T>);
 
