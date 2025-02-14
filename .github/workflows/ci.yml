@@ -139,12 +139,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
         working-directory: ui
-      # we currently have no unit tests, so this fails. Easy to re-enable once
-      # we do. (Leaving the job for now because it's required in CI config and I
-      # don't want to forget to reenable it once we have tests, which should be
-      # soon!)
-      # - run: bun run test:unit
-      #   working-directory: ui
+      - run: bun run test:unit
+        working-directory: ui
 
   ui-format:
     runs-on: ubuntu-latest
