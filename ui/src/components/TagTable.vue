@@ -7,7 +7,8 @@ defineProps<{
 </script>
 
 <template>
-  <table>
+  <p v-if="pings.length == 0">Loading</p>
+  <table v-else>
     <thead>
       <tr>
         <th>Ping</th>
