@@ -18,6 +18,7 @@
         "@vue/eslint-config-prettier": "10.2.0",
         "@vue/eslint-config-typescript": "14.4.0",
         "@vue/tsconfig": "0.7.0",
+        "@vue/typescript-plugin": "^2.2.0",
         "eslint": "9.20.1",
         "eslint-plugin-oxlint": "0.15.10",
         "eslint-plugin-testing-library": "7.1.1",
@@ -375,6 +376,8 @@
     "@vue/test-utils": ["@vue/test-utils@2.4.6", "", { "dependencies": { "js-beautify": "^1.14.9", "vue-component-type-helpers": "^2.0.0" } }, "sha512-FMxEjOpYNYiFe0GkaHsnJPXFHxQ6m4t8vI/ElPGpMWxZKpmRvQ33OIrvRXemy6yha03RxhOlQuy+gZMC3CQSow=="],
 
     "@vue/tsconfig": ["@vue/tsconfig@0.7.0", "", { "peerDependencies": { "typescript": "5.x", "vue": "^3.4.0" }, "optionalPeers": ["typescript", "vue"] }, "sha512-ku2uNz5MaZ9IerPPUyOHzyjhXoX2kVJaVf7hL315DC17vS6IiZRmmCPfggNbU16QTvM80+uYYy3eYJB59WCtvg=="],
+
+    "@vue/typescript-plugin": ["@vue/typescript-plugin@2.2.0", "", { "dependencies": { "@volar/typescript": "~2.4.11", "@vue/language-core": "2.2.0", "@vue/shared": "^3.5.0" } }, "sha512-7okpTvJ8blQApgUtfPvkO1tOkxxWt8oScXwsjQRB46QAgZ/0LwWpWG0yB8mvBLkw4mZpSXsp6e3ntnUwRagURA=="],
 
     "abbrev": ["abbrev@2.0.0", "", {}, "sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ=="],
 
