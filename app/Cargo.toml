@@ -16,7 +16,7 @@ tauri-build = { version = "2.0.4", features = [] }
 beeps_core = { path = "../beeps_core" }
 chrono = { version = "0.4.39", features = ["serde"] }
 color-eyre = "0.6.3"
-diesel = "2.2.7"
+diesel = { version = "2.2.7", features = ["chrono", "sqlite"] }
 directories = "6.0.0"
 log = "0.4"
 serde = "1.0.217"
