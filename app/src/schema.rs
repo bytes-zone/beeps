@@ -4,7 +4,7 @@ diesel::table! {
     minutes_per_pings (id) {
         id -> Integer,
         minutes_per_ping -> Integer,
-        timestamp -> Timestamp,
+        timestamp -> TimestamptzSqlite,
         counter -> Integer,
         node -> Integer,
     }
@@ -13,16 +13,16 @@ diesel::table! {
 diesel::table! {
     pings (id) {
         id -> Integer,
-        ping -> Timestamp,
+        ping -> TimestamptzSqlite,
     }
 }
 
 diesel::table! {
     tags (id) {
         id -> Integer,
-        ping -> Timestamp,
+        ping -> TimestamptzSqlite,
         tag -> Nullable<Text>,
-        timestamp -> Timestamp,
+        timestamp -> TimestamptzSqlite,
         counter -> Integer,
         node -> Integer,
     }
