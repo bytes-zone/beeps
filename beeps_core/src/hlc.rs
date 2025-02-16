@@ -168,16 +168,6 @@ impl Display for Hlc {
     }
 }
 
-// impl FromRow for Hlc {
-//     fn from_row<R: sqlx::Row>(row: &R) -> Result<Self, sqlx::Error> {
-//         Ok(Self {
-//             timestamp: row.try_get("timestamp")?,
-//             counter: row.try_get("counter")?,
-//             node: row.try_get("node")?,
-//         })
-//     }
-// }
-
 #[cfg(test)]
 mod test {
     use super::*;
