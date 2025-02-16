@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/vue'
+import { render, screen } from '@testing-library/vue'
 import TagTable from './TagTable.vue'
 import { expect, test } from 'vitest'
 
