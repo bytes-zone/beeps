@@ -75,7 +75,11 @@ fn get_conn(data_dir: &Path) -> Result<SqliteConnection> {
 
 /// Get the data directory for the app.
 fn data_dir() -> PathBuf {
-    directories::ProjectDirs::from("zone", "bytes", "beeps")
-        .map(|d| d.data_local_dir().to_owned())
-        .unwrap_or_else(|| PathBuf::from("."))
+    std::env::var("DATA_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            directories::ProjectDirs::from("zone", "bytes", "beeps")
+                .map(|d| d.data_local_dir().to_owned())
+                .unwrap_or_else(|| PathBuf::from("."))
+        })
 }
