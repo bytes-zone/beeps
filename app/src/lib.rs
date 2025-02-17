@@ -1,4 +1,6 @@
 mod app;
+mod schema;
+mod tables;
 mod ui_document;
 
 use app::App;
