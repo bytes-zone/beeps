@@ -117,48 +117,29 @@ pub fn database_url() -> String {
 #[cfg(test)]
 mod test {
     use super::*;
-    use tempdir::TempDir;
 
-    struct TestDb {
-        app: App,
-
-        // We keep this around for its Drop impl
-        #[expect(dead_code)]
-        temp: TempDir,
-    }
-
-    impl TestDb {
-        fn new() -> Self {
-            let temp = TempDir::new("beeps").expect("could not create temp dir");
-
-            let db_url = format!(
-                "sqlite://{}",
-                data_dir().join("test.sqlite3").to_string_lossy()
-            );
-            let app = App::load(&db_url).expect("could not load app");
-
-            Self { app, temp }
-        }
+    fn setup() -> App {
+        App::load("sqlite://:memory:").expect("could not load app")
     }
 
     #[test]
     fn migrations_run() {
-        let mut test = TestDb::new();
+        let mut app = setup();
 
-        assert!(!test.app.conn.has_pending_migration(MIGRATIONS).unwrap())
+        assert!(!app.conn.has_pending_migration(MIGRATIONS).unwrap())
     }
 
     #[test]
     fn schedule_pings() {
         use crate::schema::pings::dsl::*;
 
-        let mut test = TestDb::new();
+        let mut app = setup();
 
-        test.app.schedule_pings().expect("could not schedule pings");
+        app.schedule_pings().expect("could not schedule pings");
 
         let count: i64 = pings
             .count()
-            .get_result(&mut test.app.conn)
+            .get_result(&mut app.conn)
             .expect("could not get count of pings");
 
         // We're starting with a blank database, so we should expect to see
