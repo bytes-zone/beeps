@@ -14,7 +14,7 @@ pub struct App {
 
 impl App {
     pub fn load(database_url: &str) -> Result<Self> {
-        let mut conn = get_conn(&database_url).context("could not get connection")?;
+        let mut conn = get_conn(database_url).context("could not get connection")?;
 
         conn.run_pending_migrations(MIGRATIONS)
             .map_err(Error::from_boxed)
