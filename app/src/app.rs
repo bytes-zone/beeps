@@ -1,4 +1,4 @@
-use crate::tables::{MinutesPerPing, Ping, Tag};
+use crate::tables::{MinutesPerPing, NewPing, Ping, Tag};
 use anyhow::{Context, Error, Result};
 use beeps_core::{merge::Merge, Document, NodeId, Replica};
 use diesel::prelude::*;
@@ -71,6 +71,28 @@ impl App {
         self.replica.document()
     }
 
+    pub fn schedule_pings(&mut self) -> Result<()> {
+        use crate::schema::pings::dsl::*;
+
+        let mut conn = self.get_conn()?;
+
+        let new_pings: Vec<NewPing> = self
+            .replica
+            .schedule_pings()
+            .into_iter()
+            .map(NewPing::from)
+            .collect();
+
+        if !new_pings.is_empty() {
+            diesel::insert_or_ignore_into(pings)
+                .values(new_pings)
+                .execute(&mut conn)
+                .context("could not insert pings")?;
+        }
+
+        Ok(())
+    }
+
     pub fn get_conn(&self) -> Result<SqliteConnection> {
         get_conn(&self.database_url)
     }
@@ -131,8 +153,27 @@ mod test {
     #[test]
     fn migrations_run() {
         let test = TestDb::new();
-        let mut conn = test.app.get_conn().expect("could not get connection");
+        let mut conn = test.app.get_conn().unwrap();
 
         assert!(!conn.has_pending_migration(MIGRATIONS).unwrap())
+    }
+
+    #[test]
+    fn schedule_pings() {
+        use crate::schema::pings::dsl::*;
+
+        let mut test = TestDb::new();
+        let mut conn = test.app.get_conn().unwrap();
+
+        test.app.schedule_pings().expect("could not schedule pings");
+
+        let count: i64 = pings
+            .count()
+            .get_result(&mut conn)
+            .expect("could not get count of pings");
+
+        // We're starting with a blank database, so we should expect to see
+        // exactly two pings scheduled: one for now, one in the future.
+        assert_eq!(count, 2);
     }
 }

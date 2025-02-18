@@ -46,6 +46,19 @@ impl From<Ping> for Part {
     }
 }
 
+#[derive(Debug, Insertable)]
+#[diesel(table_name=crate::schema::pings)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct NewPing {
+    pub ping: DateTime<Utc>,
+}
+
+impl From<DateTime<Utc>> for NewPing {
+    fn from(ping: DateTime<Utc>) -> Self {
+        Self { ping }
+    }
+}
+
 #[derive(Debug, Queryable, Selectable)]
 #[diesel(table_name=crate::schema::tags)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
