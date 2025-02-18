@@ -3,7 +3,7 @@ use beeps_core::{document::Part, Hlc, Lww};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 
-#[derive(Queryable, Selectable)]
+#[derive(Debug, Queryable, Selectable)]
 #[diesel(table_name=crate::schema::minutes_per_pings)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct MinutesPerPing {
@@ -32,7 +32,7 @@ impl TryFrom<MinutesPerPing> for Part {
     }
 }
 
-#[derive(Queryable, Selectable)]
+#[derive(Debug, Queryable, Selectable)]
 #[diesel(table_name=crate::schema::pings)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Ping {
@@ -46,7 +46,7 @@ impl From<Ping> for Part {
     }
 }
 
-#[derive(Queryable, Selectable)]
+#[derive(Debug, Queryable, Selectable)]
 #[diesel(table_name=crate::schema::tags)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Tag {
