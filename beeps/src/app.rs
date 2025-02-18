@@ -234,7 +234,7 @@ impl App {
             Action::TimePassed => {
                 let mut effects = Vec::new();
 
-                if self.replica.schedule_pings() {
+                if !self.replica.schedule_pings().is_empty() {
                     tracing::debug!("handling new ping(s)");
                     effects.push(Effect::NotifyAboutNewPing);
                     effects.push(Effect::SaveReplica(self.replica.clone()));

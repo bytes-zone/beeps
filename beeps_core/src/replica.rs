@@ -64,16 +64,16 @@ impl Replica {
     }
 
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
-    /// Returns `true` if any new pings were scheduled.
-    fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) -> bool {
-        let mut any_scheduled = false;
+    /// Returns the list of pings that were scheduled.
+    fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) -> Vec<DateTime<Utc>> {
+        let mut scheduled = Vec::new();
 
         let latest_ping = if let Some(ping) = self.document.latest_ping().copied() {
             ping
         } else {
             let now = Utc::now();
             self.document.pings.insert(now);
-            any_scheduled = true;
+            scheduled.push(now);
 
             now
         };
@@ -81,14 +81,14 @@ impl Replica {
         // Early check: if we already have a ping past the cutoff, we don't need
         // to do any more work.
         if latest_ping > cutoff {
-            return any_scheduled;
+            return scheduled;
         }
 
         let scheduler = Scheduler::new(*self.document.minutes_per_ping.value(), latest_ping);
 
         for next in scheduler {
             self.document.pings.insert(next);
-            any_scheduled = true;
+            scheduled.push(next);
 
             // accepting one past the cutoff gets us into the future
             if next > cutoff {
@@ -96,14 +96,14 @@ impl Replica {
             }
         }
 
-        any_scheduled
+        scheduled
     }
 
     /// Schedule pings into the future. We don't just schedule *up to* the given
     /// time, but go one past that. That means that if the given time is the
     /// current time, we end up with the time we should next notify at. Returns
-    /// `true` if any new pings were scheduled.
-    pub fn schedule_pings(&mut self) -> bool {
+    /// the list of pings that were scheduled.
+    pub fn schedule_pings(&mut self) -> Vec<DateTime<Utc>> {
         self.schedule_pings_with_cutoff(Utc::now())
     }
 
@@ -201,11 +201,12 @@ mod test {
 
             let now = Utc::now();
 
-            // Our first call is going to schedule some pings, so we should get `true`.
-            assert!(doc.schedule_pings_with_cutoff(now));
+            // Our first call is going to schedule some pings
+            assert!(doc.schedule_pings_with_cutoff(now).len() > 0);
 
-            // A second call won't schedule anything new, so we should now get `false`.
-            assert!(!doc.schedule_pings_with_cutoff(now));
+            // A second call won't schedule anything new, so we should not
+            // schedule new pings
+            assert_eq!(doc.schedule_pings_with_cutoff(now).len(), 0);
         }
     }
 
