@@ -1,6 +1,6 @@
+use anyhow::{Context, Error, Result};
 use beeps_core::{document::Part, Hlc, Lww};
 use chrono::{DateTime, Utc};
-use color_eyre::eyre::{Context, Error, Result};
 use diesel::prelude::*;
 
 #[derive(Queryable, Selectable)]
