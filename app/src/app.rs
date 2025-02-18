@@ -3,7 +3,7 @@ use anyhow::{Context, Error, Result};
 use beeps_core::{merge::Merge, Document, NodeId, Replica};
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
