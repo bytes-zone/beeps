@@ -5,7 +5,7 @@ mod ui_document;
 
 use app::App;
 use specta_typescript::Typescript;
-use tauri::{async_runtime::RwLock, AppHandle, Manager};
+use tauri::{async_runtime::Mutex, AppHandle, Manager};
 use tauri_specta::{collect_commands, Builder};
 use ui_document::UiDocument;
 
@@ -31,7 +31,7 @@ pub fn run() {
                 )?;
             }
 
-            app.manage(RwLock::new(App::load(&app::database_url())?));
+            app.manage(Mutex::new(App::load(&app::database_url())?));
 
             Ok(())
         })
@@ -44,8 +44,8 @@ pub fn run() {
 #[tauri::command]
 #[specta::specta]
 async fn init(app: AppHandle) -> UiDocument {
-    let lock = app.state::<RwLock<App>>();
-    let app = lock.read().await;
+    let lock = app.state::<Mutex<App>>();
+    let app = lock.lock().await;
 
     app.document().into()
 }
@@ -53,8 +53,8 @@ async fn init(app: AppHandle) -> UiDocument {
 #[tauri::command]
 #[specta::specta]
 async fn schedule_pings(app: AppHandle) -> Result<(), String> {
-    let lock = app.state::<RwLock<App>>();
-    let mut app = lock.write().await;
+    let lock = app.state::<Mutex<App>>();
+    let mut app = lock.lock().await;
 
     app.schedule_pings().map_err(|e| e.to_string())
 }
