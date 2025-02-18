@@ -170,7 +170,6 @@ dependencies = [
  "directories",
  "log",
  "serde",
- "serde_json",
  "specta",
  "specta-typescript",
  "tauri",
