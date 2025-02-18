@@ -9,14 +9,14 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 pub struct App {
     replica: Replica,
-    data_dir: PathBuf,
+    database_url: String,
 }
 
 impl App {
     pub fn load() -> Result<Self> {
-        let data_dir = data_dir();
+        let database_url = database_url();
 
-        let mut conn = get_conn(&data_dir).context("could not get connection")?;
+        let mut conn = get_conn(&database_url).context("could not get connection")?;
 
         conn.run_pending_migrations(MIGRATIONS)
             .map_err(Error::from_boxed)
@@ -25,7 +25,10 @@ impl App {
         let replica =
             App::load_replica(&mut conn).context("could not load replica from database")?;
 
-        Ok(App { data_dir, replica })
+        Ok(App {
+            database_url,
+            replica,
+        })
     }
 
     fn load_replica(conn: &mut SqliteConnection) -> Result<Replica> {
@@ -71,15 +74,12 @@ impl App {
     }
 
     pub fn get_conn(&self) -> Result<SqliteConnection> {
-        get_conn(&self.data_dir)
+        get_conn(&self.database_url)
     }
 }
 
-fn get_conn(data_dir: &Path) -> Result<SqliteConnection> {
-    Ok(SqliteConnection::establish(&format!(
-        "sqlite://{}",
-        data_dir.join("beeps.sqlite3").to_string_lossy()
-    ))?)
+fn get_conn(database_url: &str) -> Result<SqliteConnection> {
+    SqliteConnection::establish(database_url).context("could not establish connection")
 }
 
 /// Get the data directory for the app.
@@ -91,4 +91,14 @@ fn data_dir() -> PathBuf {
                 .map(|d| d.data_local_dir().to_owned())
                 .unwrap_or_else(|| PathBuf::from("."))
         })
+}
+
+/// Get the data directory for the app.
+fn database_url() -> String {
+    std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        format!(
+            "sqlite://{}",
+            data_dir().join("beeps.sqlite3").to_string_lossy()
+        )
+    })
 }
