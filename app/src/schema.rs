@@ -28,8 +28,4 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(
-    minutes_per_pings,
-    pings,
-    tags,
-);
+diesel::allow_tables_to_appear_in_same_query!(minutes_per_pings, pings, tags,);
