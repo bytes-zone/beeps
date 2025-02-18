@@ -13,9 +13,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn load() -> Result<Self> {
-        let database_url = database_url();
-
+    pub fn load(database_url: &str) -> Result<Self> {
         let mut conn = get_conn(&database_url).context("could not get connection")?;
 
         conn.run_pending_migrations(MIGRATIONS)
@@ -26,7 +24,7 @@ impl App {
             App::load_replica(&mut conn).context("could not load replica from database")?;
 
         Ok(App {
-            database_url,
+            database_url: database_url.to_owned(),
             replica,
         })
     }
@@ -94,7 +92,7 @@ fn data_dir() -> PathBuf {
 }
 
 /// Get the data directory for the app.
-fn database_url() -> String {
+pub fn database_url() -> String {
     std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         format!(
             "sqlite://{}",

@@ -31,7 +31,7 @@ pub fn run() {
                 )?;
             }
 
-            app.manage(App::load()?);
+            app.manage(App::load(&app::database_url())?);
 
             Ok(())
         })
