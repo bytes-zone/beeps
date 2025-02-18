@@ -100,3 +100,39 @@ pub fn database_url() -> String {
         )
     })
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tempdir::TempDir;
+
+    struct TestDb {
+        app: App,
+
+        // We keep this around for its Drop impl
+        #[expect(dead_code)]
+        temp: TempDir,
+    }
+
+    impl TestDb {
+        fn new() -> Self {
+            let temp = TempDir::new("beeps").expect("could not create temp dir");
+
+            let db_url = format!(
+                "sqlite://{}",
+                data_dir().join("test.sqlite3").to_string_lossy()
+            );
+            let app = App::load(&db_url).expect("could not load app");
+
+            Self { app, temp }
+        }
+    }
+
+    #[test]
+    fn migrations_run() {
+        let test = TestDb::new();
+        let mut conn = test.app.get_conn().expect("could not get connection");
+
+        assert!(!conn.has_pending_migration(MIGRATIONS).unwrap())
+    }
+}
