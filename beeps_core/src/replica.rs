@@ -66,14 +66,14 @@ impl Replica {
     /// Does the same as `schedule_ping` but allows you to specify the cutoff.
     /// Returns the list of pings that were scheduled.
     fn schedule_pings_with_cutoff(&mut self, cutoff: DateTime<Utc>) -> Vec<DateTime<Utc>> {
-        let mut scheduled = Vec::new();
+        let mut new_pings = Vec::new();
 
         let latest_ping = if let Some(ping) = self.document.latest_ping().copied() {
             ping
         } else {
             let now = Utc::now();
             self.document.pings.insert(now);
-            scheduled.push(now);
+            new_pings.push(now);
 
             now
         };
@@ -81,14 +81,14 @@ impl Replica {
         // Early check: if we already have a ping past the cutoff, we don't need
         // to do any more work.
         if latest_ping > cutoff {
-            return scheduled;
+            return new_pings;
         }
 
         let scheduler = Scheduler::new(*self.document.minutes_per_ping.value(), latest_ping);
 
         for next in scheduler {
             self.document.pings.insert(next);
-            scheduled.push(next);
+            new_pings.push(next);
 
             // accepting one past the cutoff gets us into the future
             if next > cutoff {
@@ -96,7 +96,7 @@ impl Replica {
             }
         }
 
-        scheduled
+        new_pings
     }
 
     /// Schedule pings into the future. We don't just schedule *up to* the given
