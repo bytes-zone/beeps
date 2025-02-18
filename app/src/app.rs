@@ -49,7 +49,7 @@ impl App {
             use crate::schema::pings::dsl::*;
 
             for row in pings.select(Ping::as_select()).load_iter(conn)? {
-                doc.merge_part(row?.try_into()?)
+                doc.merge_part(row?.into())
             }
         }
 
