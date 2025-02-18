@@ -1,9 +1,11 @@
+use crate::tables::{MinutesPerPing, Ping, Tag};
+use anyhow::{Context, Error, Result};
 use beeps_core::{merge::Merge, Document, NodeId, Replica};
-use color_eyre::eyre::Result;
 use diesel::prelude::*;
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::path::{Path, PathBuf};
 
-use crate::tables::{MinutesPerPing, Ping, Tag};
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 pub struct App {
     replica: Replica,
@@ -14,12 +16,19 @@ impl App {
     pub fn load() -> Result<Self> {
         let data_dir = data_dir();
 
-        let replica = App::load_replica(get_conn(&data_dir)?)?;
+        let mut conn = get_conn(&data_dir).context("could not get connection")?;
+
+        conn.run_pending_migrations(MIGRATIONS)
+            .map_err(Error::from_boxed)
+            .context("could not run migrations")?;
+
+        let replica =
+            App::load_replica(&mut conn).context("could not load replica from database")?;
 
         Ok(App { data_dir, replica })
     }
 
-    fn load_replica(mut conn: SqliteConnection) -> Result<Replica> {
+    fn load_replica(conn: &mut SqliteConnection) -> Result<Replica> {
         let mut doc = Document::default();
 
         {
@@ -27,7 +36,7 @@ impl App {
 
             for row in minutes_per_pings
                 .select(MinutesPerPing::as_select())
-                .load_iter(&mut conn)?
+                .load_iter(conn)?
             {
                 doc.merge_part(row?.try_into()?)
             }
@@ -36,7 +45,7 @@ impl App {
         {
             use crate::schema::pings::dsl::*;
 
-            for row in pings.select(Ping::as_select()).load_iter(&mut conn)? {
+            for row in pings.select(Ping::as_select()).load_iter(conn)? {
                 doc.merge_part(row?.try_into()?)
             }
         }
@@ -44,7 +53,7 @@ impl App {
         {
             use crate::schema::tags::dsl::*;
 
-            for row in tags.select(Tag::as_select()).load_iter(&mut conn)? {
+            for row in tags.select(Tag::as_select()).load_iter(conn)? {
                 doc.merge_part(row?.try_into()?)
             }
         }
