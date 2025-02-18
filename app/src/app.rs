@@ -9,7 +9,7 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 pub struct App {
     replica: Replica,
-    database_url: String,
+    conn: SqliteConnection,
 }
 
 impl App {
@@ -23,10 +23,7 @@ impl App {
         let replica =
             App::load_replica(&mut conn).context("could not load replica from database")?;
 
-        Ok(App {
-            database_url: database_url.to_owned(),
-            replica,
-        })
+        Ok(App { replica, conn })
     }
 
     fn load_replica(conn: &mut SqliteConnection) -> Result<Replica> {
@@ -74,8 +71,6 @@ impl App {
     pub fn schedule_pings(&mut self) -> Result<()> {
         use crate::schema::pings::dsl::*;
 
-        let mut conn = self.get_conn()?;
-
         let new_pings: Vec<NewPing> = self
             .replica
             .schedule_pings()
@@ -86,15 +81,11 @@ impl App {
         if !new_pings.is_empty() {
             diesel::insert_or_ignore_into(pings)
                 .values(new_pings)
-                .execute(&mut conn)
+                .execute(&mut self.conn)
                 .context("could not insert pings")?;
         }
 
         Ok(())
-    }
-
-    pub fn get_conn(&self) -> Result<SqliteConnection> {
-        get_conn(&self.database_url)
     }
 }
 
@@ -152,10 +143,9 @@ mod test {
 
     #[test]
     fn migrations_run() {
-        let test = TestDb::new();
-        let mut conn = test.app.get_conn().unwrap();
+        let mut test = TestDb::new();
 
-        assert!(!conn.has_pending_migration(MIGRATIONS).unwrap())
+        assert!(!test.app.conn.has_pending_migration(MIGRATIONS).unwrap())
     }
 
     #[test]
@@ -163,13 +153,12 @@ mod test {
         use crate::schema::pings::dsl::*;
 
         let mut test = TestDb::new();
-        let mut conn = test.app.get_conn().unwrap();
 
         test.app.schedule_pings().expect("could not schedule pings");
 
         let count: i64 = pings
             .count()
-            .get_result(&mut conn)
+            .get_result(&mut test.app.conn)
             .expect("could not get count of pings");
 
         // We're starting with a blank database, so we should expect to see
