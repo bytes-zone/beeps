@@ -5,8 +5,24 @@
 
 
 export const commands = {
-async init() : Promise<UiDocument> {
-    return await TAURI_INVOKE("init");
+/**
+ * Get the current document.
+ */
+async document() : Promise<UiDocument> {
+    return await TAURI_INVOKE("document");
+},
+/**
+ * Advance our timeline of pings to the present. This will insert new pings
+ * into the document, and return them to the frontend. As a reminder, this
+ * returns one ping into the future. Don't show that one to the user!
+ */
+async schedulePings() : Promise<Result<PingWithTag[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("schedule_pings") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

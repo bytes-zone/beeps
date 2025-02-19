@@ -8,12 +8,6 @@ pub struct UiDocument {
     pings: Vec<PingWithTag>,
 }
 
-#[derive(Serialize, Deserialize, Type, Debug)]
-pub struct PingWithTag {
-    ping: DateTime<Utc>,
-    tag: Option<String>,
-}
-
 impl From<&Document> for UiDocument {
     fn from(doc: &Document) -> Self {
         let mut pings: Vec<PingWithTag> = doc
@@ -30,5 +24,17 @@ impl From<&Document> for UiDocument {
         pings.reverse();
 
         Self { pings }
+    }
+}
+
+#[derive(Serialize, Deserialize, Type, Debug)]
+pub struct PingWithTag {
+    ping: DateTime<Utc>,
+    tag: Option<String>,
+}
+
+impl From<DateTime<Utc>> for PingWithTag {
+    fn from(ping: DateTime<Utc>) -> Self {
+        Self { ping, tag: None }
     }
 }

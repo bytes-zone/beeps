@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type PingWithTag } from '@/bindings'
+import { type PingWithTag } from '@/store'
 
 defineProps<{
   pings: PingWithTag[]

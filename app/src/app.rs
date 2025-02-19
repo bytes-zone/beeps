@@ -1,6 +1,7 @@
 use crate::tables::{MinutesPerPing, NewPing, Ping, Tag};
 use anyhow::{Context, Error, Result};
 use beeps_core::{merge::Merge, Document, NodeId, Replica};
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::path::PathBuf;
@@ -68,24 +69,24 @@ impl App {
         self.replica.document()
     }
 
-    pub fn schedule_pings(&mut self) -> Result<()> {
+    pub fn schedule_pings(&mut self) -> Result<Vec<DateTime<Utc>>> {
         use crate::schema::pings::dsl::*;
 
-        let new_pings: Vec<NewPing> = self
-            .replica
-            .schedule_pings()
-            .into_iter()
-            .map(NewPing::from)
-            .collect();
+        let new_pings = self.replica.schedule_pings();
 
         if !new_pings.is_empty() {
             diesel::insert_or_ignore_into(pings)
-                .values(new_pings)
+                .values(
+                    new_pings
+                        .iter()
+                        .map(|p| NewPing::from(*p))
+                        .collect::<Vec<NewPing>>(),
+                )
                 .execute(&mut self.conn)
                 .context("could not insert pings")?;
         }
 
-        Ok(())
+        Ok(new_pings)
     }
 }
 

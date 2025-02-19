@@ -7,11 +7,12 @@ use app::App;
 use specta_typescript::Typescript;
 use tauri::{async_runtime::Mutex, AppHandle, Manager};
 use tauri_specta::{collect_commands, Builder};
-use ui_document::UiDocument;
+use ui_document::{PingWithTag, UiDocument};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = Builder::<tauri::Wry>::new().commands(collect_commands![init]);
+    let builder =
+        Builder::<tauri::Wry>::new().commands(collect_commands![document, schedule_pings]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds
     builder
@@ -35,26 +36,32 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![init])
-        .invoke_handler(tauri::generate_handler![schedule_pings])
+        .invoke_handler(tauri::generate_handler![document, schedule_pings])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
+/// Get the current document.
 #[tauri::command]
 #[specta::specta]
-async fn init(app: AppHandle) -> UiDocument {
+async fn document(app: AppHandle) -> UiDocument {
     let lock = app.state::<Mutex<App>>();
     let app = lock.lock().await;
 
     app.document().into()
 }
 
+/// Advance our timeline of pings to the present. This will insert new pings
+/// into the document, and return them to the frontend. As a reminder, this
+/// returns one ping into the future. Don't show that one to the user!
 #[tauri::command]
 #[specta::specta]
-async fn schedule_pings(app: AppHandle) -> Result<(), String> {
+async fn schedule_pings(app: AppHandle) -> Result<Vec<PingWithTag>, String> {
     let lock = app.state::<Mutex<App>>();
     let mut app = lock.lock().await;
 
-    app.schedule_pings().map_err(|e| e.to_string())
+    match app.schedule_pings() {
+        Ok(new_pings) => Ok(new_pings.into_iter().map(PingWithTag::from).collect()),
+        Err(e) => Err(e.to_string()),
+    }
 }
