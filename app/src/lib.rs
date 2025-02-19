@@ -41,6 +41,7 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+/// Get the current document.
 #[tauri::command]
 #[specta::specta]
 async fn init(app: AppHandle) -> UiDocument {
@@ -50,6 +51,9 @@ async fn init(app: AppHandle) -> UiDocument {
     app.document().into()
 }
 
+/// Advance our timeline of pings to the present. This will insert new pings
+/// into the document, and return them to the frontend. As a reminder, this
+/// returns one ping into the future. Don't show that one to the user!
 #[tauri::command]
 #[specta::specta]
 async fn schedule_pings(app: AppHandle) -> Result<Vec<PingWithTag>, String> {
