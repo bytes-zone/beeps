@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { store } from './store'
+import { current } from './store'
 import TagTable from './components/TagTable.vue'
 </script>
 
 <template>
-  <TagTable :pings="store" />
+  <TagTable :pings="current" />
 </template>

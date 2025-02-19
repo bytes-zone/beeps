@@ -3,12 +3,12 @@ import { commands, type PingWithTag as RawPingWithTag } from './bindings'
 
 export type PingWithTag = Omit<RawPingWithTag, 'ping'> & { ping: Date }
 
-export const store = ref<PingWithTag[]>([])
+export const current = ref<PingWithTag[]>([])
 
 export const error = ref<string | null>(null)
 
 async function refreshDocument() {
-  store.value = (await commands.document()).pings.map((ping) => ({
+  current.value = (await commands.document()).pings.map((ping) => ({
     ...ping,
     ping: new Date(ping.ping),
   }))
@@ -20,7 +20,7 @@ async function schedulePings() {
   // TODO: this may not be in the right order
   if (result.status == 'ok') {
     for (const ping of result.data) {
-      store.value.unshift({ ...ping, ping: new Date(ping.ping) })
+      current.value.unshift({ ...ping, ping: new Date(ping.ping) })
     }
   } else {
     error.value = `could not schedule new pings: ${result.error}`
