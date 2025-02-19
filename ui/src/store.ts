@@ -5,6 +5,7 @@ export type PingWithTag = Omit<RawPingWithTag, 'ping'> & { ping: Date }
 
 export const current = ref<PingWithTag[]>([])
 
+// Any errors
 export const error = ref<string | null>(null)
 
 async function refreshDocument() {
