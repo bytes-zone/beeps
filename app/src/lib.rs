@@ -7,7 +7,7 @@ use app::App;
 use specta_typescript::Typescript;
 use tauri::{async_runtime::Mutex, AppHandle, Manager};
 use tauri_specta::{collect_commands, Builder};
-use ui_document::UiDocument;
+use ui_document::{PingWithTag, UiDocument};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,12 +52,12 @@ async fn init(app: AppHandle) -> UiDocument {
 
 #[tauri::command]
 #[specta::specta]
-async fn schedule_pings(app: AppHandle) -> Result<UiDocument, String> {
+async fn schedule_pings(app: AppHandle) -> Result<Vec<PingWithTag>, String> {
     let lock = app.state::<Mutex<App>>();
     let mut app = lock.lock().await;
 
     match app.schedule_pings() {
-        Ok(new_pings) => Ok(new_pings.into()),
+        Ok(new_pings) => Ok(new_pings.into_iter().map(PingWithTag::from).collect()),
         Err(e) => Err(e.to_string()),
     }
 }
