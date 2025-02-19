@@ -22,7 +22,6 @@ async function refreshDocument() {
 async function schedulePings() {
   const result = await commands.schedulePings()
 
-  // TODO: this may not be in the right order
   if (result.status == 'ok') {
     for (const ping of result.data) {
       current.value.unshift({ ...ping, ping: new Date(ping.ping) })
