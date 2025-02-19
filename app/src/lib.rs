@@ -36,8 +36,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![document])
-        .invoke_handler(tauri::generate_handler![schedule_pings])
+        .invoke_handler(tauri::generate_handler![document, schedule_pings])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
