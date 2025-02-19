@@ -11,7 +11,8 @@ use ui_document::{PingWithTag, UiDocument};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = Builder::<tauri::Wry>::new().commands(collect_commands![document]);
+    let builder =
+        Builder::<tauri::Wry>::new().commands(collect_commands![document, schedule_pings]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds
     builder
