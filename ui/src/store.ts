@@ -12,20 +12,27 @@ export const future = ref<PingWithTag[]>([])
 // Any errors
 export const error = ref<string | null>(null)
 
+function storePing(ping: RawPingWithTag) {
+  const converted = { ...ping, ping: new Date(ping.ping) }
+
+  if (converted.ping <= new Date()) {
+    current.value.unshift(converted)
+  } else {
+    future.value.push(converted)
+  }
+}
+
 async function refreshDocument() {
-  current.value = (await commands.document()).pings.map((ping) => ({
-    ...ping,
-    ping: new Date(ping.ping),
-  }))
+  const document = await commands.document()
+
+  document.pings.forEach(storePing)
 }
 
 async function schedulePings() {
   const result = await commands.schedulePings()
 
   if (result.status == 'ok') {
-    for (const ping of result.data) {
-      current.value.unshift({ ...ping, ping: new Date(ping.ping) })
-    }
+    result.data.forEach(storePing)
   } else {
     error.value = `could not schedule new pings: ${result.error}`
   }
