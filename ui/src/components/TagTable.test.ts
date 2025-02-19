@@ -13,13 +13,13 @@ test('when pings are absent, no table should be visible', async () => {
 })
 
 test('when pings are present, they should be rendered', async () => {
-  const ping = new Date().toISOString()
+  const ping = new Date()
   const tag = 'Test'
 
   render(TagTable, {
     props: { pings: [{ ping, tag }] },
   })
 
-  expect(await screen.findAllByText(ping)).not.toBeNull()
+  expect(await screen.findAllByText(ping.toString())).not.toBeNull()
   expect(await screen.findAllByText(tag)).not.toBeNull()
 })
