@@ -52,9 +52,12 @@ async fn init(app: AppHandle) -> UiDocument {
 
 #[tauri::command]
 #[specta::specta]
-async fn schedule_pings(app: AppHandle) -> Result<(), String> {
+async fn schedule_pings(app: AppHandle) -> Result<UiDocument, String> {
     let lock = app.state::<Mutex<App>>();
     let mut app = lock.lock().await;
 
-    app.schedule_pings().map_err(|e| e.to_string())
+    match app.schedule_pings() {
+        Ok(new_pings) => Ok(new_pings.into()),
+        Err(e) => Err(e.to_string()),
+    }
 }

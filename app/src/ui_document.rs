@@ -32,3 +32,14 @@ impl From<&Document> for UiDocument {
         Self { pings }
     }
 }
+
+impl From<Vec<DateTime<Utc>>> for UiDocument {
+    fn from(pings: Vec<DateTime<Utc>>) -> Self {
+        let pings: Vec<PingWithTag> = pings
+            .into_iter()
+            .map(|ping| PingWithTag { ping, tag: None })
+            .collect();
+
+        Self { pings }
+    }
+}
