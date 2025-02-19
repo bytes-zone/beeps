@@ -1,12 +1,17 @@
 import { ref } from 'vue'
-import { commands, type PingWithTag } from './bindings'
+import { commands, type PingWithTag as RawPingWithTag } from './bindings'
+
+export type PingWithTag = Omit<RawPingWithTag, 'ping'> & { ping: Date }
 
 export const store = ref<PingWithTag[]>([])
 
 export const error = ref<string | null>(null)
 
 async function refreshDocument() {
-  store.value = (await commands.document()).pings
+  store.value = (await commands.document()).pings.map((ping) => ({
+    ...ping,
+    ping: new Date(ping.ping),
+  }))
 }
 
 async function schedulePings() {
@@ -14,7 +19,9 @@ async function schedulePings() {
 
   // TODO: this may not be in the right order
   if (result.status == 'ok') {
-    store.value.unshift(...result.data)
+    for (const ping of result.data) {
+      store.value.unshift({ ...ping, ping: new Date(ping.ping) })
+    }
   } else {
     error.value = `could not schedule new pings: ${result.error}`
   }
