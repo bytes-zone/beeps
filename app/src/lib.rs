@@ -11,7 +11,7 @@ use ui_document::{PingWithTag, UiDocument};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = Builder::<tauri::Wry>::new().commands(collect_commands![init]);
+    let builder = Builder::<tauri::Wry>::new().commands(collect_commands![document]);
 
     #[cfg(debug_assertions)] // <- Only export on non-release builds
     builder
@@ -35,7 +35,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![init])
+        .invoke_handler(tauri::generate_handler![document])
         .invoke_handler(tauri::generate_handler![schedule_pings])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -44,7 +44,7 @@ pub fn run() {
 /// Get the current document.
 #[tauri::command]
 #[specta::specta]
-async fn init(app: AppHandle) -> UiDocument {
+async fn document(app: AppHandle) -> UiDocument {
     let lock = app.state::<Mutex<App>>();
     let app = lock.lock().await;
 
