@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { type PingWithTag } from '@/store'
+import { friendlyDate } from '@/friendlyDate'
 
 defineProps<{
   pings: PingWithTag[]
@@ -17,7 +18,9 @@ defineProps<{
     </thead>
     <tbody>
       <tr v-for="ping in pings" :key="ping.ping.toString()">
-        <td>{{ ping.ping }}</td>
+        <td>
+          {{ friendlyDate(ping.ping) }}
+        </td>
         <td>{{ ping.tag }}</td>
       </tr>
     </tbody>
