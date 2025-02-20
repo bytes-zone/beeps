@@ -12,13 +12,13 @@ defineProps<{
   <table v-else>
     <thead>
       <tr>
-        <th>Ping</th>
-        <th>Tag</th>
+        <th scope="col">Ping</th>
+        <th scope="col">Tag</th>
       </tr>
     </thead>
     <tbody>
       <tr v-for="ping in pings" :key="ping.ping.toString()">
-        <td>
+        <td scope="row">
           {{ friendlyDate(ping.ping) }}
         </td>
         <td>{{ ping.tag }}</td>
