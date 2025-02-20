@@ -22,5 +22,7 @@ test('when pings are present, they should be rendered', async () => {
   })
 
   expect(await screen.findAllByText(friendlyDate(ping))).not.toBeNull()
-  expect(await screen.findAllByText(tag)).not.toBeNull()
+
+  const tagEntry = screen.getByTitle<HTMLInputElement>(`Tag for ${friendlyDate(ping)}`)
+  expect(tagEntry.value).toEqual(tag)
 })

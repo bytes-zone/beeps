@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { type PingWithTag } from '@/store'
 import { friendlyDate } from '@/friendlyDate'
+import TagInput from './TagInput.vue'
 
 defineProps<{
   pings: PingWithTag[]
@@ -21,7 +22,7 @@ defineProps<{
         <td scope="row">
           {{ friendlyDate(ping.ping) }}
         </td>
-        <td>{{ ping.tag }}</td>
+        <td><TagInput :ping="ping" /></td>
       </tr>
     </tbody>
   </table>
