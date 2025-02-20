@@ -6,6 +6,10 @@ import TagInput from './TagInput.vue'
 defineProps<{
   pings: PingWithTag[]
 }>()
+
+defineEmits<{
+  tag: [ping: Date, tag: string | null]
+}>()
 </script>
 
 <template>
@@ -22,7 +26,7 @@ defineProps<{
         <td scope="row">
           {{ friendlyDate(ping.ping) }}
         </td>
-        <td><TagInput :ping="ping" /></td>
+        <td><TagInput :ping="ping" @change="(tag) => $emit('tag', ping.ping, tag)" /></td>
       </tr>
     </tbody>
   </table>
