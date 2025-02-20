@@ -11,10 +11,11 @@ const emit = defineEmits<{
   change: [value: string | null]
 }>()
 
-const onchange = useDebounceFn((newTag: string) => {
-  const trimmed = newTag.trim()
+const onchange = useDebounceFn((ev: Event) => {
+  const el = ev.target as HTMLInputElement
+  const trimmed = el.value.trim()
   emit('change', trimmed === '' ? null : trimmed)
-}, 500)
+}, 250)
 </script>
 
 <template>
@@ -22,6 +23,6 @@ const onchange = useDebounceFn((newTag: string) => {
     type="text"
     :title="`Tag for ${friendlyDate(ping.ping)}`"
     :value="ping.tag"
-    @onchange="onchange"
+    @change="onchange"
   />
 </template>
