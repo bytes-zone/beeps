@@ -9,6 +9,9 @@ export default mergeConfig(
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+
+      // Enabled so testing-library can clean up the DOM
+      globals: true,
     },
   }),
 )
