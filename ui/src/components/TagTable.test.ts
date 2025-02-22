@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/vue'
 import TagTable from './TagTable.vue'
 import { expect, test } from 'vitest'
+import { friendlyDate } from '@/friendlyDate'
 
 test('when pings are absent, no table should be visible', async () => {
   render(TagTable, {
@@ -20,6 +21,8 @@ test('when pings are present, they should be rendered', async () => {
     props: { pings: [{ ping, tag }] },
   })
 
-  expect(await screen.findAllByText(ping.toString())).not.toBeNull()
-  expect(await screen.findAllByText(tag)).not.toBeNull()
+  expect(await screen.findAllByText(friendlyDate(ping))).not.toBeNull()
+
+  const tagEntry = screen.getByTitle<HTMLInputElement>(`Tag for ${friendlyDate(ping)}`)
+  expect(tagEntry.value).toEqual(tag)
 })
