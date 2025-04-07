@@ -202,7 +202,7 @@ mod test {
             let now = Utc::now();
 
             // Our first call is going to schedule some pings
-            assert!(doc.schedule_pings_with_cutoff(now).len() > 0);
+            assert!(!doc.schedule_pings_with_cutoff(now).is_empty());
 
             // A second call won't schedule anything new, so we should not
             // schedule new pings

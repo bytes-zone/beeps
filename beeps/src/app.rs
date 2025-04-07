@@ -296,7 +296,7 @@ impl App {
                         self.popover = Some(Popover::ConfirmReplaceOrMerge);
                     } else {
                         self.replica.merge(pulled.document);
-                    };
+                    }
 
                     vec![]
                 }
@@ -314,24 +314,22 @@ impl App {
         let mut effects = Vec::new();
 
         match &mut self.popover {
-            None => {
-                match key.code {
-                    KeyCode::Char('q') => effects.append(&mut self.quit()),
-                    KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
-                    KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
-                    KeyCode::Char('c') => self.copy_selected(),
-                    KeyCode::Char('v') => effects.append(&mut self.paste_copied()),
-                    KeyCode::Char('e') | KeyCode::Enter => self.edit_selected(),
-                    KeyCode::Char('?') | KeyCode::F(1) => self.show_help(),
-                    KeyCode::Backspace | KeyCode::Delete => {
-                        effects.append(&mut self.clear_selected());
-                    }
-                    KeyCode::Char('r') => self.start_registering(),
-                    KeyCode::Char('l') => self.start_logging_in(),
-                    KeyCode::Char('w') => effects.append(&mut self.show_whoami()),
-                    _ => (),
-                };
-            }
+            None => match key.code {
+                KeyCode::Char('q') => effects.append(&mut self.quit()),
+                KeyCode::Char('j') | KeyCode::Down => self.table_state.select_next(),
+                KeyCode::Char('k') | KeyCode::Up => self.table_state.select_previous(),
+                KeyCode::Char('c') => self.copy_selected(),
+                KeyCode::Char('v') => effects.append(&mut self.paste_copied()),
+                KeyCode::Char('e') | KeyCode::Enter => self.edit_selected(),
+                KeyCode::Char('?') | KeyCode::F(1) => self.show_help(),
+                KeyCode::Backspace | KeyCode::Delete => {
+                    effects.append(&mut self.clear_selected());
+                }
+                KeyCode::Char('r') => self.start_registering(),
+                KeyCode::Char('l') => self.start_logging_in(),
+                KeyCode::Char('w') => effects.append(&mut self.show_whoami()),
+                _ => (),
+            },
             Some(Popover::Help) => match key.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.dismiss_popover(),
                 _ => (),

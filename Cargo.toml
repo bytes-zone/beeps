@@ -1,9 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["beeps_core", "browser", "beeps", "beeps-server", "app"]
-
-[profile.release.package.browser]
-opt-level = "s"
+members = ["beeps_core", "beeps", "beeps-server"]
 
 [workspace.lints.rust]
 missing_docs = "warn"
