@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["beeps_core", "browser", "beeps", "beeps-server", "app"]
+members = ["beeps_core", "beeps", "beeps-server"]
 
 [profile.release.package.browser]
 opt-level = "s"

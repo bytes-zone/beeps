@@ -79,22 +79,6 @@ jobs:
       # Test
       - run: cargo test
 
-  wasm-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          target: wasm32-unknown-unknown
-          cache-directories: |
-            target/wasm32-unknown-unknown
-      - run: cargo install wasm-pack
-      - run: wasm-pack build browser --out-dir $GITHUB_WORKSPACE/pkg
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wasm
-          path: pkg/*
-
   server-container:
     runs-on: ubuntu-latest
     steps:
@@ -111,43 +95,3 @@ jobs:
           context: .
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  ui-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-        working-directory: ui
-      - run: bun run build
-        working-directory: ui
-
-  ui-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-        working-directory: ui
-      - run: bun run lint
-        working-directory: ui
-
-  ui-test-unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-        working-directory: ui
-      - run: bun run test:unit
-        working-directory: ui
-
-  ui-format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-        working-directory: ui
-      - run: bunx prettier --check src/
-        working-directory: ui
