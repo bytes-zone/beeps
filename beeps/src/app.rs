@@ -296,7 +296,7 @@ impl App {
                         self.popover = Some(Popover::ConfirmReplaceOrMerge);
                     } else {
                         self.replica.merge(pulled.document);
-                    };
+                    }
 
                     vec![]
                 }
@@ -330,7 +330,7 @@ impl App {
                     KeyCode::Char('l') => self.start_logging_in(),
                     KeyCode::Char('w') => effects.append(&mut self.show_whoami()),
                     _ => (),
-                };
+                }
             }
             Some(Popover::Help) => match key.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.dismiss_popover(),

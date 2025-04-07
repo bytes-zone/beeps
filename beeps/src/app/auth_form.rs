@@ -66,7 +66,7 @@ impl AuthForm {
                         + 1, // just past the end of the text
                     server_area.y + 1, // +1 row for the border/title
                 ));
-            };
+            }
         }
 
         // EMAIL
@@ -91,7 +91,7 @@ impl AuthForm {
                         + 1, // just past the end of the text
                     email_area.y + 1, // +1 row for the border/title
                 ));
-            };
+            }
         }
 
         // PASSWORD
@@ -116,7 +116,7 @@ impl AuthForm {
                         + 1, // just past the end of the text
                     password_area.y + 1, // +1 row for the border/title
                 ));
-            };
+            }
         }
     }
 
