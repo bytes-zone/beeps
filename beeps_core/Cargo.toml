@@ -17,5 +17,5 @@ url = "2.5.4"
 
 [dev-dependencies]
 proptest = "1.6.0"
-proptest-derive = "0.5.1"
+proptest-derive = "0.6.0"
 proptest-state-machine = "0.3.1"
