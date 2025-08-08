@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: crate-ci/typos@v1.35.2
+      - uses: crate-ci/typos@v1.35.3
 
   formatting:
     runs-on: ubuntu-latest
