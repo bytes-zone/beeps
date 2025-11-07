@@ -10,7 +10,7 @@ axum-extra = { version = "0.10.0", features = ["typed-header"] }
 beeps_core = { path = "../beeps_core" }
 chrono = { version = "0.4.39", features = ["serde"] }
 clap = { version = "4.5.27", features = ["derive", "env"] }
-jsonwebtoken = "9.3.0"
+jsonwebtoken = "10.0.0"
 serde = "1.0.217"
 sqlx = { version = "0.8.3", features = [
     "runtime-tokio",
